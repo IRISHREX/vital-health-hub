@@ -1,0 +1,211 @@
+import { useState } from "react";
+import { mockPatients, mockDoctors, mockBeds } from "@/lib/mock-data";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Search, Plus, Users, UserCheck, UserX, Eye } from "lucide-react";
+
+export default function Patients() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  const filteredPatients = mockPatients.filter((patient) => {
+    const matchesSearch =
+      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.phone.includes(searchQuery) ||
+      patient.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || patient.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  const getDoctorName = (doctorId?: string) => {
+    if (!doctorId) return "-";
+    const doctor = mockDoctors.find((d) => d.id === doctorId);
+    return doctor?.name || "-";
+  };
+
+  const getBedNumber = (bedId?: string) => {
+    if (!bedId) return "-";
+    const bed = mockBeds.find((b) => b.id === bedId);
+    return bed?.number || "-";
+  };
+
+  const stats = {
+    total: mockPatients.length,
+    ipd: mockPatients.filter((p) => p.type === "IPD").length,
+    opd: mockPatients.filter((p) => p.type === "OPD").length,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Patient Management
+          </h1>
+          <p className="text-muted-foreground">
+            Manage patient registrations and admissions
+          </p>
+        </div>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Register Patient
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">Registered in system</p>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">IPD Patients</CardTitle>
+            <UserCheck className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">{stats.ipd}</div>
+            <p className="text-xs text-muted-foreground">Currently admitted</p>
+          </CardContent>
+        </Card>
+        <Card className="border-accent/30 bg-accent/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">OPD Patients</CardTitle>
+            <UserX className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-accent">{stats.opd}</div>
+            <p className="text-xs text-muted-foreground">Outpatient visits</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search patients by name, phone, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Patient Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="IPD">IPD (Admitted)</SelectItem>
+            <SelectItem value="OPD">OPD (Outpatient)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Patients Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Patient</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Diagnosis</TableHead>
+                <TableHead>Doctor</TableHead>
+                <TableHead>Bed</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPatients.map((patient) => (
+                <TableRow key={patient.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                          {patient.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{patient.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {patient.age} yrs, {patient.gender}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="text-sm">{patient.phone}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {patient.email}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={patient.type === "IPD" ? "default" : "secondary"}
+                    >
+                      {patient.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">
+                      {patient.diagnosis || "General Checkup"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">
+                      {getDoctorName(patient.doctorId)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium">
+                      {getBedNumber(patient.bedId)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm">
+                      <Eye className="mr-1 h-4 w-4" />
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
