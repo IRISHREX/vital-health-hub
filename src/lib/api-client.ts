@@ -21,6 +21,14 @@ export const getAuthToken = (): string | null => localStorage.getItem('token');
 export const setAuthToken = (token: string) => localStorage.setItem('token', token);
 export const removeAuthToken = () => localStorage.removeItem('token');
 
+// User object management
+export const getUser = (): any | null => {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+};
+export const setUser = (user: any) => localStorage.setItem('user', JSON.stringify(user));
+export const removeUser = () => localStorage.removeItem('user');
+
 // API client with auth
 export const apiClient = {
   async request(endpoint: string, options: RequestInit = {}) {

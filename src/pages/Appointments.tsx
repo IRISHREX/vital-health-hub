@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { mockAppointments, mockPatients, mockDoctors } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { getAppointments } from "@/lib/appointments";
+import { getPatients } from "@/lib/patients";
+import { getDoctors } from "@/lib/doctors";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,36 +25,66 @@ const statusConfig = {
 
 export default function Appointments() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const getPatientName = (patientId: string) => {
-    const patient = mockPatients.find((p) => p.id === patientId);
-    return patient?.name || "Unknown";
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [appointmentsData, patientsData, doctorsData] = await Promise.all([
+          getAppointments(),
+          getPatients(),
+          getDoctors(),
+        ]);
+        setAppointments(appointmentsData.data.appointments || []);
+        setPatients(patientsData.data.patients || []);
+        setDoctors(doctorsData.data.doctors || []);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const getPatientName = (patientId) => {
+    const patient = patients.find((p) => p._id === patientId);
+    return patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
   };
 
-  const getDoctorName = (doctorId: string) => {
-    const doctor = mockDoctors.find((d) => d.id === doctorId);
+  const getDoctorName = (doctorId) => {
+    const doctor = doctors.find((d) => d._id === doctorId);
     return doctor?.name || "Unknown";
   };
 
-  const filteredAppointments = mockAppointments.filter((apt) => {
+  const filteredAppointments = appointments ? appointments.filter((apt) => {
     const patientName = getPatientName(apt.patientId).toLowerCase();
     const doctorName = getDoctorName(apt.doctorId).toLowerCase();
     return (
       patientName.includes(searchQuery.toLowerCase()) ||
       doctorName.includes(searchQuery.toLowerCase())
     );
-  });
+  }) : [];
 
-  const todayAppointments = mockAppointments.filter(
-    (apt) => apt.date === "2026-01-15"
-  );
+  const today = new Date().toISOString().split("T")[0];
+  const todayAppointments = appointments ? appointments.filter(
+    (apt) => apt.appointmentDate.split("T")[0] === today
+  ) : [];
 
   const stats = {
-    total: mockAppointments.length,
-    today: todayAppointments.length,
-    scheduled: mockAppointments.filter((a) => a.status === "scheduled").length,
-    completed: mockAppointments.filter((a) => a.status === "completed").length,
+    total: appointments?.length || 0,
+    today: todayAppointments?.length || 0,
+    scheduled: appointments ? appointments.filter((a) => a.status === "scheduled").length : 0,
+    completed: appointments ? appointments.filter((a) => a.status === "completed").length : 0,
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div className="space-y-6">
@@ -127,29 +159,35 @@ export default function Appointments() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {todayAppointments.map((apt) => (
-              <div
-                key={apt.id}
-                className="flex items-center gap-4 rounded-lg border bg-background/50 p-4"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                  <span className="text-sm font-bold text-primary">
-                    {apt.time}
-                  </span>
+          {todayAppointments.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {todayAppointments.map((apt) => (
+                <div
+                  key={apt._id}
+                  className="flex items-center gap-4 rounded-lg border bg-background/50 p-4"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                    <span className="text-sm font-bold text-primary">
+                      {new Date(apt.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{getPatientName(apt.patientId)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {getDoctorName(apt.doctorId)}
+                    </p>
+                  </div>
+                  {statusConfig[apt.status] && (
+                    <Badge variant={statusConfig[apt.status].variant}>
+                      {apt.reason}
+                    </Badge>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">{getPatientName(apt.patientId)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {getDoctorName(apt.doctorId)}
-                  </p>
-                </div>
-                <Badge variant={statusConfig[apt.status].variant}>
-                  {apt.type}
-                </Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p>No appointments scheduled for today.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -176,56 +214,66 @@ export default function Appointments() {
                 <TableHead>Doctor</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Reason</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAppointments.map((apt) => (
-                <TableRow key={apt.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {getPatientName(apt.patientId)
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">
-                        {getPatientName(apt.patientId)}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getDoctorName(apt.doctorId)}</TableCell>
-                  <TableCell>{apt.date}</TableCell>
-                  <TableCell>{apt.time}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{apt.type}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusConfig[apt.status].variant}>
-                      {statusConfig[apt.status].label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {apt.status === "scheduled" && (
-                        <>
-                          <Button variant="ghost" size="icon" title="Complete">
-                            <CheckCircle2 className="h-4 w-4 text-status-available" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Cancel">
-                            <XCircle className="h-4 w-4 text-status-occupied" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+              {filteredAppointments.length > 0 ? (
+                filteredAppointments.map((apt) => (
+                  <TableRow key={apt._id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                            {getPatientName(apt.patientId)
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">
+                          {getPatientName(apt.patientId)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getDoctorName(apt.doctorId)}</TableCell>
+                    <TableCell>{new Date(apt.appointmentDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(apt.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{apt.reason}</Badge>
+                    </TableCell>
+                    {statusConfig[apt.status] && (
+                      <TableCell>
+                        <Badge variant={statusConfig[apt.status].variant}>
+                          {statusConfig[apt.status].label}
+                        </Badge>
+                      </TableCell>
+                    )}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {apt.status === "scheduled" && (
+                          <>
+                            <Button variant="ghost" size="icon" title="Complete">
+                              <CheckCircle2 className="h-4 w-4 text-status-available" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Cancel">
+                              <XCircle className="h-4 w-4 text-status-occupied" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    No appointments found.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>

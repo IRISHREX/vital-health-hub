@@ -8,15 +8,66 @@ import {
   Calendar,
   LogOut,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getBeds } from "@/lib/beds";
+import { getPatients } from "@/lib/patients";
+import { getDoctors } from "@/lib/doctors";
+import { getAppointments } from "@/lib/appointments";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { BedOccupancyChart } from "@/components/dashboard/BedOccupancyChart";
 import { AdmissionChart } from "@/components/dashboard/AdmissionChart";
 import { RecentPatients } from "@/components/dashboard/RecentPatients";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { mockDashboardStats } from "@/lib/mock-data";
 
 export default function Dashboard() {
-  const stats = mockDashboardStats;
+  const [stats, setStats] = useState({
+    totalBeds: 0,
+    availableBeds: 0,
+    admittedPatients: 0,
+    availableDoctors: 0,
+    pendingBills: 0,
+    todayAppointments: 0,
+    todayDischarges: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [bedsData, patientsData, doctorsData, appointmentsData] = await Promise.all([
+          getBeds(),
+          getPatients(),
+          getDoctors(),
+          getAppointments(),
+        ]);
+
+        const today = new Date().toISOString().split("T")[0];
+        const todayAppointments = appointmentsData.data.appointments.filter(
+          (apt) => apt.appointmentDate.split("T")[0] === today
+        );
+
+        setStats({
+          totalBeds: bedsData.data.beds.length,
+          availableBeds: bedsData.data.beds.filter((b) => b.status === "available").length,
+          admittedPatients: patientsData.data.patients.filter((p) => p.type === "IPD").length,
+          availableDoctors: doctorsData.data.doctors.filter((d) => d.isAvailable).length,
+          pendingBills: 12, // Mock data for now
+          todayAppointments: todayAppointments.length,
+          todayDischarges: 5, // Mock data for now
+        });
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div className="space-y-6">

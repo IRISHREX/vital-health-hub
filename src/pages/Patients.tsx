@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { mockPatients, mockDoctors, mockBeds } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { getPatients } from "@/lib/patients";
+import { getDoctors } from "@/lib/doctors";
+import { getBeds } from "@/lib/beds";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,34 +26,63 @@ import { Search, Plus, Users, UserCheck, UserX, Eye } from "lucide-react";
 
 export default function Patients() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [beds, setBeds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filteredPatients = mockPatients.filter((patient) => {
-    const matchesSearch =
-      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.phone.includes(searchQuery) ||
-      patient.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || patient.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [patientsData, doctorsData, bedsData] = await Promise.all([
+          getPatients(),
+          getDoctors(),
+          getBeds(),
+        ]);
+        setPatients(patientsData.data.patients || []);
+        setDoctors(doctorsData.data.doctors || []);
+        setBeds(bedsData.data.beds || []);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const getDoctorName = (doctorId?: string) => {
+  const getDoctorName = (doctorId) => {
     if (!doctorId) return "-";
-    const doctor = mockDoctors.find((d) => d.id === doctorId);
+    const doctor = doctors.find((d) => d._id === doctorId);
     return doctor?.name || "-";
   };
 
-  const getBedNumber = (bedId?: string) => {
+  const getBedNumber = (bedId) => {
     if (!bedId) return "-";
-    const bed = mockBeds.find((b) => b.id === bedId);
-    return bed?.number || "-";
+    const bed = beds.find((b) => b._id === bedId);
+    return bed?.bedNumber || "-";
   };
 
+  const filteredPatients = patients ? patients.filter((patient) => {
+    const matchesSearch =
+      `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.contactNumber.includes(searchQuery) ||
+      patient.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || patient.type === typeFilter;
+    return matchesSearch && matchesType;
+  }) : [];
+
   const stats = {
-    total: mockPatients.length,
-    ipd: mockPatients.filter((p) => p.type === "IPD").length,
-    opd: mockPatients.filter((p) => p.type === "OPD").length,
+    total: patients?.length || 0,
+    ipd: patients ? patients.filter((p) => p.type === "IPD").length : 0,
+    opd: patients ? patients.filter((p) => p.type === "OPD").length : 0,
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div className="space-y-6">
@@ -144,64 +175,69 @@ export default function Patients() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPatients.map((patient) => (
-                <TableRow key={patient.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                          {patient.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
+              {filteredPatients.length > 0 ? (
+                filteredPatients.map((patient) => (
+                  <TableRow key={patient._id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                            {`${patient.firstName[0]}${patient.lastName[0]}`}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{`${patient.firstName} ${patient.lastName}`}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {`${new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()} yrs, ${patient.gender}`}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div>
-                        <p className="font-medium">{patient.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {patient.age} yrs, {patient.gender}
+                        <p className="text-sm">{patient.contactNumber}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {patient.email}
                         </p>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm">{patient.phone}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {patient.email}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={patient.type === "IPD" ? "default" : "secondary"}
-                    >
-                      {patient.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {patient.diagnosis || "General Checkup"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {getDoctorName(patient.doctorId)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm font-medium">
-                      {getBedNumber(patient.bedId)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">
-                      <Eye className="mr-1 h-4 w-4" />
-                      View
-                    </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={patient.type === "IPD" ? "default" : "secondary"}
+                      >
+                        {patient.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {patient.diagnosis || "General Checkup"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {getDoctorName(patient.assignedDoctor)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-medium">
+                        {getBedNumber(patient.assignedBed)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm">
+                        <Eye className="mr-1 h-4 w-4" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    No patients found.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>

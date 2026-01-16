@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { mockBeds, BedStatus, BedType } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { getBeds } from "@/lib/beds";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Plus, Filter, Bed, RefreshCw } from "lucide-react";
 
-const bedTypes: BedType[] = [
+const bedTypes = [
   "ICU",
   "CCU",
   "General",
@@ -31,7 +31,7 @@ const bedTypes: BedType[] = [
   "Ventilator",
 ];
 
-const statusVariants: Record<BedStatus, "available" | "occupied" | "cleaning" | "reserved"> = {
+const statusVariants = {
   available: "available",
   occupied: "occupied",
   cleaning: "cleaning",
@@ -40,25 +40,46 @@ const statusVariants: Record<BedStatus, "available" | "occupied" | "cleaning" | 
 
 export default function Beds() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [beds, setBeds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filteredBeds = mockBeds.filter((bed) => {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const bedsData = await getBeds();
+        setBeds(bedsData.data.beds || []);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const filteredBeds = beds ? beds.filter((bed) => {
     const matchesSearch =
-      bed.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bed.bedNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       bed.ward.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || bed.type === typeFilter;
+    const matchesType = typeFilter === "all" || bed.bedType === typeFilter;
     const matchesStatus = statusFilter === "all" || bed.status === statusFilter;
     return matchesSearch && matchesType && matchesStatus;
-  });
+  }) : [];
 
   const stats = {
-    total: mockBeds.length,
-    available: mockBeds.filter((b) => b.status === "available").length,
-    occupied: mockBeds.filter((b) => b.status === "occupied").length,
-    cleaning: mockBeds.filter((b) => b.status === "cleaning").length,
-    reserved: mockBeds.filter((b) => b.status === "reserved").length,
+    total: beds?.length || 0,
+    available: beds ? beds.filter((b) => b.status === "available").length : 0,
+    occupied: beds ? beds.filter((b) => b.status === "occupied").length : 0,
+    cleaning: beds ? beds.filter((b) => b.status === "cleaning").length : 0,
+    reserved: beds ? beds.filter((b) => b.status === "reserved").length : 0,
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div className="space-y-6">
@@ -192,26 +213,36 @@ export default function Beds() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredBeds.map((bed) => (
-                <TableRow key={bed.id}>
-                  <TableCell className="font-medium">{bed.number}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{bed.type}</Badge>
-                  </TableCell>
-                  <TableCell>{bed.ward}</TableCell>
-                  <TableCell>Floor {bed.floor}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariants[bed.status]}>
-                      {bed.status.charAt(0).toUpperCase() + bed.status.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">
-                      {bed.status === "available" ? "Assign" : "View"}
-                    </Button>
+              {filteredBeds.length > 0 ? (
+                filteredBeds.map((bed) => (
+                  <TableRow key={bed._id}>
+                    <TableCell className="font-medium">{bed.bedNumber}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{bed.bedType}</Badge>
+                    </TableCell>
+                    <TableCell>{bed.ward}</TableCell>
+                    <TableCell>Floor {bed.floor}</TableCell>
+                    <TableCell>
+                      {statusVariants[bed.status] && (
+                        <Badge variant={statusVariants[bed.status]}>
+                          {bed.status.charAt(0).toUpperCase() + bed.status.slice(1)}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm">
+                        {bed.status === "available" ? "Assign" : "View"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">
+                    No beds found.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
