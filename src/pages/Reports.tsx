@@ -40,7 +40,7 @@ export default function Reports() {
     
     const { data: admissionsReport, isLoading: admissionsLoading, isError: admissionsError } = useQuery({
         queryKey: ['admissionsReport'],
-        queryFn: getAdmissionsReport
+        queryFn: () => getAdmissionsReport()
     });
 
     if (kpisLoading || financialLoading || admissionsLoading) {

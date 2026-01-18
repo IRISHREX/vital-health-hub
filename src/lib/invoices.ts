@@ -1,8 +1,13 @@
 import { apiClient } from "./api-client";
 
 export const getInvoices = async (filters: { patientId?: string, status?: string, startDate?: string, endDate?: string } = {}) => {
-  const response = await apiClient.get('/invoices', { params: filters });
-  return response.data || [];
+  const queryParams = new URLSearchParams();
+  if (filters.patientId) queryParams.append('patientId', filters.patientId);
+  if (filters.status) queryParams.append('status', filters.status);
+  if (filters.startDate) queryParams.append('startDate', filters.startDate);
+  if (filters.endDate) queryParams.append('endDate', filters.endDate);
+  const query = queryParams.toString();
+  return apiClient.get(`/invoices${query ? `?${query}` : ''}`);
 };
 export const getInvoiceById = async (id: string) => {
     const response = await apiClient.get(`/invoices/${id}`);
