@@ -33,7 +33,9 @@ import {
   AlertCircle,
   Loader2
 } from "lucide-react";
-import AddInvoiceDialog from "@/components/dashboard/AddInvoiceDialog";
+import EnhancedInvoiceDialog from "@/components/dashboard/EnhancedInvoiceDialog";
+import InvoiceViewDialog from "@/components/dashboard/InvoiceViewDialog";
+import PaymentManagementDialog from "@/components/dashboard/PaymentManagementDialog";
 
 const statusConfig: { [key: string]: { label: string; variant: "success" | "warning" | "destructive" | "default"; icon: React.ElementType }} = {
     paid: { label: "Paid", variant: "success", icon: CheckCircle2 },
@@ -48,6 +50,8 @@ export default function Billing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<any | null>(null);
 
   const { data: invoices, isLoading, isError } = useQuery({
     queryKey: ['invoices', { status: statusFilter }],
@@ -232,10 +236,18 @@ export default function Billing() {
                       <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedInvoiceId(invoice._id)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedInvoiceForPayment(invoice)}
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
                         </div>
@@ -248,7 +260,25 @@ export default function Billing() {
           </CardContent>
         </Card>
       </div>
-      <AddInvoiceDialog isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} />
+      <EnhancedInvoiceDialog isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} />
+      {selectedInvoiceId && (
+        <InvoiceViewDialog
+          isOpen={!!selectedInvoiceId}
+          onClose={() => setSelectedInvoiceId(null)}
+          invoiceId={selectedInvoiceId}
+          onPaymentClick={(invoice) => {
+            setSelectedInvoiceId(null);
+            setSelectedInvoiceForPayment(invoice);
+          }}
+        />
+      )}
+      {selectedInvoiceForPayment && (
+        <PaymentManagementDialog
+          isOpen={!!selectedInvoiceForPayment}
+          onClose={() => setSelectedInvoiceForPayment(null)}
+          invoice={selectedInvoiceForPayment}
+        />
+      )}
     </>
   );
 }

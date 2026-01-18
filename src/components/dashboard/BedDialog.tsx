@@ -175,16 +175,6 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
         status: "occupied",
       } as any);
 
-      // Update invoice status to active/pending
-      const invoicesResponse = await getInvoices({ patientId });
-      const invoices = invoicesResponse?.data?.invoices || [];
-      if (invoices.length > 0) {
-        const invoice = invoices[0];
-        await updateInvoice(invoice._id, {
-          status: 'pending',
-        });
-      }
-
       return bedResponse;
     },
     onSuccess: () => {
