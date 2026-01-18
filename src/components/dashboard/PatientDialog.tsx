@@ -6,7 +6,9 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createPatient, updatePatient } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
+import { createInvoice, getInvoices, updateInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -39,9 +41,9 @@ const patientSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(50),
   lastName: z.string().min(1, "Last name is required").max(50),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
-  gender: z.enum(["Male", "Female", "Other"]),
+  gender: z.enum(["male", "female", "other"]),
   contactNumber: z.string().min(10, "Valid phone number required").max(15),
-  email: z.string().email("Valid email required"),
+  email: z.string().email("Valid email required").optional(),
   address: z.string().min(1, "Address is required").max(200),
   emergencyContact: z.object({
     name: z.string().min(1, "Emergency contact name required"),
@@ -49,8 +51,8 @@ const patientSchema = z.object({
     phone: z.string().min(10, "Valid phone number required"),
   }),
   bloodGroup: z.string().optional(),
-  type: z.enum(["IPD", "OPD"]),
-  diagnosis: z.string().optional(),
+  registrationType: z.enum(["opd", "ipd", "emergency"]),
+  medicalHistory: z.string().optional(),
   assignedDoctor: z.string().optional(),
   assignedBed: z.string().optional(),
 });
@@ -67,6 +69,7 @@ interface PatientDialogProps {
 export default function PatientDialog({ isOpen, onClose, patient, mode }: PatientDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: doctorsData } = useQuery({
     queryKey: ["doctors"],
@@ -87,7 +90,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
       firstName: "",
       lastName: "",
       dateOfBirth: "",
-      gender: "Male",
+      gender: "male",
       contactNumber: "",
       email: "",
       address: "",
@@ -97,8 +100,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         phone: "",
       },
       bloodGroup: "",
-      type: "OPD",
-      diagnosis: "",
+      registrationType: "opd",
+      medicalHistory: "",
       assignedDoctor: "",
       assignedBed: "",
     },
@@ -110,27 +113,87 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         firstName: patient.firstName || "",
         lastName: patient.lastName || "",
         dateOfBirth: patient.dateOfBirth?.split("T")[0] || "",
-        gender: patient.gender || "Male",
-        contactNumber: patient.contactNumber || "",
+        gender: (patient.gender || "male").toLowerCase(),
+        contactNumber: patient.phone || "",
         email: patient.email || "",
-        address: patient.address || "",
+        address: patient.address?.street ? `${patient.address.street}, ${patient.address.city}` : patient.address || "",
         emergencyContact: patient.emergencyContact || { name: "", relationship: "", phone: "" },
         bloodGroup: patient.bloodGroup || "",
-        type: patient.type || "OPD",
-        diagnosis: patient.diagnosis || "",
+        registrationType: patient.registrationType || "opd",
+        medicalHistory: patient.medicalHistory?.[0]?.condition || "",
         assignedDoctor: patient.assignedDoctor || "",
         assignedBed: patient.assignedBed || "",
       });
     } else {
-      form.reset();
+      form.reset({
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        gender: "male",
+        contactNumber: "",
+        email: "",
+        address: "",
+        emergencyContact: {
+          name: "",
+          relationship: "",
+          phone: "",
+        },
+        bloodGroup: "",
+        registrationType: "opd",
+        medicalHistory: "",
+        assignedDoctor: "",
+        assignedBed: "",
+      });
     }
   }, [patient, mode, form]);
 
   const createMutation = useMutation({
-    mutationFn: createPatient,
+    mutationFn: async (values: PatientFormValues) => {
+      const medicalHistory = values.medicalHistory 
+        ? [{ condition: values.medicalHistory, diagnosedDate: new Date() }]
+        : [];
+      
+      // Create patient first
+      const patientData = await createPatient({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        dateOfBirth: values.dateOfBirth,
+        gender: values.gender,
+        phone: values.contactNumber,
+        email: values.email || "",
+        address: values.address,
+        emergencyContact: values.emergencyContact,
+        bloodGroup: values.bloodGroup || null,
+        registrationType: values.registrationType,
+        medicalHistory,
+        assignedDoctor: values.assignedDoctor || null,
+        assignedBed: values.assignedBed || null,
+      });
+
+      // Auto-create invoice with default values (0s)
+      if (patientData?.data?._id || patientData?._id) {
+        const patientId = patientData?.data?._id || patientData?._id;
+        const invoiceData = {
+          patient: patientId,
+          type: values.registrationType,
+          items: [],
+          subtotal: 0,
+          totalAmount: 0,
+          dueAmount: 0,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          status: 'draft',
+          notes: `Invoice auto-created for ${values.firstName} ${values.lastName}`,
+          generatedBy: user?.id || ""
+        };
+        await createInvoice(invoiceData);
+      }
+
+      return patientData;
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Patient registered successfully." });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
     onError: (error: any) => {
@@ -139,10 +202,54 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: PatientFormValues) => updatePatient(patient._id, data),
+    mutationFn: async (data: PatientFormValues) => {
+      const medicalHistory = data.medicalHistory 
+        ? [{ condition: data.medicalHistory, diagnosedDate: new Date() }]
+        : [];
+      
+      const updatedPatient = await updatePatient(patient._id, {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
+        phone: data.contactNumber,
+        email: data.email || "",
+        address: data.address,
+        emergencyContact: data.emergencyContact,
+        bloodGroup: data.bloodGroup || null,
+        registrationType: data.registrationType,
+        medicalHistory,
+        assignedDoctor: data.assignedDoctor || null,
+        assignedBed: data.assignedBed || null,
+      });
+
+      // If doctor or bed was assigned, update the invoice
+      if (data.assignedDoctor || data.assignedBed) {
+        try {
+          const invoicesResponse = await getInvoices({ patientId: patient._id });
+          const invoices = invoicesResponse?.data?.invoices || [];
+          if (invoices.length > 0) {
+            const invoice = invoices[0];
+            const updateData: any = {};
+            if (data.assignedBed) {
+              updateData.status = 'pending';
+            }
+            if (Object.keys(updateData).length > 0) {
+              await updateInvoice(invoice._id, updateData);
+            }
+          }
+        } catch (error) {
+          console.error('Error updating invoice:', error);
+          // Don't fail the patient update if invoice update fails
+        }
+      }
+
+      return updatedPatient;
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Patient updated successfully." });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
     onError: (error: any) => {
@@ -232,9 +339,9 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -311,7 +418,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
               />
               <FormField
                 control={form.control}
-                name="type"
+                name="registrationType"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Patient Type</FormLabel>
@@ -322,8 +429,9 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="OPD">OPD (Outpatient)</SelectItem>
-                        <SelectItem value="IPD">IPD (Admitted)</SelectItem>
+                        <SelectItem value="opd">OPD (Outpatient)</SelectItem>
+                        <SelectItem value="ipd">IPD (Admitted)</SelectItem>
+                        <SelectItem value="emergency">Emergency</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -379,15 +487,15 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
 
             <div className="border-t pt-4">
               <h4 className="font-medium mb-3">Medical Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="diagnosis"
+                  name="medicalHistory"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Diagnosis</FormLabel>
+                      <FormLabel>Medical History</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., General Checkup" {...field} />
+                        <Input placeholder="e.g., Diabetes, Hypertension" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -398,8 +506,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                   name="assignedDoctor"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Assigned Doctor</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <FormLabel>Assigned Doctor (Optional)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select doctor" />
@@ -408,7 +516,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                         <SelectContent>
                           {doctors.map((doctor: any) => (
                             <SelectItem key={doctor._id} value={doctor._id}>
-                              {doctor.name}
+                              {doctor.user?.firstName} {doctor.user?.lastName} ({doctor.specialization})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -418,14 +526,14 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                   )}
                 />
               </div>
-              {form.watch("type") === "IPD" && (
+              {form.watch("registrationType") === "ipd" && (
                 <FormField
                   control={form.control}
                   name="assignedBed"
                   render={({ field }) => (
                     <FormItem className="mt-4">
-                      <FormLabel>Assigned Bed</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <FormLabel>Assigned Bed (Required for IPD)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select bed" />

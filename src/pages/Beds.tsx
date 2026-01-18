@@ -49,16 +49,26 @@ export default function Beds() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBed, setSelectedBed] = useState<any>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [assignMode, setAssignMode] = useState(false);
 
   const openCreateDialog = () => {
     setSelectedBed(null);
     setDialogMode("create");
+    setAssignMode(false);
     setDialogOpen(true);
   };
 
   const openEditDialog = (bed: any) => {
     setSelectedBed(bed);
     setDialogMode("edit");
+    setAssignMode(false);
+    setDialogOpen(true);
+  };
+
+  const openAssignDialog = (bed: any) => {
+    setSelectedBed(bed);
+    setDialogMode("edit");
+    setAssignMode(true);
     setDialogOpen(true);
   };
 
@@ -129,6 +139,7 @@ export default function Beds() {
         onClose={handleDialogClose}
         bed={selectedBed}
         mode={dialogMode}
+        assignMode={assignMode}
       />
 
       {/* Status Cards */}
@@ -270,7 +281,15 @@ export default function Beds() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (bed.status === "available") {
+                              openAssignDialog(bed);
+                            }
+                          }}
+                        >
                           {bed.status === "available" ? "Assign" : "View"}
                         </Button>
                       </div>

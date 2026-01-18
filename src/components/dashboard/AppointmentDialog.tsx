@@ -42,7 +42,8 @@ const appointmentSchema = z.object({
   appointmentTime: z.string().min(1, "Time is required"),
   reason: z.string().min(1, "Reason is required").max(200),
   notes: z.string().optional(),
-  status: z.enum(["scheduled", "completed", "cancelled"]),
+  type: z.enum(["opd", "follow_up", "consultation", "emergency", "telemedicine"]).optional(),
+  status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -69,7 +70,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   });
 
   const patients = patientsData?.data?.patients || [];
-  const doctors = (doctorsData?.data?.doctors || []).filter((d: any) => d.isAvailable);
+  const doctors = (doctorsData?.data?.doctors || []).filter((d: any) => d.availabilityStatus === "available");
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -80,6 +81,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       appointmentTime: "",
       reason: "",
       notes: "",
+      type: "opd",
       status: "scheduled",
     },
   });
@@ -88,12 +90,13 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     if (appointment && mode === "edit") {
       const dateTime = appointment.appointmentDate ? new Date(appointment.appointmentDate) : null;
       form.reset({
-        patientId: appointment.patientId || "",
-        doctorId: appointment.doctorId || "",
+        patientId: appointment.patient?._id || appointment.patientId || "",
+        doctorId: appointment.doctor?._id || appointment.doctorId || "",
         appointmentDate: dateTime ? dateTime.toISOString().split("T")[0] : "",
         appointmentTime: dateTime ? dateTime.toTimeString().slice(0, 5) : "",
         reason: appointment.reason || "",
         notes: appointment.notes || "",
+        type: appointment.type || "opd",
         status: appointment.status || "scheduled",
       });
     } else {
@@ -104,6 +107,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
         appointmentTime: "",
         reason: "",
         notes: "",
+        type: "opd",
         status: "scheduled",
       });
     }
@@ -113,8 +117,13 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     mutationFn: (data: any) => {
       const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
       return createAppointment({
-        ...data,
+        patientId: data.patientId,
+        doctorId: data.doctorId,
         appointmentDate: combinedDateTime,
+        reason: data.reason,
+        notes: data.notes,
+        type: data.type || "opd",
+        status: data.status || "scheduled",
       });
     },
     onSuccess: () => {
@@ -131,8 +140,13 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     mutationFn: (data: any) => {
       const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
       return updateAppointment(appointment._id, {
-        ...data,
+        patientId: data.patientId,
+        doctorId: data.doctorId,
         appointmentDate: combinedDateTime,
+        reason: data.reason,
+        notes: data.notes,
+        type: data.type || "opd",
+        status: data.status || "scheduled",
       });
     },
     onSuccess: () => {
@@ -211,7 +225,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                     <SelectContent>
                       {doctors.map((doctor: any) => (
                         <SelectItem key={doctor._id} value={doctor._id}>
-                          {doctor.name} - {doctor.specialty}
+                          {doctor.name || doctor.user?.firstName} {doctor.user?.lastName} - {doctor.specialization}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -279,28 +293,58 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
             />
 
             {mode === "edit" && (
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="scheduled">Scheduled</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <>
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Appointment Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || "opd"}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="opd">OPD</SelectItem>
+                          <SelectItem value="follow_up">Follow Up</SelectItem>
+                          <SelectItem value="consultation">Consultation</SelectItem>
+                          <SelectItem value="emergency">Emergency</SelectItem>
+                          <SelectItem value="telemedicine">Telemedicine</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || "scheduled"}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="no_show">No Show</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
             )}
 
             <DialogFooter>

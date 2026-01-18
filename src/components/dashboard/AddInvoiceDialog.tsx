@@ -20,6 +20,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -28,17 +35,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createInvoice } from "@/lib/invoices";
+import { getPatients } from "@/lib/patients";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 
 const invoiceSchema = z.object({
-  patient: z.string().min(1, "Patient ID is required"), // Simplified for now
+  patient: z.string().min(1, "Patient is required"),
   totalAmount: z.coerce.number().min(1, "Total amount must be greater than 0"),
   dueDate: z.date({
     required_error: "A due date is required.",
   }),
+  invoiceType: z.enum(["opd", "ipd"]),
+  notes: z.string().optional(),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
@@ -53,8 +63,21 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  const { data: patientsData } = useQuery({
+    queryKey: ["patients"],
+    queryFn: getPatients,
+  });
+
+  const patients = patientsData?.data?.patients || [];
+
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
+    defaultValues: {
+      patient: "",
+      totalAmount: 0,
+      invoiceType: "opd",
+      notes: "",
+    },
   });
 
   const mutation = useMutation({
@@ -62,23 +85,24 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
       if (!user) {
         throw new Error("You must be logged in to create an invoice.");
       }
-      const simplifiedInvoiceData = {
+      const invoiceData = {
         patient: values.patient,
-        type: 'opd',
+        type: values.invoiceType,
         items: [{
-            description: "Consultation Fee",
-            category: 'doctor_fee',
-            unitPrice: values.totalAmount,
-            amount: values.totalAmount,
+          description: "Service Charge",
+          category: values.invoiceType === 'opd' ? 'doctor_fee' : 'admission_fee',
+          unitPrice: values.totalAmount,
+          amount: values.totalAmount,
         }],
         subtotal: values.totalAmount,
         totalAmount: values.totalAmount,
         dueAmount: values.totalAmount,
         dueDate: values.dueDate,
         status: 'pending',
+        notes: values.notes || "",
         generatedBy: user.id
       };
-      return createInvoice(simplifiedInvoiceData);
+      return createInvoice(invoiceData);
     },
     onSuccess: () => {
       toast({
@@ -118,22 +142,56 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
               name="patient"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Patient ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter patient ID" {...field} />
-                  </FormControl>
+                  <FormLabel>Patient</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select patient" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {patients.map((patient: any) => (
+                        <SelectItem key={patient._id} value={patient._id}>
+                          {patient.firstName} {patient.lastName} (ID: {patient.patientId || patient._id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="invoiceType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Invoice Type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="opd">OPD (Outpatient)</SelectItem>
+                      <SelectItem value="ipd">IPD (Inpatient)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="totalAmount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Total Amount</FormLabel>
+                  <FormLabel>Total Amount (₹)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 5000" {...field} />
+                    <Input type="number" placeholder="e.g., 5000" step="0.01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

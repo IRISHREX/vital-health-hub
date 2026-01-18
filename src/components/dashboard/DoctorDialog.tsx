@@ -50,12 +50,12 @@ const doctorSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   email: z.string().email("Valid email required"),
   phone: z.string().min(10, "Valid phone number required").max(15),
-  specialty: z.string().min(1, "Specialty is required"),
+  specialization: z.string().min(1, "Specialization is required"),
   department: z.string().min(1, "Department is required"),
   qualification: z.string().min(1, "Qualification is required"),
   experience: z.coerce.number().min(0, "Experience must be positive"),
   consultationFee: z.coerce.number().min(0, "Fee must be positive"),
-  isAvailable: z.boolean(),
+  availabilityStatus: z.enum(["available", "busy", "on_leave", "unavailable"]),
 });
 
 type DoctorFormValues = z.infer<typeof doctorSchema>;
@@ -77,30 +77,40 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }: DoctorDi
       name: "",
       email: "",
       phone: "",
-      specialty: "",
+      specialization: "",
       department: "",
       qualification: "",
       experience: 0,
       consultationFee: 500,
-      isAvailable: true,
+      availabilityStatus: "available",
     },
   });
 
   useEffect(() => {
     if (doctor && mode === "edit") {
       form.reset({
-        name: doctor.name || "",
-        email: doctor.email || "",
-        phone: doctor.phone || "",
-        specialty: doctor.specialty || "",
+        name: doctor.name || doctor.user?.firstName + " " + doctor.user?.lastName || "",
+        email: doctor.email || doctor.user?.email || "",
+        phone: doctor.phone || doctor.user?.phone || "",
+        specialization: doctor.specialization || "",
         department: doctor.department || "",
         qualification: doctor.qualification || "",
         experience: doctor.experience || 0,
-        consultationFee: doctor.consultationFee || 500,
-        isAvailable: doctor.isAvailable ?? true,
+        consultationFee: doctor.consultationFee?.opd || 500,
+        availabilityStatus: doctor.availabilityStatus || "available",
       });
     } else {
-      form.reset();
+      form.reset({
+        name: "",
+        email: "",
+        phone: "",
+        specialization: "",
+        department: "",
+        qualification: "",
+        experience: 0,
+        consultationFee: 500,
+        availabilityStatus: "available",
+      });
     }
   }, [doctor, mode, form]);
 
@@ -200,10 +210,10 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }: DoctorDi
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="specialty"
+                name="specialization"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Specialty</FormLabel>
+                    <FormLabel>Specialization</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g., Cardiologist" {...field} />
                     </FormControl>
@@ -224,9 +234,16 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }: DoctorDi
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                        ))}
+                        <SelectItem value="Cardiac Care">Cardiac Care</SelectItem>
+                        <SelectItem value="Respiratory">Respiratory</SelectItem>
+                        <SelectItem value="Surgery">Surgery</SelectItem>
+                        <SelectItem value="Orthopedics">Orthopedics</SelectItem>
+                        <SelectItem value="Neurology">Neurology</SelectItem>
+                        <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                        <SelectItem value="General Medicine">General Medicine</SelectItem>
+                        <SelectItem value="Dermatology">Dermatology</SelectItem>
+                        <SelectItem value="Ophthalmology">Ophthalmology</SelectItem>
+                        <SelectItem value="ENT">ENT</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -280,15 +297,24 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }: DoctorDi
 
             <FormField
               control={form.control}
-              name="isAvailable"
+              name="availabilityStatus"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Available for appointments</FormLabel>
-                  </div>
+                <FormItem>
+                  <FormLabel>Availability Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="busy">Busy</SelectItem>
+                      <SelectItem value="on_leave">On Leave</SelectItem>
+                      <SelectItem value="unavailable">Unavailable</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
                 </FormItem>
               )}
             />

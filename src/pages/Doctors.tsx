@@ -21,8 +21,13 @@ import {
   Calendar,
   IndianRupee,
   Pencil,
+  CheckCircle,
+  Circle,
 } from "lucide-react";
 import DoctorDialog from "@/components/dashboard/DoctorDialog";
+import { updateAvailability } from "@/lib/doctors";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
 
 const departments = [
   "Cardiac Care",
@@ -38,6 +43,7 @@ const departments = [
 ];
 
 export default function Doctors() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
@@ -47,6 +53,24 @@ export default function Doctors() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+
+  const availabilityMutation = useMutation({
+    mutationFn: (data: { doctorId: string; status: string }) =>
+      updateAvailability(data.doctorId, data.status),
+    onSuccess: (_, variables) => {
+      setDoctors((prevDoctors) =>
+        prevDoctors.map((doc) =>
+          doc._id === variables.doctorId
+            ? { ...doc, availabilityStatus: variables.status }
+            : doc
+        )
+      );
+      toast({ title: "Success", description: "Availability updated successfully." });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update availability." });
+    },
+  });
 
   const openCreateDialog = () => {
     setSelectedDoctor(null);
@@ -86,21 +110,21 @@ export default function Doctors() {
     ? doctors.filter((doctor) => {
         const matchesSearch =
           doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          doctor.specialty.toLowerCase().includes(searchQuery.toLowerCase());
+          doctor.specialization.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesDepartment =
           departmentFilter === "all" || doctor.department === departmentFilter;
         const matchesAvailability =
           availabilityFilter === "all" ||
-          (availabilityFilter === "available" && doctor.isAvailable) ||
-          (availabilityFilter === "unavailable" && !doctor.isAvailable);
+          (availabilityFilter === "available" && doctor.availabilityStatus === "available") ||
+          (availabilityFilter === "unavailable" && doctor.availabilityStatus !== "available");
         return matchesSearch && matchesDepartment && matchesAvailability;
       })
     : [];
 
   const stats = {
     total: doctors?.length || 0,
-    available: doctors ? doctors.filter((d) => d.isAvailable).length : 0,
-    unavailable: doctors ? doctors.filter((d) => !d.isAvailable).length : 0,
+    available: doctors ? doctors.filter((d) => d.availabilityStatus === "available").length : 0,
+    unavailable: doctors ? doctors.filter((d) => d.availabilityStatus !== "available").length : 0,
   };
 
   if (loading) return <div>Loading...</div>;
@@ -222,17 +246,30 @@ export default function Doctors() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-foreground">
-                          {doctor.name}
-                        </h3>
-                        <p className="text-sm text-primary">{doctor.specialty}</p>
-                      </div>
-                      <Badge variant={doctor.isAvailable ? "available" : "occupied"}>
-                        {doctor.isAvailable ? "Available" : "Unavailable"}
-                      </Badge>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-foreground">
+                        {doctor.name}
+                      </h3>
+                      <p className="text-sm text-primary">{doctor.specialization}</p>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newStatus = doctor.availabilityStatus === "available" ? "unavailable" : "available";
+                        availabilityMutation.mutate({ doctorId: doctor._id, status: newStatus });
+                      }}
+                      disabled={availabilityMutation.isPending}
+                      className="h-auto p-1"
+                    >
+                      {doctor.availabilityStatus === "available" ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                   </div>
                 </div>
 
@@ -251,7 +288,7 @@ export default function Doctors() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <IndianRupee className="h-4 w-4" />
-                    <span>₹{doctor.consultationFee.toLocaleString()} / consultation</span>
+                    <span>₹{doctor.consultationFee?.opd?.toLocaleString() || 0} / consultation</span>
                   </div>
                 </div>
 

@@ -35,8 +35,8 @@ const facilitySchema = z.object({
   name: z.string().min(1, "Facility name is required"),
   type: z.enum(['icu', 'lab', 'ot', 'pharmacy', 'radiology', 'ambulance', 'blood_bank', 'dialysis', 'physiotherapy', 'other']),
   description: z.string().optional(),
-  "location.building": z.string().optional(),
-  "location.floor": z.coerce.number().optional(),
+  building: z.string().optional(),
+  floor: z.coerce.number().optional(),
   capacity: z.coerce.number().optional(),
   contactNumber: z.string().optional(),
   email: z.string().email({ message: "Invalid email address" }).optional(),
@@ -59,8 +59,8 @@ export default function AddFacilityDialog({ isOpen, onClose }: AddFacilityDialog
       name: "",
       type: "other",
       description: "",
-      "location.building": "",
-      "location.floor": 0,
+      building: "",
+      floor: 0,
       capacity: 0,
       contactNumber: "",
       email: "",
@@ -88,7 +88,19 @@ export default function AddFacilityDialog({ isOpen, onClose }: AddFacilityDialog
   });
 
   const onSubmit = (values: FacilityFormValues) => {
-    mutation.mutate(values);
+    const facilityData = {
+      name: values.name,
+      type: values.type,
+      description: values.description || "",
+      location: {
+        building: values.building || "",
+        floor: values.floor || 0
+      },
+      capacity: values.capacity || 0,
+      contactNumber: values.contactNumber || "",
+      email: values.email || "",
+    };
+    mutation.mutate(facilityData);
   };
 
   return (
@@ -157,6 +169,34 @@ export default function AddFacilityDialog({ isOpen, onClose }: AddFacilityDialog
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="building"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Building</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Main Building" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="floor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Floor</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g., 3" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="capacity"
@@ -170,6 +210,34 @@ export default function AddFacilityDialog({ isOpen, onClose }: AddFacilityDialog
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="contactNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., +91 98765 43210" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="facility@hospital.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
               <Button type="submit" disabled={mutation.isPending}>
