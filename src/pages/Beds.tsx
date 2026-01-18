@@ -19,7 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Plus, Filter, Bed, RefreshCw } from "lucide-react";
+import { Search, Plus, Filter, Bed, RefreshCw, Pencil } from "lucide-react";
+import BedDialog from "@/components/dashboard/BedDialog";
 
 const bedTypes = [
   "ICU",
@@ -45,30 +46,54 @@ export default function Beds() {
   const [beds, setBeds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedBed, setSelectedBed] = useState<any>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+
+  const openCreateDialog = () => {
+    setSelectedBed(null);
+    setDialogMode("create");
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (bed: any) => {
+    setSelectedBed(bed);
+    setDialogMode("edit");
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelectedBed(null);
+    fetchData();
+  };
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const bedsData = await getBeds();
+      setBeds(bedsData.data.beds || []);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const bedsData = await getBeds();
-        setBeds(bedsData.data.beds || []);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
-  const filteredBeds = beds ? beds.filter((bed) => {
-    const matchesSearch =
-      bed.bedNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bed.ward.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || bed.bedType === typeFilter;
-    const matchesStatus = statusFilter === "all" || bed.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
-  }) : [];
+  const filteredBeds = beds
+    ? beds.filter((bed) => {
+        const matchesSearch =
+          bed.bedNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          bed.ward.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = typeFilter === "all" || bed.bedType === typeFilter;
+        const matchesStatus = statusFilter === "all" || bed.status === statusFilter;
+        return matchesSearch && matchesType && matchesStatus;
+      })
+    : [];
 
   const stats = {
     total: beds?.length || 0,
@@ -93,11 +118,18 @@ export default function Beds() {
             Real-time bed availability and status management
           </p>
         </div>
-        <Button>
+        <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Add Bed
         </Button>
       </div>
+
+      <BedDialog
+        isOpen={dialogOpen}
+        onClose={handleDialogClose}
+        bed={selectedBed}
+        mode={dialogMode}
+      />
 
       {/* Status Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -193,7 +225,7 @@ export default function Beds() {
             <SelectItem value="reserved">Reserved</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" onClick={fetchData}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -230,9 +262,18 @@ export default function Beds() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        {bed.status === "available" ? "Assign" : "View"}
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(bed)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          {bed.status === "available" ? "Assign" : "View"}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

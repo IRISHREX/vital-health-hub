@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Users, UserCheck, UserX, Eye } from "lucide-react";
+import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil } from "lucide-react";
+import PatientDialog from "@/components/dashboard/PatientDialog";
 
 export default function Patients() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,25 +33,48 @@ export default function Patients() {
   const [beds, setBeds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+
+  const openCreateDialog = () => {
+    setSelectedPatient(null);
+    setDialogMode("create");
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (patient: any) => {
+    setSelectedPatient(patient);
+    setDialogMode("edit");
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelectedPatient(null);
+    // Refetch data
+    fetchData();
+  };
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [patientsData, doctorsData, bedsData] = await Promise.all([
+        getPatients(),
+        getDoctors(),
+        getBeds(),
+      ]);
+      setPatients(patientsData.data.patients || []);
+      setDoctors(doctorsData.data.doctors || []);
+      setBeds(bedsData.data.beds || []);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [patientsData, doctorsData, bedsData] = await Promise.all([
-          getPatients(),
-          getDoctors(),
-          getBeds(),
-        ]);
-        setPatients(patientsData.data.patients || []);
-        setDoctors(doctorsData.data.doctors || []);
-        setBeds(bedsData.data.beds || []);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -96,11 +120,18 @@ export default function Patients() {
             Manage patient registrations and admissions
           </p>
         </div>
-        <Button>
+        <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Register Patient
         </Button>
       </div>
+
+      <PatientDialog
+        isOpen={dialogOpen}
+        onClose={handleDialogClose}
+        patient={selectedPatient}
+        mode={dialogMode}
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -224,10 +255,14 @@ export default function Patients() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="mr-1 h-4 w-4" />
-                        View
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(patient)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAppointments } from "@/lib/appointments";
+import { getAppointments, updateAppointment } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import AppointmentDialog from "@/components/dashboard/AppointmentDialog";
 
 const statusConfig = {
   scheduled: { label: "Scheduled", variant: "info" as const },
@@ -30,25 +32,58 @@ export default function Appointments() {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const { toast } = useToast();
+
+  const openCreateDialog = () => {
+    setSelectedAppointment(null);
+    setDialogMode("create");
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (appointment: any) => {
+    setSelectedAppointment(appointment);
+    setDialogMode("edit");
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelectedAppointment(null);
+    fetchData();
+  };
+
+  const handleStatusUpdate = async (appointmentId: string, status: string) => {
+    try {
+      await updateAppointment(appointmentId, { status });
+      toast({ title: "Success", description: `Appointment ${status}` });
+      fetchData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [appointmentsData, patientsData, doctorsData] = await Promise.all([
+        getAppointments(),
+        getPatients(),
+        getDoctors(),
+      ]);
+      setAppointments(appointmentsData.data.appointments || []);
+      setPatients(patientsData.data.patients || []);
+      setDoctors(doctorsData.data.doctors || []);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [appointmentsData, patientsData, doctorsData] = await Promise.all([
-          getAppointments(),
-          getPatients(),
-          getDoctors(),
-        ]);
-        setAppointments(appointmentsData.data.appointments || []);
-        setPatients(patientsData.data.patients || []);
-        setDoctors(doctorsData.data.doctors || []);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -62,25 +97,31 @@ export default function Appointments() {
     return doctor?.name || "Unknown";
   };
 
-  const filteredAppointments = appointments ? appointments.filter((apt) => {
-    const patientName = getPatientName(apt.patientId).toLowerCase();
-    const doctorName = getDoctorName(apt.doctorId).toLowerCase();
-    return (
-      patientName.includes(searchQuery.toLowerCase()) ||
-      doctorName.includes(searchQuery.toLowerCase())
-    );
-  }) : [];
+  const filteredAppointments = appointments
+    ? appointments.filter((apt) => {
+        const patientName = getPatientName(apt.patientId).toLowerCase();
+        const doctorName = getDoctorName(apt.doctorId).toLowerCase();
+        return (
+          patientName.includes(searchQuery.toLowerCase()) ||
+          doctorName.includes(searchQuery.toLowerCase())
+        );
+      })
+    : [];
 
   const today = new Date().toISOString().split("T")[0];
-  const todayAppointments = appointments ? appointments.filter(
-    (apt) => apt.appointmentDate.split("T")[0] === today
-  ) : [];
+  const todayAppointments = appointments
+    ? appointments.filter((apt) => apt.appointmentDate.split("T")[0] === today)
+    : [];
 
   const stats = {
     total: appointments?.length || 0,
     today: todayAppointments?.length || 0,
-    scheduled: appointments ? appointments.filter((a) => a.status === "scheduled").length : 0,
-    completed: appointments ? appointments.filter((a) => a.status === "completed").length : 0,
+    scheduled: appointments
+      ? appointments.filter((a) => a.status === "scheduled").length
+      : 0,
+    completed: appointments
+      ? appointments.filter((a) => a.status === "completed").length
+      : 0,
   };
 
   if (loading) return <div>Loading...</div>;
@@ -98,19 +139,24 @@ export default function Appointments() {
             Manage OPD appointments and schedules
           </p>
         </div>
-        <Button>
+        <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Book Appointment
         </Button>
       </div>
 
+      <AppointmentDialog
+        isOpen={dialogOpen}
+        onClose={handleDialogClose}
+        appointment={selectedAppointment}
+        mode={dialogMode}
+      />
+
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Appointments
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -168,7 +214,10 @@ export default function Appointments() {
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                     <span className="text-sm font-bold text-primary">
-                      {new Date(apt.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(apt.appointmentDate).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                   <div className="flex-1">
@@ -239,26 +288,50 @@ export default function Appointments() {
                       </div>
                     </TableCell>
                     <TableCell>{getDoctorName(apt.doctorId)}</TableCell>
-                    <TableCell>{new Date(apt.appointmentDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(apt.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                    <TableCell>
+                      {new Date(apt.appointmentDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(apt.appointmentDate).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">{apt.reason}</Badge>
                     </TableCell>
-                    {statusConfig[apt.status] && (
-                      <TableCell>
+                    <TableCell>
+                      {statusConfig[apt.status] && (
                         <Badge variant={statusConfig[apt.status].variant}>
                           {statusConfig[apt.status].label}
                         </Badge>
-                      </TableCell>
-                    )}
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(apt)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         {apt.status === "scheduled" && (
                           <>
-                            <Button variant="ghost" size="icon" title="Complete">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Complete"
+                              onClick={() => handleStatusUpdate(apt._id, "completed")}
+                            >
                               <CheckCircle2 className="h-4 w-4 text-status-available" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Cancel">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Cancel"
+                              onClick={() => handleStatusUpdate(apt._id, "cancelled")}
+                            >
                               <XCircle className="h-4 w-4 text-status-occupied" />
                             </Button>
                           </>
