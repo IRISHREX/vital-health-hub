@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createBed, updateBed } from "@/lib/beds";
 import { getPatients } from "@/lib/patients";
-import { getInvoices, updateInvoice } from "@/lib/invoices";
+import { getInvoices, updateInvoice, createInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -175,12 +175,40 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
         status: "occupied",
       } as any);
 
+      // Create invoice for bed charges
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30); // 30 days due date
+
+      const invoiceData = {
+        patient: patientId,
+        type: "ipd",
+        items: [
+          {
+            description: `Bed Charges - ${bed?.bedType?.toUpperCase()} (${bed?.bedNumber})`,
+            category: "bed_charges",
+            quantity: 1,
+            unitPrice: bed?.pricePerDay || 0,
+            discount: 0,
+            tax: 0,
+            amount: bed?.pricePerDay || 0,
+          },
+        ],
+        subtotal: bed?.pricePerDay || 0,
+        discountAmount: 0,
+        totalTax: 0,
+        totalAmount: bed?.pricePerDay || 0,
+        dueDate: dueDate.toISOString().split("T")[0],
+        notes: `Initial charges for bed ${bed?.bedNumber} assignment`,
+      };
+
+      await createInvoice(invoiceData as any);
+
       return bedResponse;
     },
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Patient assigned to bed successfully.",
+        description: "Patient assigned to bed and invoice created successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
