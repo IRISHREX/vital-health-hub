@@ -28,6 +28,7 @@ import {
   IndianRupee,
   Download,
   Eye,
+  Pencil,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -48,6 +49,25 @@ export default function Billing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+
+  const openCreateDialog = () => {
+    setSelectedInvoice(null);
+    setDialogMode("create");
+    setIsAddDialogOpen(true);
+  };
+
+  const openEditDialog = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setDialogMode("edit");
+    setIsAddDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setIsAddDialogOpen(false);
+    setSelectedInvoice(null);
+  };
 
   const { data: invoices, isLoading, isError } = useQuery({
     queryKey: ['invoices', { status: statusFilter }],
@@ -95,7 +115,7 @@ export default function Billing() {
               Manage patient billing and payment tracking
             </p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Button onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
             Create Invoice
           </Button>
@@ -232,6 +252,9 @@ export default function Billing() {
                       <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon">
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -248,7 +271,12 @@ export default function Billing() {
           </CardContent>
         </Card>
       </div>
-      <AddInvoiceDialog isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} />
+      <AddInvoiceDialog 
+        isOpen={isAddDialogOpen} 
+        onClose={handleDialogClose} 
+        invoice={selectedInvoice}
+        mode={dialogMode}
+      />
     </>
   );
 }

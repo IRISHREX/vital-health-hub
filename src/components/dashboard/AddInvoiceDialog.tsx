@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -36,7 +37,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { createInvoice } from "@/lib/invoices";
+import { createInvoice, updateInvoice } from "@/lib/invoices";
 import { getPatients } from "@/lib/patients";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
@@ -44,10 +45,12 @@ import { useAuth } from "@/lib/AuthContext";
 const invoiceSchema = z.object({
   patient: z.string().min(1, "Patient is required"),
   totalAmount: z.coerce.number().min(1, "Total amount must be greater than 0"),
+  paidAmount: z.coerce.number().min(0, "Paid amount cannot be negative"),
   dueDate: z.date({
     required_error: "A due date is required.",
   }),
   invoiceType: z.enum(["opd", "ipd"]),
+  status: z.enum(["draft", "pending", "partial", "paid", "overdue", "cancelled"]),
   notes: z.string().optional(),
 });
 
@@ -56,9 +59,11 @@ type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 interface AddInvoiceDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  invoice?: any;
+  mode?: "create" | "edit";
 }
 
-export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogProps) {
+export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "create" }: AddInvoiceDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -75,16 +80,42 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
     defaultValues: {
       patient: "",
       totalAmount: 0,
+      paidAmount: 0,
       invoiceType: "opd",
+      status: "pending",
       notes: "",
     },
   });
 
-  const mutation = useMutation({
+  useEffect(() => {
+    if (invoice && mode === "edit") {
+      form.reset({
+        patient: invoice.patient?._id || invoice.patient || "",
+        totalAmount: invoice.totalAmount || 0,
+        paidAmount: invoice.paidAmount || 0,
+        dueDate: invoice.dueDate ? new Date(invoice.dueDate) : new Date(),
+        invoiceType: invoice.type || "opd",
+        status: invoice.status || "pending",
+        notes: invoice.notes || "",
+      });
+    } else {
+      form.reset({
+        patient: "",
+        totalAmount: 0,
+        paidAmount: 0,
+        invoiceType: "opd",
+        status: "pending",
+        notes: "",
+      });
+    }
+  }, [invoice, mode, form]);
+
+  const createMutation = useMutation({
     mutationFn: (values: InvoiceFormValues) => {
       if (!user) {
         throw new Error("You must be logged in to create an invoice.");
       }
+      const dueAmount = values.totalAmount - values.paidAmount;
       const invoiceData = {
         patient: values.patient,
         type: values.invoiceType,
@@ -96,9 +127,10 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
         }],
         subtotal: values.totalAmount,
         totalAmount: values.totalAmount,
-        dueAmount: values.totalAmount,
+        paidAmount: values.paidAmount,
+        dueAmount: dueAmount,
         dueDate: values.dueDate,
-        status: 'pending',
+        status: values.status,
         notes: values.notes || "",
         generatedBy: user.id
       };
@@ -110,10 +142,9 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
         description: "The new invoice has been created successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      onClose();
-      form.reset();
+      handleClose();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         variant: "destructive",
         title: "Error",
@@ -122,17 +153,62 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (values: InvoiceFormValues) => {
+      const dueAmount = values.totalAmount - values.paidAmount;
+      const invoiceData = {
+        patient: values.patient,
+        type: values.invoiceType,
+        totalAmount: values.totalAmount,
+        paidAmount: values.paidAmount,
+        dueAmount: dueAmount,
+        dueDate: values.dueDate,
+        status: values.status,
+        notes: values.notes || "",
+      };
+      return updateInvoice(invoice._id, invoiceData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invoice Updated",
+        description: "The invoice has been updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      handleClose();
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update invoice.",
+      });
+    },
+  });
+
   const onSubmit = (values: InvoiceFormValues) => {
-    mutation.mutate(values);
+    if (mode === "create") {
+      createMutation.mutate(values);
+    } else {
+      updateMutation.mutate(values);
+    }
   };
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
+  const isLoading = createMutation.isPending || updateMutation.isPending;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Invoice</DialogTitle>
+          <DialogTitle>{mode === "create" ? "Create New Invoice" : "Edit Invoice"}</DialogTitle>
           <DialogDescription>
-            Enter the details for the new invoice. This is a simplified form.
+            {mode === "create" 
+              ? "Enter the details for the new invoice." 
+              : "Update the invoice details."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -143,7 +219,7 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Patient</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={mode === "edit"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select patient" />
@@ -184,19 +260,61 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
               )}
             />
 
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="totalAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total Amount (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g., 5000" step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="paidAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Paid Amount (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="e.g., 2000" step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="totalAmount"
+              name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Total Amount (₹)</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="e.g., 5000" step="0.01" {...field} />
-                  </FormControl>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="partial">Partial</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="dueDate"
@@ -235,11 +353,26 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Additional notes..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Invoice
+              <Button type="button" variant="ghost" onClick={handleClose}>Cancel</Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {mode === "create" ? "Create Invoice" : "Update Invoice"}
               </Button>
             </DialogFooter>
           </form>
