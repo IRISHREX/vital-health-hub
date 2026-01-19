@@ -85,24 +85,22 @@ export default function AddInvoiceDialog({ isOpen, onClose }: AddInvoiceDialogPr
       if (!user) {
         throw new Error("You must be logged in to create an invoice.");
       }
-      const category = values.invoiceType === 'opd' ? 'doctor_fee' : 'bed_charges';
       const invoiceData = {
         patient: values.patient,
         type: values.invoiceType,
         items: [{
           description: "Service Charge",
-          category: category as "bed_charges" | "doctor_fee" | "nursing" | "medication" | "procedure" | "lab_test" | "radiology" | "surgery" | "other",
-          quantity: 1,
+          category: values.invoiceType === 'opd' ? 'doctor_fee' : 'admission_fee',
           unitPrice: values.totalAmount,
-          discount: 0,
-          tax: 0,
           amount: values.totalAmount,
         }],
         subtotal: values.totalAmount,
-        totalTax: 0,
         totalAmount: values.totalAmount,
-        dueDate: values.dueDate.toISOString(),
+        dueAmount: values.totalAmount,
+        dueDate: values.dueDate,
+        status: 'pending',
         notes: values.notes || "",
+        generatedBy: user.id
       };
       return createInvoice(invoiceData);
     },

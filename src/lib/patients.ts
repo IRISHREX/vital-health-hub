@@ -1,6 +1,6 @@
 import { apiClient } from './api-client';
 
-export const createPatient = async (patientData: any) => {
+export const createPatient = async (patientData) => {
   return await apiClient.post('/patients', patientData);
 };
 
@@ -8,15 +8,14 @@ export const getPatients = async () => {
   return await apiClient.get('/patients');
 };
 
-export const getPatientById = async (id: string) => {
+export const getPatientById = async (id) => {
   return await apiClient.get(`/patients/${id}`);
 };
 
-export const updatePatient = async (id: string, patientData: any) => {
+export const updatePatient = async (id, patientData) => {
   return await apiClient.put(`/patients/${id}`, patientData);
 };
 
-// Deleting a patient also deletes associated invoice (handled by backend)
-export const deletePatient = async (id: string) => {
+export const deletePatient = async (id) => {
   return await apiClient.delete(`/patients/${id}`);
 };
