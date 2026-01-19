@@ -6,9 +6,8 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createPatient, updatePatient } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
-import { createInvoice, getInvoices, updateInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/AuthContext";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, IndianRupee } from "lucide-react";
 
 const patientSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(50),
@@ -43,7 +42,7 @@ const patientSchema = z.object({
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.enum(["male", "female", "other"]),
   contactNumber: z.string().min(10, "Valid phone number required").max(15),
-  email: z.string().email("Valid email required").optional(),
+  email: z.string().email("Valid email required").optional().or(z.literal("")),
   address: z.string().min(1, "Address is required").max(200),
   emergencyContact: z.object({
     name: z.string().min(1, "Emergency contact name required"),
@@ -69,7 +68,6 @@ interface PatientDialogProps {
 export default function PatientDialog({ isOpen, onClose, patient, mode }: PatientDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   const { data: doctorsData } = useQuery({
     queryKey: ["doctors"],
@@ -82,7 +80,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
   });
 
   const doctors = doctorsData?.data?.doctors || [];
-  const beds = (bedsData?.data?.beds || []).filter((b: any) => b.status === "available");
+  const allBeds = bedsData?.data?.beds || [];
+  const beds = allBeds.filter((b: any) => b.status === "available" || b._id === patient?.assignedBed);
 
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientSchema),
@@ -107,6 +106,18 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
     },
   });
 
+  // Calculate estimated charges based on selections
+  const watchedDoctor = form.watch("assignedDoctor");
+  const watchedBed = form.watch("assignedBed");
+  const watchedType = form.watch("registrationType");
+
+  const selectedDoctor = doctors.find((d: any) => d._id === watchedDoctor);
+  const selectedBed = allBeds.find((b: any) => b._id === watchedBed);
+  
+  const doctorFee = selectedDoctor?.consultationFee?.opd || selectedDoctor?.consultationFee || 0;
+  const bedChargePerDay = selectedBed?.pricePerDay || 0;
+  const estimatedTotal = doctorFee + (watchedType !== 'opd' ? bedChargePerDay : 0);
+
   useEffect(() => {
     if (patient && mode === "edit") {
       form.reset({
@@ -121,8 +132,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         bloodGroup: patient.bloodGroup || "",
         registrationType: patient.registrationType || "opd",
         medicalHistory: patient.medicalHistory?.[0]?.condition || "",
-        assignedDoctor: patient.assignedDoctor || "",
-        assignedBed: patient.assignedBed || "",
+        assignedDoctor: patient.assignedDoctor?._id || patient.assignedDoctor || "",
+        assignedBed: patient.assignedBed?._id || patient.assignedBed || "",
       });
     } else {
       form.reset({
@@ -153,8 +164,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         ? [{ condition: values.medicalHistory, diagnosedDate: new Date() }]
         : [];
       
-      // Create patient first
-      const patientData = await createPatient({
+      // Backend automatically creates invoice with doctor/bed charges
+      return await createPatient({
         firstName: values.firstName,
         lastName: values.lastName,
         dateOfBirth: values.dateOfBirth,
@@ -169,31 +180,12 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         assignedDoctor: values.assignedDoctor || null,
         assignedBed: values.assignedBed || null,
       });
-
-      // Auto-create invoice with default values (0s)
-      if (patientData?.data?._id || patientData?._id) {
-        const patientId = patientData?.data?._id || patientData?._id;
-        const invoiceData = {
-          patient: patientId,
-          type: values.registrationType,
-          items: [],
-          subtotal: 0,
-          totalAmount: 0,
-          dueAmount: 0,
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          status: 'draft',
-          notes: `Invoice auto-created for ${values.firstName} ${values.lastName}`,
-          generatedBy: user?.id || ""
-        };
-        await createInvoice(invoiceData);
-      }
-
-      return patientData;
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Patient registered successfully." });
+      toast({ title: "Success", description: "Patient registered successfully. Invoice created automatically." });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["beds"] });
       handleClose();
     },
     onError: (error: any) => {
@@ -207,7 +199,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         ? [{ condition: data.medicalHistory, diagnosedDate: new Date() }]
         : [];
       
-      const updatedPatient = await updatePatient(patient._id, {
+      // Backend handles invoice updates when doctor/bed changes
+      return await updatePatient(patient._id, {
         firstName: data.firstName,
         lastName: data.lastName,
         dateOfBirth: data.dateOfBirth,
@@ -222,34 +215,12 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         assignedDoctor: data.assignedDoctor || null,
         assignedBed: data.assignedBed || null,
       });
-
-      // If doctor or bed was assigned, update the invoice
-      if (data.assignedDoctor || data.assignedBed) {
-        try {
-          const invoicesResponse = await getInvoices({ patientId: patient._id });
-          const invoices = invoicesResponse?.data?.invoices || [];
-          if (invoices.length > 0) {
-            const invoice = invoices[0];
-            const updateData: any = {};
-            if (data.assignedBed) {
-              updateData.status = 'pending';
-            }
-            if (Object.keys(updateData).length > 0) {
-              await updateInvoice(invoice._id, updateData);
-            }
-          }
-        } catch (error) {
-          console.error('Error updating invoice:', error);
-          // Don't fail the patient update if invoice update fails
-        }
-      }
-
-      return updatedPatient;
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Patient updated successfully." });
+      toast({ title: "Success", description: "Patient updated successfully. Invoice updated with new charges." });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["beds"] });
       handleClose();
     },
     onError: (error: any) => {
@@ -278,7 +249,9 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Register New Patient" : "Edit Patient"}</DialogTitle>
           <DialogDescription>
-            {mode === "create" ? "Enter patient details to register." : "Update patient information."}
+            {mode === "create" 
+              ? "Enter patient details. An invoice will be created automatically." 
+              : "Update patient information. Invoice will be updated with any changes."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -486,14 +459,14 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Medical Information</h4>
-                <div className="grid grid-cols-2 gap-4">
+              <h4 className="font-medium mb-3">Medical Information & Assignments</h4>
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="medicalHistory"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Medical History</FormLabel>
+                      <FormLabel>Medical Condition</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g., Diabetes, Hypertension" {...field} />
                       </FormControl>
@@ -506,7 +479,15 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                   name="assignedDoctor"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Assigned Doctor (Optional)</FormLabel>
+                      <FormLabel>
+                        Assigned Doctor
+                        {selectedDoctor && (
+                          <Badge variant="secondary" className="ml-2">
+                            <IndianRupee className="h-3 w-3 mr-1" />
+                            {doctorFee}/visit
+                          </Badge>
+                        )}
+                      </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger>
@@ -514,9 +495,10 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="">None</SelectItem>
                           {doctors.map((doctor: any) => (
                             <SelectItem key={doctor._id} value={doctor._id}>
-                              {doctor.user?.firstName} {doctor.user?.lastName} ({doctor.specialization})
+                              {doctor.name || `${doctor.user?.firstName} ${doctor.user?.lastName}`} ({doctor.specialization})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -526,13 +508,22 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                   )}
                 />
               </div>
-              {form.watch("registrationType") === "ipd" && (
+              
+              {(watchedType === "ipd" || watchedType === "emergency") && (
                 <FormField
                   control={form.control}
                   name="assignedBed"
                   render={({ field }) => (
                     <FormItem className="mt-4">
-                      <FormLabel>Assigned Bed (Required for IPD)</FormLabel>
+                      <FormLabel>
+                        Assigned Bed
+                        {selectedBed && (
+                          <Badge variant="secondary" className="ml-2">
+                            <IndianRupee className="h-3 w-3 mr-1" />
+                            {bedChargePerDay}/day
+                          </Badge>
+                        )}
+                      </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger>
@@ -540,9 +531,10 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="">None</SelectItem>
                           {beds.map((bed: any) => (
                             <SelectItem key={bed._id} value={bed._id}>
-                              {bed.bedNumber} - {bed.ward} ({bed.bedType})
+                              {bed.bedNumber} - {bed.ward} ({bed.type}) - ₹{bed.pricePerDay}/day
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -551,6 +543,34 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                     </FormItem>
                   )}
                 />
+              )}
+
+              {/* Estimated Charges Summary */}
+              {estimatedTotal > 0 && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <h5 className="text-sm font-medium mb-2">Estimated Initial Charges</h5>
+                  <div className="space-y-1 text-sm">
+                    {doctorFee > 0 && (
+                      <div className="flex justify-between">
+                        <span>Doctor Fee (per visit)</span>
+                        <span>₹{doctorFee.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {watchedType !== 'opd' && bedChargePerDay > 0 && (
+                      <div className="flex justify-between">
+                        <span>Bed Charges (per day)</span>
+                        <span>₹{bedChargePerDay.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                      <span>Total</span>
+                      <span>₹{estimatedTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    These charges will be automatically added to the patient's invoice.
+                  </p>
+                </div>
               )}
             </div>
 
