@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Bell, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +13,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/AuthContext";
 
 export function Header() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const userInitials = user?.fullName
+    ? user.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "SA";
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-6 shadow-sm">
       <div className="flex items-center gap-4">
@@ -85,13 +98,13 @@ export function Header() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src="" />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  SA
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden flex-col items-start md:flex">
-                <span className="text-sm font-medium">Super Admin</span>
+                <span className="text-sm font-medium">{user?.fullName || "User"}</span>
                 <span className="text-xs text-muted-foreground">
-                  admin@medicare.com
+                  {user?.email || "user@example.com"}
                 </span>
               </div>
             </Button>
@@ -99,16 +112,16 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
               <Bell className="mr-2 h-4 w-4" />
               Preferences
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>
