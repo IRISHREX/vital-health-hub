@@ -12,6 +12,7 @@ import {
   Bell,
   Settings,
   Hospital,
+  LucideIcon,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,35 +27,48 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/lib/AuthContext";
+import { canAccessModule, getRoleLabel, RolePermissions } from "@/lib/rbac";
 
-const mainNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Bed Management", url: "/beds", icon: Bed },
-  { title: "Patients", url: "/patients", icon: Users },
-  { title: "Doctors", url: "/doctors", icon: Stethoscope },
-  { title: "Appointments", url: "/appointments", icon: Calendar },
+interface NavItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  module: keyof RolePermissions;
+}
+
+const mainNavItems: NavItem[] = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
+  { title: "Bed Management", url: "/beds", icon: Bed, module: "beds" },
+  { title: "Patients", url: "/patients", icon: Users, module: "patients" },
+  { title: "Doctors", url: "/doctors", icon: Stethoscope, module: "doctors" },
+  { title: "Appointments", url: "/appointments", icon: Calendar, module: "appointments" },
 ];
 
-const managementItems = [
-  { title: "Facilities", url: "/facilities", icon: Building2 },
-  { title: "Billing", url: "/billing", icon: Receipt },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
+const managementItems: NavItem[] = [
+  { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
+  { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
+  { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];
 
-const systemItems = [
-  { title: "Notifications", url: "/notifications", icon: Bell },
-  { title: "Settings", url: "/settings", icon: Settings },
+const systemItems: NavItem[] = [
+  { title: "Notifications", url: "/notifications", icon: Bell, module: "notifications" },
+  { title: "Settings", url: "/settings", icon: Settings, module: "settings" },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
+  const { user } = useAuth();
   const isCollapsed = state === "collapsed";
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
+
+  const filterByRole = (items: NavItem[]) => 
+    items.filter(item => canAccessModule(user?.role, item.module));
 
   return (
     <Sidebar className="border-r-0 bg-gradient-sidebar">
@@ -83,7 +97,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNavItems.map((item) => (
+              {filterByRole(mainNavItems).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -112,7 +126,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {managementItems.map((item) => (
+              {filterByRole(managementItems).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -140,7 +154,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {systemItems.map((item) => (
+              {filterByRole(systemItems).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -170,7 +184,7 @@ export function AppSidebar() {
               Logged in as
             </p>
             <p className="font-medium text-sidebar-foreground">
-              Super Admin
+              {getRoleLabel(user?.role)}
             </p>
           </div>
         )}
