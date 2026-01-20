@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil } from "lucide-react";
+import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "lucide-react";
 import PatientDialog from "@/components/dashboard/PatientDialog";
 
 export default function Patients() {
@@ -251,11 +251,19 @@ export default function Patients() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(patient)}>
+                        <Button variant="ghost" size="icon" title="View Details">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditDialog(patient)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Delete"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil } from "lucide-react";
+import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AppointmentDialog from "@/components/dashboard/AppointmentDialog";
 
@@ -307,6 +307,14 @@ export default function Appointments() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Edit"
                           onClick={() => openEditDialog(apt)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -331,6 +339,14 @@ export default function Appointments() {
                             </Button>
                           </>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Delete"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

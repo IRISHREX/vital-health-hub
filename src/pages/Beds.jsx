@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Plus, Filter, Bed, RefreshCw, Pencil } from "lucide-react";
+import { Search, Plus, Filter, Bed, RefreshCw, Pencil, Eye, Trash2 } from "lucide-react";
 import BedDialog from "@/components/dashboard/BedDialog";
 
 const bedTypes = [
@@ -273,20 +273,26 @@ export default function Beds() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          title="View Details"
+                          onClick={() => openAssignDialog(bed)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Edit"
                           onClick={() => openEditDialog(bed)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (bed.status === "available") {
-                              openAssignDialog(bed);
-                            }
-                          }}
+                          size="icon"
+                          title="Delete"
+                          className="text-destructive hover:text-destructive"
                         >
-                          {bed.status === "available" ? "Assign" : "View"}
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
