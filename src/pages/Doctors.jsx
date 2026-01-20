@@ -23,6 +23,8 @@ import {
   Pencil,
   CheckCircle,
   Circle,
+  Eye,
+  Trash2,
 } from "lucide-react";
 import DoctorDialog from "@/components/dashboard/DoctorDialog";
 import { updateAvailability } from "@/lib/doctors";
@@ -289,16 +291,26 @@ export default function Doctors() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
+                  <Button variant="ghost" size="icon" title="View Details">
+                    <Eye className="h-4 w-4" />
+                  </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
+                    variant="ghost"
+                    size="icon"
+                    title="Edit"
                     onClick={() => openEditDialog(doctor)}
                   >
-                    <Pencil className="mr-1 h-4 w-4" />
-                    Edit
+                    <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" className="flex-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    title="Delete"
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" className="flex-1 ml-2">
                     <Calendar className="mr-1 h-4 w-4" />
                     Schedule
                   </Button>
