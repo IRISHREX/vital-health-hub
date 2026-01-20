@@ -19,7 +19,7 @@ import {
 import { useState } from "react";
 import AddFacilityDialog from "@/components/dashboard/AddFacilityDialog";
 
-const facilityIcons: { [key: string]: React.ElementType } = {
+const facilityIcons = {
   icu: Syringe,
   lab: TestTube,
   ot: Stethoscope,
@@ -52,7 +52,6 @@ export default function Facilities() {
     );
   }
 
-  // Defensive check to ensure facilities is an array
   if (!Array.isArray(facilities)) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -61,13 +60,12 @@ export default function Facilities() {
     );
   }
 
-  const availableCount = facilities.filter((f: any) => f.status === 'operational').length;
+  const availableCount = facilities.filter((f) => f.status === 'operational').length;
   const unavailableCount = facilities.length - availableCount;
 
   return (
     <>
       <div className="space-y-6">
-        {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -83,7 +81,6 @@ export default function Facilities() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -120,9 +117,8 @@ export default function Facilities() {
           </Card>
         </div>
 
-        {/* Facilities Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {facilities.map((facility: any) => {
+          {facilities.map((facility) => {
             const Icon = facilityIcons[facility.type] || Building2;
             const isAvailable = facility.status === 'operational';
 

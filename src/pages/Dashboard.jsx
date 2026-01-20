@@ -53,9 +53,9 @@ export default function Dashboard() {
           availableBeds: bedsData.data.beds.filter((b) => b.status === "available").length,
           admittedPatients: patientsData.data.patients.filter((p) => p.type === "IPD").length,
           availableDoctors: doctorsData.data.doctors.filter((d) => d.isAvailable).length,
-          pendingBills: 12, // Mock data for now
+          pendingBills: 12,
           todayAppointments: todayAppointments.length,
-          todayDischarges: 5, // Mock data for now
+          todayDischarges: 5,
         });
       } catch (err) {
         setError(err);
@@ -71,7 +71,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Dashboard Overview
@@ -81,7 +80,6 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Total Beds"
@@ -115,7 +113,6 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Secondary KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-card p-5 shadow-card">
           <div className="flex items-center gap-3">
@@ -167,13 +164,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
         <BedOccupancyChart />
         <AdmissionChart />
       </div>
 
-      {/* Bottom Row */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <RecentPatients />

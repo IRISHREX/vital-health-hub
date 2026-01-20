@@ -51,19 +51,17 @@ export default function Reports() {
         return <div className="text-red-500 text-center py-8">Error loading reports. Please try again later.</div>;
     }
 
-    // Defensive checks for data integrity
     if (typeof kpis !== 'object' || kpis === null || !Array.isArray(financialReport) || !Array.isArray(admissionsReport)) {
         return <div className="text-red-500 text-center py-8">Inconsistent report data. Please try again later.</div>;
     }
 
-    const monthlyRevenue = financialReport.map((item: any) => ({
+    const monthlyRevenue = financialReport.map((item) => ({
         month: new Date(item._id.year, item._id.month - 1).toLocaleString('default', { month: 'short' }),
         revenue: item.totalRevenue,
     }));
     
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -92,7 +90,6 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Quick Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -142,9 +139,7 @@ export default function Reports() {
         </Card>
       </div>
 
-      {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Revenue Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -178,7 +173,7 @@ export default function Reports() {
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
                     }}
-                    formatter={(value: number) => [
+                    formatter={(value) => [
                       `₹${value.toLocaleString()}`,
                       "Revenue",
                     ]}
@@ -194,7 +189,6 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* Admissions Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -205,7 +199,7 @@ export default function Reports() {
           <CardContent>
             <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={admissionsReport.map((item: any) => ({ date: item._id, count: item.count }))}>
+                    <BarChart data={admissionsReport.map((item) => ({ date: item._id, count: item.count }))}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} tickLine={false} axisLine={false}/>
                         <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} tickLine={false} axisLine={false} />

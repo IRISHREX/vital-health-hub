@@ -80,7 +80,6 @@ export default function Notifications() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -99,7 +98,6 @@ export default function Notifications() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Notifications List */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
@@ -125,7 +123,7 @@ export default function Notifications() {
                   <CardContent className="flex items-start gap-4 p-4">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        priorityColors[notification.priority as keyof typeof priorityColors]
+                        priorityColors[notification.priority]
                       }`}
                     >
                       <Icon className="h-5 w-5" />
@@ -158,7 +156,6 @@ export default function Notifications() {
           </div>
         </div>
 
-        {/* Notification Settings */}
         <div className="space-y-4">
           <Card>
             <CardHeader>

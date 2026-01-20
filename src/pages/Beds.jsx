@@ -47,8 +47,8 @@ export default function Beds() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedBed, setSelectedBed] = useState<any>(null);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedBed, setSelectedBed] = useState(null);
+  const [dialogMode, setDialogMode] = useState("create");
   const [assignMode, setAssignMode] = useState(false);
 
   const openCreateDialog = () => {
@@ -58,14 +58,14 @@ export default function Beds() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (bed: any) => {
+  const openEditDialog = (bed) => {
     setSelectedBed(bed);
     setDialogMode("edit");
     setAssignMode(false);
     setDialogOpen(true);
   };
 
-  const openAssignDialog = (bed: any) => {
+  const openAssignDialog = (bed) => {
     setSelectedBed(bed);
     setDialogMode("edit");
     setAssignMode(true);
@@ -118,7 +118,6 @@ export default function Beds() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -142,7 +141,6 @@ export default function Beds() {
         assignMode={assignMode}
       />
 
-      {/* Status Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -199,7 +197,6 @@ export default function Beds() {
         </Card>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -241,7 +238,6 @@ export default function Beds() {
         </Button>
       </div>
 
-      {/* Beds Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
