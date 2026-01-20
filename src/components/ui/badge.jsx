@@ -1,0 +1,46 @@
+import * as React from "react";
+import { cva } from "class-variance-authority";
+
+import { cn } from "@/lib/utils";
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+        available:
+          "border-transparent bg-[hsl(142,70%,45%)] text-white",
+        occupied:
+          "border-transparent bg-[hsl(0,72%,51%)] text-white",
+        cleaning:
+          "border-transparent bg-[hsl(45,93%,47%)] text-[hsl(0,0%,10%)]",
+        reserved:
+          "border-transparent bg-[hsl(215,85%,55%)] text-white",
+        success:
+          "border-transparent bg-[hsl(142,70%,45%)] text-white",
+        warning:
+          "border-transparent bg-[hsl(45,93%,47%)] text-[hsl(0,0%,10%)]",
+        info:
+          "border-transparent bg-primary/10 text-primary border-primary/20",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
+function Badge({ className, variant, ...props }) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  );
+}
+
+export { Badge, badgeVariants };
