@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createBed, updateBed } from "@/lib/beds";
 import { getPatients } from "@/lib/patients";
-import { getInvoices, updateInvoice, createInvoice } from "@/lib/invoices";
+import { createInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -34,18 +34,6 @@ import {
 } from "@/components/ui/select";
 import { Loader2, UserPlus } from "lucide-react";
 
-const bedTypes = [
-  "icu",
-  "ccu",
-  "general",
-  "semi_private",
-  "private",
-  "emergency",
-  "ventilator",
-  "pediatric",
-  "maternity",
-];
-
 const bedSchema = z.object({
   bedNumber: z.string().min(1, "Bed number is required").max(20),
   bedType: z.enum([
@@ -68,21 +56,11 @@ const bedSchema = z.object({
   notes: z.string().optional(),
 });
 
-type BedFormValues = z.infer<typeof bedSchema>;
-
-interface BedDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  bed?: any;
-  mode: "create" | "edit";
-  assignMode?: boolean;
-}
-
-export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = false }: BedDialogProps) {
+export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = false }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAssignMode, setShowAssignMode] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<string>("");
+  const [selectedPatient, setSelectedPatient] = useState("");
 
   const { data: patientsData } = useQuery({
     queryKey: ["patients"],
@@ -90,12 +68,9 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
   });
 
   const patients = patientsData?.data?.patients || [];
-  // Filter patients who don't have a bed assigned
-  const availablePatients = patients.filter(
-    (p: any) => !p.assignedBed
-  );
+  const availablePatients = patients.filter((p) => !p.assignedBed);
 
-  const form = useForm<BedFormValues>({
+  const form = useForm({
     resolver: zodResolver(bedSchema),
     defaultValues: {
       bedNumber: "",
@@ -149,35 +124,33 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add bed." });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: BedFormValues) => updateBed(bed._id, data),
+    mutationFn: (data) => updateBed(bed._id, data),
     onSuccess: () => {
       toast({ title: "Success", description: "Bed updated successfully." });
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update bed." });
     },
   });
 
   const assignPatientMutation = useMutation({
-    mutationFn: async (patientId: string) => {
-      // Update bed with patient assignment
+    mutationFn: async (patientId) => {
       const bedResponse = await updateBed(bed._id, {
         currentPatient: patientId,
         status: "occupied",
-      } as any);
+      });
 
-      // Create invoice for bed charges
       const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30); // 30 days due date
+      dueDate.setDate(dueDate.getDate() + 30);
 
       const invoiceData = {
         patient: patientId,
@@ -201,7 +174,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
         notes: `Initial charges for bed ${bed?.bedNumber} assignment`,
       };
 
-      await createInvoice(invoiceData as any);
+      await createInvoice(invoiceData);
 
       return bedResponse;
     },
@@ -215,7 +188,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         variant: "destructive",
         title: "Error",
@@ -224,7 +197,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
     },
   });
 
-  const onSubmit = (values: BedFormValues) => {
+  const onSubmit = (values) => {
     if (mode === "create") {
       createMutation.mutate(values);
     } else {
@@ -300,7 +273,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
                 </SelectTrigger>
                 <SelectContent>
                   {availablePatients.length > 0 ? (
-                    availablePatients.map((patient: any) => (
+                    availablePatients.map((patient) => (
                       <SelectItem key={patient._id} value={patient._id}>
                         {patient.firstName} {patient.lastName} ({patient.patientId})
                       </SelectItem>

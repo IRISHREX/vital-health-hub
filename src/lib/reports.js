@@ -4,7 +4,7 @@ export const getKpis = async () => {
   return apiClient.get('/reports/kpis');
 };
 
-export const getFinancialReport = async (filters: { startDate?: string, endDate?: string, groupBy?: string } = {}) => {
+export const getFinancialReport = async (filters = {}) => {
   const queryParams = new URLSearchParams();
   if (filters.startDate) queryParams.append('startDate', filters.startDate);
   if (filters.endDate) queryParams.append('endDate', filters.endDate);
@@ -13,7 +13,7 @@ export const getFinancialReport = async (filters: { startDate?: string, endDate?
   return apiClient.get(`/reports/financial${query ? `?${query}` : ''}`);
 };
 
-export const getAdmissionsReport = async (filters: { startDate?: string, endDate?: string } = {}) => {
+export const getAdmissionsReport = async (filters = {}) => {
   const queryParams = new URLSearchParams();
   if (filters.startDate) queryParams.append('startDate', filters.startDate);
   if (filters.endDate) queryParams.append('endDate', filters.endDate);

@@ -30,21 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
-
-const departments = [
-  "Cardiac Care",
-  "Respiratory",
-  "Surgery",
-  "Orthopedics",
-  "Neurology",
-  "Pediatrics",
-  "General Medicine",
-  "Dermatology",
-  "Ophthalmology",
-  "ENT",
-];
 
 const doctorSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -58,20 +44,11 @@ const doctorSchema = z.object({
   availabilityStatus: z.enum(["available", "busy", "on_leave", "unavailable"]),
 });
 
-type DoctorFormValues = z.infer<typeof doctorSchema>;
-
-interface DoctorDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  doctor?: any;
-  mode: "create" | "edit";
-}
-
-export default function DoctorDialog({ isOpen, onClose, doctor, mode }: DoctorDialogProps) {
+export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<DoctorFormValues>({
+  const form = useForm({
     resolver: zodResolver(doctorSchema),
     defaultValues: {
       name: "",
@@ -121,24 +98,24 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }: DoctorDi
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add doctor." });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: DoctorFormValues) => updateDoctor(doctor._id, data),
+    mutationFn: (data) => updateDoctor(doctor._id, data),
     onSuccess: () => {
       toast({ title: "Success", description: "Doctor updated successfully." });
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update doctor." });
     },
   });
 
-  const onSubmit = (values: DoctorFormValues) => {
+  const onSubmit = (values) => {
     if (mode === "create") {
       createMutation.mutate(values);
     } else {

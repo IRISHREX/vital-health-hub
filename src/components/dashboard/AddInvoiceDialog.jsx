@@ -54,16 +54,7 @@ const invoiceSchema = z.object({
   notes: z.string().optional(),
 });
 
-type InvoiceFormValues = z.infer<typeof invoiceSchema>;
-
-interface AddInvoiceDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  invoice?: any;
-  mode?: "create" | "edit";
-}
-
-export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "create" }: AddInvoiceDialogProps) {
+export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "create" }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -75,7 +66,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
 
   const patients = patientsData?.data?.patients || [];
 
-  const form = useForm<InvoiceFormValues>({
+  const form = useForm({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       patient: "",
@@ -111,7 +102,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
   }, [invoice, mode, form]);
 
   const createMutation = useMutation({
-    mutationFn: (values: InvoiceFormValues) => {
+    mutationFn: (values) => {
       if (!user) {
         throw new Error("You must be logged in to create an invoice.");
       }
@@ -144,7 +135,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         variant: "destructive",
         title: "Error",
@@ -154,7 +145,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
   });
 
   const updateMutation = useMutation({
-    mutationFn: (values: InvoiceFormValues) => {
+    mutationFn: (values) => {
       const dueAmount = values.totalAmount - values.paidAmount;
       const invoiceData = {
         patient: values.patient,
@@ -176,7 +167,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         variant: "destructive",
         title: "Error",
@@ -185,7 +176,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
     },
   });
 
-  const onSubmit = (values: InvoiceFormValues) => {
+  const onSubmit = (values) => {
     if (mode === "create") {
       createMutation.mutate(values);
     } else {
@@ -226,7 +217,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {patients.map((patient: any) => (
+                      {patients.map((patient) => (
                         <SelectItem key={patient._id} value={patient._id}>
                           {patient.firstName} {patient.lastName} (ID: {patient.patientId || patient._id})
                         </SelectItem>

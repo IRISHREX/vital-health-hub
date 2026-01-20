@@ -42,18 +42,11 @@ const facilitySchema = z.object({
   email: z.string().email({ message: "Invalid email address" }).optional(),
 });
 
-type FacilityFormValues = z.infer<typeof facilitySchema>;
-
-interface AddFacilityDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export default function AddFacilityDialog({ isOpen, onClose }: AddFacilityDialogProps) {
+export default function AddFacilityDialog({ isOpen, onClose }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<FacilityFormValues>({
+  const form = useForm({
     resolver: zodResolver(facilitySchema),
     defaultValues: {
       name: "",
@@ -87,7 +80,7 @@ export default function AddFacilityDialog({ isOpen, onClose }: AddFacilityDialog
     },
   });
 
-  const onSubmit = (values: FacilityFormValues) => {
+  const onSubmit = (values) => {
     const facilityData = {
       name: values.name,
       type: values.type,

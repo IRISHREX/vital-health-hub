@@ -1,93 +1,8 @@
 // Mock data for the Hospital Management Dashboard
 // This will be replaced with real database queries once the schema is set up
 
-export type BedStatus = 'available' | 'occupied' | 'cleaning' | 'reserved';
-export type BedType = 'ICU' | 'CCU' | 'General' | 'Semi-Private' | 'Private' | 'Emergency' | 'Ventilator';
-export type PatientType = 'OPD' | 'IPD';
-export type PaymentStatus = 'paid' | 'partial' | 'pending';
-
-export interface Bed {
-  id: string;
-  number: string;
-  type: BedType;
-  status: BedStatus;
-  floor: number;
-  ward: string;
-  patientId?: string;
-}
-
-export interface Patient {
-  id: string;
-  name: string;
-  age: number;
-  gender: 'Male' | 'Female' | 'Other';
-  phone: string;
-  email: string;
-  address: string;
-  type: PatientType;
-  diagnosis?: string;
-  admissionDate?: string;
-  bedId?: string;
-  doctorId?: string;
-}
-
-export interface Doctor {
-  id: string;
-  name: string;
-  specialization: string;
-  department: string;
-  phone: string;
-  email: string;
-  available: boolean;
-  consultationFee: number;
-}
-
-export interface Appointment {
-  id: string;
-  patientId: string;
-  doctorId: string;
-  date: string;
-  time: string;
-  type: 'OPD' | 'Follow-up' | 'Emergency';
-  status: 'scheduled' | 'completed' | 'cancelled';
-}
-
-export interface Invoice {
-  id: string;
-  patientId: string;
-  patientName: string;
-  totalAmount: number;
-  paidAmount: number;
-  status: PaymentStatus;
-  createdAt: string;
-  items: {
-    description: string;
-    amount: number;
-  }[];
-}
-
-export interface Facility {
-  id: string;
-  name: string;
-  type: 'ICU' | 'Lab' | 'OT' | 'Pharmacy' | 'Radiology' | 'Ambulance' | 'Emergency';
-  available: boolean;
-  description: string;
-}
-
-// Dashboard KPIs
-export interface DashboardStats {
-  totalBeds: number;
-  availableBeds: number;
-  occupiedBeds: number;
-  admittedPatients: number;
-  availableDoctors: number;
-  pendingBills: number;
-  todayAppointments: number;
-  todayDischarges: number;
-}
-
 // Mock beds data
-export const mockBeds: Bed[] = [
+export const mockBeds = [
   { id: '1', number: 'ICU-001', type: 'ICU', status: 'occupied', floor: 2, ward: 'ICU Ward' },
   { id: '2', number: 'ICU-002', type: 'ICU', status: 'available', floor: 2, ward: 'ICU Ward' },
   { id: '3', number: 'ICU-003', type: 'ICU', status: 'cleaning', floor: 2, ward: 'ICU Ward' },
@@ -106,7 +21,7 @@ export const mockBeds: Bed[] = [
 ];
 
 // Mock patients data
-export const mockPatients: Patient[] = [
+export const mockPatients = [
   { id: '1', name: 'Rajesh Kumar', age: 45, gender: 'Male', phone: '+91 98765 43210', email: 'rajesh@email.com', address: '123 MG Road, Mumbai', type: 'IPD', diagnosis: 'Cardiac Arrhythmia', admissionDate: '2026-01-10', bedId: '1', doctorId: '1' },
   { id: '2', name: 'Priya Sharma', age: 32, gender: 'Female', phone: '+91 98765 43211', email: 'priya@email.com', address: '456 Park Street, Mumbai', type: 'IPD', diagnosis: 'Appendicitis', admissionDate: '2026-01-12', bedId: '4', doctorId: '3' },
   { id: '3', name: 'Amit Patel', age: 28, gender: 'Male', phone: '+91 98765 43212', email: 'amit@email.com', address: '789 Hill Road, Mumbai', type: 'OPD', diagnosis: 'Viral Fever' },
@@ -116,7 +31,7 @@ export const mockPatients: Patient[] = [
 ];
 
 // Mock doctors data
-export const mockDoctors: Doctor[] = [
+export const mockDoctors = [
   { id: '1', name: 'Dr. Anil Kapoor', specialization: 'Cardiology', department: 'Cardiac Care', phone: '+91 98765 11111', email: 'anil.kapoor@hospital.com', available: true, consultationFee: 1500 },
   { id: '2', name: 'Dr. Sneha Reddy', specialization: 'Pulmonology', department: 'Respiratory', phone: '+91 98765 22222', email: 'sneha.reddy@hospital.com', available: true, consultationFee: 1200 },
   { id: '3', name: 'Dr. Rahul Mehta', specialization: 'General Surgery', department: 'Surgery', phone: '+91 98765 33333', email: 'rahul.mehta@hospital.com', available: false, consultationFee: 1800 },
@@ -126,7 +41,7 @@ export const mockDoctors: Doctor[] = [
 ];
 
 // Mock invoices data
-export const mockInvoices: Invoice[] = [
+export const mockInvoices = [
   { id: 'INV-2026-001', patientId: '1', patientName: 'Rajesh Kumar', totalAmount: 125000, paidAmount: 125000, status: 'paid', createdAt: '2026-01-15', items: [{ description: 'ICU Bed (5 days)', amount: 75000 }, { description: 'Consultation', amount: 1500 }, { description: 'Medications', amount: 15000 }, { description: 'Lab Tests', amount: 8500 }, { description: 'Procedures', amount: 25000 }] },
   { id: 'INV-2026-002', patientId: '2', patientName: 'Priya Sharma', totalAmount: 45000, paidAmount: 20000, status: 'partial', createdAt: '2026-01-14', items: [{ description: 'CCU Bed (2 days)', amount: 30000 }, { description: 'Surgery', amount: 10000 }, { description: 'Medications', amount: 5000 }] },
   { id: 'INV-2026-003', patientId: '4', patientName: 'Sunita Devi', totalAmount: 68000, paidAmount: 0, status: 'pending', createdAt: '2026-01-13', items: [{ description: 'General Bed (7 days)', amount: 35000 }, { description: 'Consultation', amount: 3000 }, { description: 'Medications', amount: 20000 }, { description: 'Lab Tests', amount: 10000 }] },
@@ -134,7 +49,7 @@ export const mockInvoices: Invoice[] = [
 ];
 
 // Mock facilities data
-export const mockFacilities: Facility[] = [
+export const mockFacilities = [
   { id: '1', name: 'Intensive Care Unit', type: 'ICU', available: true, description: '24/7 critical care with advanced monitoring' },
   { id: '2', name: 'Pathology Lab', type: 'Lab', available: true, description: 'Complete blood work and diagnostic tests' },
   { id: '3', name: 'Operation Theatre 1', type: 'OT', available: false, description: 'Major surgery suite with latest equipment' },
@@ -146,7 +61,7 @@ export const mockFacilities: Facility[] = [
 ];
 
 // Mock appointments
-export const mockAppointments: Appointment[] = [
+export const mockAppointments = [
   { id: '1', patientId: '3', doctorId: '1', date: '2026-01-15', time: '10:00', type: 'OPD', status: 'scheduled' },
   { id: '2', patientId: '6', doctorId: '5', date: '2026-01-15', time: '11:30', type: 'OPD', status: 'scheduled' },
   { id: '3', patientId: '1', doctorId: '1', date: '2026-01-16', time: '09:00', type: 'Follow-up', status: 'scheduled' },
@@ -154,7 +69,7 @@ export const mockAppointments: Appointment[] = [
 ];
 
 // Dashboard stats
-export const mockDashboardStats: DashboardStats = {
+export const mockDashboardStats = {
   totalBeds: mockBeds.length,
   availableBeds: mockBeds.filter(b => b.status === 'available').length,
   occupiedBeds: mockBeds.filter(b => b.status === 'occupied').length,

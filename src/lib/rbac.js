@@ -1,34 +1,12 @@
 // Role-Based Access Control configuration for MongoDB backend
 
-export type UserRole = 'super_admin' | 'admin' | 'doctor' | 'nurse' | 'receptionist' | 'accountant';
+const fullAccess = { canView: true, canCreate: true, canEdit: true, canDelete: true };
+const viewOnly = { canView: true, canCreate: false, canEdit: false, canDelete: false };
+const viewAndCreate = { canView: true, canCreate: true, canEdit: false, canDelete: false };
+const viewAndEdit = { canView: true, canCreate: true, canEdit: true, canDelete: false };
+const noAccess = { canView: false, canCreate: false, canEdit: false, canDelete: false };
 
-export interface Permission {
-  canView: boolean;
-  canCreate: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-}
-
-export interface RolePermissions {
-  dashboard: Permission;
-  beds: Permission;
-  patients: Permission;
-  doctors: Permission;
-  appointments: Permission;
-  facilities: Permission;
-  billing: Permission;
-  reports: Permission;
-  notifications: Permission;
-  settings: Permission;
-}
-
-const fullAccess: Permission = { canView: true, canCreate: true, canEdit: true, canDelete: true };
-const viewOnly: Permission = { canView: true, canCreate: false, canEdit: false, canDelete: false };
-const viewAndCreate: Permission = { canView: true, canCreate: true, canEdit: false, canDelete: false };
-const viewAndEdit: Permission = { canView: true, canCreate: true, canEdit: true, canDelete: false };
-const noAccess: Permission = { canView: false, canCreate: false, canEdit: false, canDelete: false };
-
-export const rolePermissions: Record<UserRole, RolePermissions> = {
+export const rolePermissions = {
   super_admin: {
     dashboard: fullAccess,
     beds: fullAccess,
@@ -103,17 +81,17 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
   },
 };
 
-export const getPermissions = (role: string | undefined, module: keyof RolePermissions): Permission => {
-  const userRole = (role as UserRole) || 'receptionist';
+export const getPermissions = (role, module) => {
+  const userRole = role || 'receptionist';
   return rolePermissions[userRole]?.[module] || noAccess;
 };
 
-export const canAccessModule = (role: string | undefined, module: keyof RolePermissions): boolean => {
+export const canAccessModule = (role, module) => {
   return getPermissions(role, module).canView;
 };
 
-export const getRoleLabel = (role: string | undefined): string => {
-  const labels: Record<string, string> = {
+export const getRoleLabel = (role) => {
+  const labels = {
     super_admin: 'Super Admin',
     admin: 'Admin',
     doctor: 'Doctor',
