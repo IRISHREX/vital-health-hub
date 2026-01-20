@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 export function RecentPatients() {
   const recentPatients = mockPatients.slice(0, 5);
 
-  const getDoctorName = (doctorId?: string) => {
+  const getDoctorName = (doctorId) => {
     if (!doctorId) return "Not assigned";
     const doctor = mockDoctors.find((d) => d.id === doctorId);
     return doctor?.name || "Not assigned";

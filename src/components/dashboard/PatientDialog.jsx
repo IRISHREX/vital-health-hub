@@ -57,16 +57,7 @@ const patientSchema = z.object({
   assignedBed: z.string().optional(),
 });
 
-type PatientFormValues = z.infer<typeof patientSchema>;
-
-interface PatientDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  patient?: any;
-  mode: "create" | "edit";
-}
-
-export default function PatientDialog({ isOpen, onClose, patient, mode }: PatientDialogProps) {
+export default function PatientDialog({ isOpen, onClose, patient, mode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -82,9 +73,9 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
   });
 
   const doctors = doctorsData?.data?.doctors || [];
-  const beds = (bedsData?.data?.beds || []).filter((b: any) => b.status === "available");
+  const beds = (bedsData?.data?.beds || []).filter((b) => b.status === "available");
 
-  const form = useForm<PatientFormValues>({
+  const form = useForm({
     resolver: zodResolver(patientSchema),
     defaultValues: {
       firstName: "",
@@ -148,12 +139,11 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
   }, [patient, mode, form]);
 
   const createMutation = useMutation({
-    mutationFn: async (values: PatientFormValues) => {
+    mutationFn: async (values) => {
       const medicalHistory = values.medicalHistory 
         ? [{ condition: values.medicalHistory, diagnosedDate: new Date() }]
         : [];
       
-      // Create patient first
       const patientData = await createPatient({
         firstName: values.firstName,
         lastName: values.lastName,
@@ -170,7 +160,6 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         assignedBed: values.assignedBed || null,
       });
 
-      // Auto-create invoice with default values (0s)
       if (patientData?.data?._id || patientData?._id) {
         const patientId = patientData?.data?._id || patientData?._id;
         const invoiceData = {
@@ -180,7 +169,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
           subtotal: 0,
           totalAmount: 0,
           dueAmount: 0,
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           status: 'draft',
           notes: `Invoice auto-created for ${values.firstName} ${values.lastName}`,
           generatedBy: user?.id || ""
@@ -196,13 +185,13 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to register patient." });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: PatientFormValues) => {
+    mutationFn: async (data) => {
       const medicalHistory = data.medicalHistory 
         ? [{ condition: data.medicalHistory, diagnosedDate: new Date() }]
         : [];
@@ -223,14 +212,13 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
         assignedBed: data.assignedBed || null,
       });
 
-      // If doctor or bed was assigned, update the invoice
       if (data.assignedDoctor || data.assignedBed) {
         try {
           const invoicesResponse = await getInvoices({ patientId: patient._id });
           const invoices = invoicesResponse?.data?.invoices || [];
           if (invoices.length > 0) {
             const invoice = invoices[0];
-            const updateData: any = {};
+            const updateData = {};
             if (data.assignedBed) {
               updateData.status = 'pending';
             }
@@ -240,7 +228,6 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
           }
         } catch (error) {
           console.error('Error updating invoice:', error);
-          // Don't fail the patient update if invoice update fails
         }
       }
 
@@ -252,12 +239,12 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update patient." });
     },
   });
 
-  const onSubmit = (values: PatientFormValues) => {
+  const onSubmit = (values) => {
     if (mode === "create") {
       createMutation.mutate(values);
     } else {
@@ -514,7 +501,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {doctors.map((doctor: any) => (
+                          {doctors.map((doctor) => (
                             <SelectItem key={doctor._id} value={doctor._id}>
                               {doctor.user?.firstName} {doctor.user?.lastName} ({doctor.specialization})
                             </SelectItem>
@@ -540,7 +527,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }: Patien
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {beds.map((bed: any) => (
+                          {beds.map((bed) => (
                             <SelectItem key={bed._id} value={bed._id}>
                               {bed.bedNumber} - {bed.ward} ({bed.bedType})
                             </SelectItem>

@@ -1,5 +1,5 @@
 // Auto-detect environment for API URL
-const getApiUrl = (): string => {
+const getApiUrl = () => {
   // Check for explicit env variable first
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
@@ -17,23 +17,23 @@ const getApiUrl = (): string => {
 export const API_URL = getApiUrl();
 
 // Auth token management
-export const getAuthToken = (): string | null => localStorage.getItem('token');
-export const setAuthToken = (token: string) => localStorage.setItem('token', token);
+export const getAuthToken = () => localStorage.getItem('token');
+export const setAuthToken = (token) => localStorage.setItem('token', token);
 export const removeAuthToken = () => localStorage.removeItem('token');
 
 // User object management
-export const getUser = (): any | null => {
+export const getUser = () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
 };
-export const setUser = (user: any) => localStorage.setItem('user', JSON.stringify(user));
+export const setUser = (user) => localStorage.setItem('user', JSON.stringify(user));
 export const removeUser = () => localStorage.removeItem('user');
 
 // API client with auth
 export const apiClient = {
-  async request(endpoint: string, options: RequestInit = {}) {
+  async request(endpoint, options = {}) {
     const token = getAuthToken();
-    const headers: HeadersInit = {
+    const headers = {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
@@ -48,9 +48,9 @@ export const apiClient = {
     return data;
   },
 
-  get: (endpoint: string) => apiClient.request(endpoint),
-  post: (endpoint: string, body: unknown) => apiClient.request(endpoint, { method: 'POST', body: JSON.stringify(body) }),
-  put: (endpoint: string, body: unknown) => apiClient.request(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
-  patch: (endpoint: string, body: unknown) => apiClient.request(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: (endpoint: string) => apiClient.request(endpoint, { method: 'DELETE' }),
+  get: (endpoint) => apiClient.request(endpoint),
+  post: (endpoint, body) => apiClient.request(endpoint, { method: 'POST', body: JSON.stringify(body) }),
+  put: (endpoint, body) => apiClient.request(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
+  patch: (endpoint, body) => apiClient.request(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (endpoint) => apiClient.request(endpoint, { method: 'DELETE' }),
 };

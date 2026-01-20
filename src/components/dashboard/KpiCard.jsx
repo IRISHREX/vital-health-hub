@@ -1,18 +1,4 @@
-import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface KpiCardProps {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  icon: LucideIcon;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
-  variant?: "default" | "primary" | "accent" | "warning" | "success";
-  className?: string;
-}
 
 const variantStyles = {
   default: {
@@ -45,7 +31,7 @@ export function KpiCard({
   trend,
   variant = "default",
   className,
-}: KpiCardProps) {
+}) {
   const styles = variantStyles[variant];
 
   return (

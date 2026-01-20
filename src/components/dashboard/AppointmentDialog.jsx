@@ -46,16 +46,7 @@ const appointmentSchema = z.object({
   status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
 });
 
-type AppointmentFormValues = z.infer<typeof appointmentSchema>;
-
-interface AppointmentDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  appointment?: any;
-  mode: "create" | "edit";
-}
-
-export default function AppointmentDialog({ isOpen, onClose, appointment, mode }: AppointmentDialogProps) {
+export default function AppointmentDialog({ isOpen, onClose, appointment, mode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -70,9 +61,9 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   });
 
   const patients = patientsData?.data?.patients || [];
-  const doctors = (doctorsData?.data?.doctors || []).filter((d: any) => d.availabilityStatus === "available");
+  const doctors = (doctorsData?.data?.doctors || []).filter((d) => d.availabilityStatus === "available");
 
-  const form = useForm<AppointmentFormValues>({
+  const form = useForm({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
       patientId: "",
@@ -114,7 +105,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   }, [appointment, mode, form]);
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => {
+    mutationFn: (data) => {
       const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
       return createAppointment({
         patientId: data.patientId,
@@ -131,13 +122,13 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to book appointment." });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => {
+    mutationFn: (data) => {
       const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
       return updateAppointment(appointment._id, {
         patientId: data.patientId,
@@ -154,12 +145,12 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       handleClose();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update appointment." });
     },
   });
 
-  const onSubmit = (values: AppointmentFormValues) => {
+  const onSubmit = (values) => {
     if (mode === "create") {
       createMutation.mutate(values);
     } else {
@@ -198,7 +189,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {patients.map((patient: any) => (
+                      {patients.map((patient) => (
                         <SelectItem key={patient._id} value={patient._id}>
                           {patient.firstName} {patient.lastName}
                         </SelectItem>
@@ -223,7 +214,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {doctors.map((doctor: any) => (
+                      {doctors.map((doctor) => (
                         <SelectItem key={doctor._id} value={doctor._id}>
                           {doctor.name || doctor.user?.firstName} {doctor.user?.lastName} - {doctor.specialization}
                         </SelectItem>

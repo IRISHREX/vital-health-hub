@@ -7,37 +7,37 @@ const actions = [
     label: "New Patient",
     icon: UserPlus,
     href: "/patients",
-    variant: "default" as const,
+    variant: "default",
   },
   {
     label: "Assign Bed",
     icon: Bed,
     href: "/beds",
-    variant: "outline" as const,
+    variant: "outline",
   },
   {
     label: "Book Appointment",
     icon: Calendar,
     href: "/appointments",
-    variant: "outline" as const,
+    variant: "outline",
   },
   {
     label: "Create Invoice",
     icon: Receipt,
     href: "/billing",
-    variant: "outline" as const,
+    variant: "outline",
   },
   {
     label: "Generate Report",
     icon: FileText,
     href: "/reports",
-    variant: "outline" as const,
+    variant: "outline",
   },
   {
     label: "Emergency",
     icon: Ambulance,
     href: "/beds",
-    variant: "destructive" as const,
+    variant: "destructive",
   },
 ];
 
