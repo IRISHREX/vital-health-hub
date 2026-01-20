@@ -20,9 +20,9 @@ import { useToast } from "@/hooks/use-toast";
 import AppointmentDialog from "@/components/dashboard/AppointmentDialog";
 
 const statusConfig = {
-  scheduled: { label: "Scheduled", variant: "info" as const },
-  completed: { label: "Completed", variant: "success" as const },
-  cancelled: { label: "Cancelled", variant: "destructive" as const },
+  scheduled: { label: "Scheduled", variant: "info" },
+  completed: { label: "Completed", variant: "success" },
+  cancelled: { label: "Cancelled", variant: "destructive" },
 };
 
 export default function Appointments() {
@@ -33,8 +33,8 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [dialogMode, setDialogMode] = useState("create");
   const { toast } = useToast();
 
   const openCreateDialog = () => {
@@ -43,7 +43,7 @@ export default function Appointments() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (appointment: any) => {
+  const openEditDialog = (appointment) => {
     setSelectedAppointment(appointment);
     setDialogMode("edit");
     setDialogOpen(true);
@@ -55,12 +55,12 @@ export default function Appointments() {
     fetchData();
   };
 
-  const handleStatusUpdate = async (appointmentId: string, status: string) => {
+  const handleStatusUpdate = async (appointmentId, status) => {
     try {
       await updateAppointment(appointmentId, { status });
       toast({ title: "Success", description: `Appointment ${status}` });
       fetchData();
-    } catch (err: any) {
+    } catch (err) {
       toast({ variant: "destructive", title: "Error", description: err.message });
     }
   };
@@ -129,7 +129,6 @@ export default function Appointments() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -152,7 +151,6 @@ export default function Appointments() {
         mode={dialogMode}
       />
 
-      {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -196,7 +194,6 @@ export default function Appointments() {
         </Card>
       </div>
 
-      {/* Today's Schedule */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -240,7 +237,6 @@ export default function Appointments() {
         </CardContent>
       </Card>
 
-      {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -253,7 +249,6 @@ export default function Appointments() {
         </div>
       </div>
 
-      {/* Appointments Table */}
       <Card>
         <CardContent className="p-0">
           <Table>

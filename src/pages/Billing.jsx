@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import AddInvoiceDialog from "@/components/dashboard/AddInvoiceDialog";
 
-const statusConfig: { [key: string]: { label: string; variant: "success" | "warning" | "destructive" | "default"; icon: React.ElementType }} = {
+const statusConfig = {
     paid: { label: "Paid", variant: "success", icon: CheckCircle2 },
     partial: { label: "Partial", variant: "warning", icon: Clock },
     pending: { label: "Pending", variant: "warning", icon: Clock },
@@ -47,10 +47,10 @@ const statusConfig: { [key: string]: { label: string; variant: "success" | "warn
 
 export default function Billing() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [dialogMode, setDialogMode] = useState("create");
 
   const openCreateDialog = () => {
     setSelectedInvoice(null);
@@ -58,7 +58,7 @@ export default function Billing() {
     setIsAddDialogOpen(true);
   };
 
-  const openEditDialog = (invoice: any) => {
+  const openEditDialog = (invoice) => {
     setSelectedInvoice(invoice);
     setDialogMode("edit");
     setIsAddDialogOpen(true);
@@ -82,30 +82,28 @@ export default function Billing() {
     return <div className="text-red-500 text-center py-8">Error loading invoices. Please try again later.</div>;
   }
 
-  // Defensive check to ensure invoices is an array
   if (!Array.isArray(invoices)) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  const filteredInvoices = invoices.filter((invoice: any) => 
+  const filteredInvoices = invoices.filter((invoice) => 
     invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
     invoice.patient.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {
-    totalRevenue: invoices.reduce((sum: number, inv: any) => sum + inv.totalAmount, 0),
-    collected: invoices.reduce((sum: number, inv: any) => sum + inv.paidAmount, 0),
+    totalRevenue: invoices.reduce((sum, inv) => sum + inv.totalAmount, 0),
+    collected: invoices.reduce((sum, inv) => sum + inv.paidAmount, 0),
     pending: invoices
-      .filter((i: any) => i.status !== "paid")
-      .reduce((sum: number, inv: any) => sum + inv.dueAmount, 0),
-    paidCount: invoices.filter((i: any) => i.status === "paid").length,
-    pendingCount: invoices.filter((i: any) => i.status !== "paid").length,
+      .filter((i) => i.status !== "paid")
+      .reduce((sum, inv) => sum + inv.dueAmount, 0),
+    paidCount: invoices.filter((i) => i.status === "paid").length,
+    pendingCount: invoices.filter((i) => i.status !== "paid").length,
   };
 
   return (
     <>
       <div className="space-y-6">
-        {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -121,7 +119,6 @@ export default function Billing() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -177,7 +174,6 @@ export default function Billing() {
           </Card>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -204,7 +200,6 @@ export default function Billing() {
           </Select>
         </div>
 
-        {/* Invoices Table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -221,7 +216,7 @@ export default function Billing() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInvoices.map((invoice: any) => {
+                {filteredInvoices.map((invoice) => {
                   const config = statusConfig[invoice.status] || statusConfig.draft;
                   const StatusIcon = config.icon;
 

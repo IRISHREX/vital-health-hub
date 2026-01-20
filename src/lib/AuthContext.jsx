@@ -2,26 +2,11 @@ import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { getAuthToken, setAuthToken, removeAuthToken, getUser, setUser, removeUser } from './api-client';
 import { loginApi } from './auth';
 
-interface User {
-  id: string;
-  email: string;
-  fullName: string;
-  role: string;
-}
+const AuthContext = createContext(undefined);
 
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  login: (credentials: any) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUserState] = useState<User | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
+export const AuthProvider = ({ children }) => {
+  const [user, setUserState] = useState(null);
+  const [token, setTokenState] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +19,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (credentials: any) => {
+  const login = async (credentials) => {
     const { data } = await loginApi(credentials);
     if (data.token && data.user) {
         setAuthToken(data.token);

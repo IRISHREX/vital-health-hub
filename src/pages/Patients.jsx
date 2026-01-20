@@ -34,8 +34,8 @@ export default function Patients() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [dialogMode, setDialogMode] = useState("create");
 
   const openCreateDialog = () => {
     setSelectedPatient(null);
@@ -43,7 +43,7 @@ export default function Patients() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (patient: any) => {
+  const openEditDialog = (patient) => {
     setSelectedPatient(patient);
     setDialogMode("edit");
     setDialogOpen(true);
@@ -52,7 +52,6 @@ export default function Patients() {
   const handleDialogClose = () => {
     setDialogOpen(false);
     setSelectedPatient(null);
-    // Refetch data
     fetchData();
   };
 
@@ -110,7 +109,6 @@ export default function Patients() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -133,7 +131,6 @@ export default function Patients() {
         mode={dialogMode}
       />
 
-      {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -167,7 +164,6 @@ export default function Patients() {
         </Card>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -190,7 +186,6 @@ export default function Patients() {
         </Select>
       </div>
 
-      {/* Patients Table */}
       <Card>
         <CardContent className="p-0">
           <Table>

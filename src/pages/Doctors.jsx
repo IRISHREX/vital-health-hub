@@ -51,11 +51,11 @@ export default function Doctors() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [dialogMode, setDialogMode] = useState("create");
 
   const availabilityMutation = useMutation({
-    mutationFn: (data: { doctorId: string; status: string }) =>
+    mutationFn: (data) =>
       updateAvailability(data.doctorId, data.status),
     onSuccess: (_, variables) => {
       setDoctors((prevDoctors) =>
@@ -67,7 +67,7 @@ export default function Doctors() {
       );
       toast({ title: "Success", description: "Availability updated successfully." });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update availability." });
     },
   });
@@ -78,7 +78,7 @@ export default function Doctors() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (doctor: any) => {
+  const openEditDialog = (doctor) => {
     setSelectedDoctor(doctor);
     setDialogMode("edit");
     setDialogOpen(true);
@@ -132,7 +132,6 @@ export default function Doctors() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -155,7 +154,6 @@ export default function Doctors() {
         mode={dialogMode}
       />
 
-      {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -193,7 +191,6 @@ export default function Doctors() {
         </Card>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -229,7 +226,6 @@ export default function Doctors() {
         </Select>
       </div>
 
-      {/* Doctor Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredDoctors.length > 0 ? (
           filteredDoctors.map((doctor) => (

@@ -24,7 +24,6 @@ import {
 export default function Settings() {
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Settings
@@ -58,7 +57,6 @@ export default function Settings() {
           </TabsTrigger>
         </TabsList>
 
-        {/* General Settings */}
         <TabsContent value="general">
           <Card>
             <CardHeader>
@@ -131,7 +129,6 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Users Settings */}
         <TabsContent value="users">
           <Card>
             <CardHeader>
@@ -177,7 +174,6 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Security Settings */}
         <TabsContent value="security">
           <Card>
             <CardHeader>
@@ -251,7 +247,6 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Notifications Settings */}
         <TabsContent value="notifications">
           <Card>
             <CardHeader>
@@ -301,7 +296,6 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Data Settings */}
         <TabsContent value="data">
           <Card>
             <CardHeader>

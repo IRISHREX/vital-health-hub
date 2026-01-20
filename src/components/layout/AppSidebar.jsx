@@ -12,7 +12,6 @@ import {
   Bell,
   Settings,
   Hospital,
-  LucideIcon,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,16 +27,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/AuthContext";
-import { canAccessModule, getRoleLabel, RolePermissions } from "@/lib/rbac";
+import { canAccessModule, getRoleLabel } from "@/lib/rbac";
 
-interface NavItem {
-  title: string;
-  url: string;
-  icon: LucideIcon;
-  module: keyof RolePermissions;
-}
-
-const mainNavItems: NavItem[] = [
+const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
   { title: "Bed Management", url: "/beds", icon: Bed, module: "beds" },
   { title: "Patients", url: "/patients", icon: Users, module: "patients" },
@@ -45,13 +37,13 @@ const mainNavItems: NavItem[] = [
   { title: "Appointments", url: "/appointments", icon: Calendar, module: "appointments" },
 ];
 
-const managementItems: NavItem[] = [
+const managementItems = [
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];
 
-const systemItems: NavItem[] = [
+const systemItems = [
   { title: "Notifications", url: "/notifications", icon: Bell, module: "notifications" },
   { title: "Settings", url: "/settings", icon: Settings, module: "settings" },
 ];
@@ -62,12 +54,12 @@ export function AppSidebar() {
   const { user } = useAuth();
   const isCollapsed = state === "collapsed";
 
-  const isActive = (path: string) => {
+  const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
-  const filterByRole = (items: NavItem[]) => 
+  const filterByRole = (items) => 
     items.filter(item => canAccessModule(user?.role, item.module));
 
   return (
