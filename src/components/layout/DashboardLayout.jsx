@@ -1,11 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { Header } from "./Header";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { checkHealth } from "@/lib/health";
 
 export function DashboardLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] =useState(true);
+
+  useEffect(() => {
+    const performHealthCheck = async () => {
+      try {
+        const healthStatus = await checkHealth();
+        console.log("API Health Status:", healthStatus);
+      } catch (error) {
+        console.error("API is not available or there was an error during health check:", error);
+      }
+    };
+
+    performHealthCheck();
+  }, []);
 
   return (
     <SidebarProvider defaultOpen={true}>

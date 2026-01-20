@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/AuthContext";
+import { getPermissions } from "@/lib/rbac";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
@@ -26,6 +28,9 @@ import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "luci
 import PatientDialog from "@/components/dashboard/PatientDialog";
 
 export default function Patients() {
+  const { user } = useAuth();
+  const permissions = getPermissions(user?.role, "patients");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [patients, setPatients] = useState([]);
@@ -118,10 +123,12 @@ export default function Patients() {
             Manage patient registrations and admissions
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Register Patient
-        </Button>
+        {permissions.canCreate && (
+          <Button onClick={openCreateDialog}>
+            <Plus className="mr-2 h-4 w-4" />
+            Register Patient
+          </Button>
+        )}
       </div>
 
       <PatientDialog
@@ -254,17 +261,21 @@ export default function Patients() {
                         <Button variant="ghost" size="icon" title="View Details">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditDialog(patient)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          title="Delete"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {permissions.canEdit && (
+                          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditDialog(patient)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {permissions.canDelete && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Delete"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

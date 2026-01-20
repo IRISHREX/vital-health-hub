@@ -7,11 +7,11 @@ const getApiUrl = () => {
   
   // Auto-detect: localhost = dev backend, otherwise production
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:5000/api';
+    return 'http://localhost:5000/nh/api/v1';
   }
   
   // Production: Update this with your deployed backend URL
-  return import.meta.env.VITE_PRODUCTION_API_URL || 'https://your-backend.railway.app/api';
+  return import.meta.env.VITE_PRODUCTION_API_URL || 'https://your-backend.railway.app/nh/api/v1';
 };
 
 export const API_URL = getApiUrl();

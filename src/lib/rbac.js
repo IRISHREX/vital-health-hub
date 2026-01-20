@@ -19,7 +19,7 @@ export const rolePermissions = {
     notifications: fullAccess,
     settings: fullAccess,
   },
-  admin: {
+  hospital_admin: {
     dashboard: fullAccess,
     beds: fullAccess,
     patients: fullAccess,
@@ -67,7 +67,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
   },
-  accountant: {
+  billing_staff: {
     dashboard: viewOnly,
     beds: noAccess,
     patients: viewOnly,
@@ -93,11 +93,11 @@ export const canAccessModule = (role, module) => {
 export const getRoleLabel = (role) => {
   const labels = {
     super_admin: 'Super Admin',
-    admin: 'Admin',
+    hospital_admin: 'Admin',
     doctor: 'Doctor',
     nurse: 'Nurse',
     receptionist: 'Receptionist',
-    accountant: 'Accountant',
+    billing_staff: 'Accountant',
   };
   return labels[role || ''] || 'User';
 };

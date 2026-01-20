@@ -4,8 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import { AuthProvider } from "./lib/AuthContext";
+import AuthorizedRoute from "./components/AuthorizedRoute";
 import Dashboard from "./pages/Dashboard";
 import Beds from "./pages/Beds";
 import Patients from "./pages/Patients";
@@ -30,17 +30,35 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route element={<ProtectedRoute />}>
-              <Route element={<DashboardLayout />}>
+            <Route element={<DashboardLayout />}>
+              <Route element={<AuthorizedRoute module="dashboard" />}>
                 <Route path="/" element={<Dashboard />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="beds" />}>
                 <Route path="/beds" element={<Beds />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="patients" />}>
                 <Route path="/patients" element={<Patients />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="doctors" />}>
                 <Route path="/doctors" element={<Doctors />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="appointments" />}>
                 <Route path="/appointments" element={<Appointments />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="facilities" />}>
                 <Route path="/facilities" element={<Facilities />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="billing" />}>
                 <Route path="/billing" element={<Billing />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="reports" />}>
                 <Route path="/reports" element={<Reports />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="notifications" />}>
                 <Route path="/notifications" element={<Notifications />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="settings" />}>
                 <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>
