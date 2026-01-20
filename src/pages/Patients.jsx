@@ -99,14 +99,14 @@ export default function Patients() {
       `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       patient.contactNumber.includes(searchQuery) ||
       patient.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || patient.type === typeFilter;
+    const matchesType = typeFilter === "all" || patient.registrationType === typeFilter;
     return matchesSearch && matchesType;
   }) : [];
 
   const stats = {
     total: patients?.length || 0,
-    ipd: patients ? patients.filter((p) => p.type === "IPD").length : 0,
-    opd: patients ? patients.filter((p) => p.type === "OPD").length : 0,
+    ipd: patients ? patients.filter((p) => p.registrationType === "ipd").length : 0,
+    opd: patients ? patients.filter((p) => p.registrationType === "opd").length : 0,
   };
 
   if (loading) return <div>Loading...</div>;
@@ -187,8 +187,8 @@ export default function Patients() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="IPD">IPD (Admitted)</SelectItem>
-            <SelectItem value="OPD">OPD (Outpatient)</SelectItem>
+            <SelectItem value="ipd">IPD (Admitted)</SelectItem>
+            <SelectItem value="opd">OPD (Outpatient)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -236,9 +236,9 @@ export default function Patients() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={patient.type === "IPD" ? "default" : "secondary"}
+                        variant={patient.registrationType === "ipd" ? "default" : "secondary"}
                       >
-                        {patient.type}
+                        {patient.registrationType}
                       </Badge>
                     </TableCell>
                     <TableCell>
