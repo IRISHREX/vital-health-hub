@@ -138,7 +138,8 @@ exports.createAdmission = async (req, res, next) => {
         paidAmount: 0,
         dueAmount: invoiceAmount,
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        notes: `Invoice for admission - ${admission.admissionId}`
+        notes: `Invoice for admission - ${admission.admissionId}`,
+        generatedBy: req.user._id
       });
 
       await invoice.save();
@@ -157,7 +158,8 @@ exports.createAdmission = async (req, res, next) => {
         paidAmount: 0,
         dueAmount: 0,
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        notes: `Invoice for ${admissionType} admission - ${admission.admissionId}`
+        notes: `Invoice for ${admissionType} admission - ${admission.admissionId}`,
+        generatedBy: req.user._id
       });
 
       await invoice.save();
