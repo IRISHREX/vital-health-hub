@@ -10,6 +10,7 @@ export const rolePermissions = {
   super_admin: {
     dashboard: fullAccess,
     beds: fullAccess,
+    admissions: fullAccess,
     patients: fullAccess,
     doctors: fullAccess,
     appointments: fullAccess,
@@ -22,6 +23,7 @@ export const rolePermissions = {
   hospital_admin: {
     dashboard: fullAccess,
     beds: fullAccess,
+    admissions: fullAccess,
     patients: fullAccess,
     doctors: fullAccess,
     appointments: fullAccess,
@@ -34,6 +36,7 @@ export const rolePermissions = {
   doctor: {
     dashboard: viewOnly,
     beds: viewOnly,
+    admissions: viewAndEdit,
     patients: viewAndEdit,
     doctors: viewOnly,
     appointments: viewAndEdit,
@@ -46,6 +49,7 @@ export const rolePermissions = {
   nurse: {
     dashboard: viewOnly,
     beds: viewAndEdit,
+    admissions: viewAndEdit,
     patients: viewAndEdit,
     doctors: viewOnly,
     appointments: viewOnly,
@@ -58,6 +62,7 @@ export const rolePermissions = {
   receptionist: {
     dashboard: viewOnly,
     beds: viewOnly,
+    admissions: viewAndCreate,
     patients: viewAndCreate,
     doctors: viewOnly,
     appointments: fullAccess,
@@ -70,6 +75,7 @@ export const rolePermissions = {
   billing_staff: {
     dashboard: viewOnly,
     beds: noAccess,
+    admissions: viewOnly,
     patients: viewOnly,
     doctors: noAccess,
     appointments: noAccess,

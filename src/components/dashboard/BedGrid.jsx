@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BedActionModal from "./BedActionModal";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Building2, DoorOpen, ChevronDown } from "lucide-react";
 
 const statusStyles = {
   available: {
@@ -52,10 +52,27 @@ const statusStyles = {
 export default function BedGrid({ beds, onBedSelect, loading }) {
   const [selectedBed, setSelectedBed] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [expandedFloors, setExpandedFloors] = useState({});
+  const [expandedRooms, setExpandedRooms] = useState({});
 
   const handleBedClick = (bed) => {
     setSelectedBed(bed);
     setModalOpen(true);
+  };
+
+  const toggleFloor = (floor) => {
+    setExpandedFloors(prev => ({
+      ...prev,
+      [floor]: !prev[floor]
+    }));
+  };
+
+  const toggleRoom = (floor, room) => {
+    const key = `${floor}-${room}`;
+    setExpandedRooms(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   const handleModalClose = () => {
@@ -88,78 +105,145 @@ export default function BedGrid({ beds, onBedSelect, loading }) {
     );
   }
 
-  // Group beds by room number
-  const bedsByRoom = beds.reduce((acc, bed) => {
+  // Group beds by floor, then by room
+  const bedsByFloor = beds.reduce((floorAcc, bed) => {
+    const floor = bed.floor || 0;
+    if (!floorAcc[floor]) floorAcc[floor] = {};
+    
     const room = bed.roomNumber || "No Room";
-    if (!acc[room]) acc[room] = [];
-    acc[room].push(bed);
-    return acc;
+    if (!floorAcc[floor][room]) floorAcc[floor][room] = [];
+    floorAcc[floor][room].push(bed);
+    
+    return floorAcc;
   }, {});
+
+  // Sort floors numerically
+  const sortedFloors = Object.keys(bedsByFloor)
+    .map(Number)
+    .sort((a, b) => a - b);
 
   return (
     <>
-      <div className="space-y-6">
-        {Object.entries(bedsByRoom).map(([room, roomBeds]) => (
-          <div key={room}>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">
-              Room {room}
-            </h3>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-              {roomBeds.map((bed) => {
-                const style = statusStyles[bed.status] || statusStyles.maintenance;
-                return (
-                  <button
-                    key={bed._id}
-                    onClick={() => handleBedClick(bed)}
-                    className={`group relative rounded-lg border-2 p-3 text-left transition-all duration-300 cursor-pointer ${style.bg} ${style.border}`}
-                  >
-                    {/* Animated pulse for occupied beds */}
-                    {bed.status === "occupied" && (
-                      <div className="absolute inset-0 rounded-lg bg-red-400 opacity-0 animate-pulse" />
-                    )}
+      <div className="space-y-2">
+        {sortedFloors.map((floor) => (
+          <div key={floor} className="border rounded-lg overflow-hidden">
+            {/* Floor Header - Collapsible */}
+            <button
+              onClick={() => toggleFloor(floor)}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-3 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                <span className="text-lg font-bold">Floor {floor}</span>
+                <Badge variant="secondary" className="ml-2 bg-blue-500 text-white border-0">
+                  {Object.keys(bedsByFloor[floor]).length} room{Object.keys(bedsByFloor[floor]).length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+              <ChevronDown 
+                className={`h-5 w-5 transition-transform ${expandedFloors[floor] ? 'rotate-180' : ''}`}
+              />
+            </button>
 
-                    {/* Animated rotation for cleaning */}
-                    {bed.status === "cleaning" && (
-                      <div className="absolute inset-0 rounded-lg border-2 border-transparent border-t-yellow-500 border-r-yellow-500 opacity-20 animate-spin" />
-                    )}
+            {/* Floor Content */}
+            {expandedFloors[floor] && (
+              <div className="bg-white space-y-2 p-4">
+                {Object.entries(bedsByFloor[floor])
+                  .sort(([roomA], [roomB]) => {
+                    const numA = parseInt(roomA);
+                    const numB = parseInt(roomB);
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                      return numA - numB;
+                    }
+                    return roomA.localeCompare(roomB);
+                  })
+                  .map(([room, roomBeds]) => {
+                    const roomKey = `${floor}-${room}`;
+                    const isRoomExpanded = expandedRooms[roomKey];
+                    return (
+                      <div key={roomKey} className="border rounded-lg overflow-hidden bg-gray-50">
+                        {/* Room Header - Collapsible */}
+                        <button
+                          onClick={() => toggleRoom(floor, room)}
+                          className="w-full bg-gray-100 hover:bg-gray-200 p-3 flex items-center justify-between transition-colors border-b"
+                        >
+                          <div className="flex items-center gap-2">
+                            <DoorOpen className="h-4 w-4 text-gray-700" />
+                            <span className="font-semibold text-gray-700">Room {room}</span>
+                            <Badge variant="outline" className="ml-2">
+                              {roomBeds.length} bed{roomBeds.length !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                          <ChevronDown 
+                            className={`h-4 w-4 transition-transform text-gray-700 ${isRoomExpanded ? 'rotate-180' : ''}`}
+                          />
+                        </button>
 
-                    {/* Content */}
-                    <div className="relative z-10 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${style.dot}`} />
-                          <span className={`font-semibold ${style.text}`}>
-                            {bed.bedNumber}
-                          </span>
-                        </div>
+                        {/* Room Content - Beds Grid */}
+                        {isRoomExpanded && (
+                          <div className="p-4">
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                              {roomBeds.map((bed) => {
+                                const style = statusStyles[bed.status] || statusStyles.maintenance;
+                                return (
+                                  <button
+                                    key={bed._id}
+                                    onClick={() => handleBedClick(bed)}
+                                    className={`group relative rounded-lg border-2 p-3 text-left transition-all duration-300 cursor-pointer ${style.bg} ${style.border}`}
+                                  >
+                                    {/* Animated pulse for occupied beds */}
+                                    {bed.status === "occupied" && (
+                                      <div className="absolute inset-0 rounded-lg bg-red-400 opacity-0 animate-pulse" />
+                                    )}
+
+                                    {/* Animated rotation for cleaning */}
+                                    {bed.status === "cleaning" && (
+                                      <div className="absolute inset-0 rounded-lg border-2 border-transparent border-t-yellow-500 border-r-yellow-500 opacity-20 animate-spin" />
+                                    )}
+
+                                    {/* Content */}
+                                    <div className="relative z-10 space-y-2">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <div className={`h-2 w-2 rounded-full ${style.dot}`} />
+                                          <span className={`font-semibold ${style.text}`}>
+                                            Bed {bed.bedNumber}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="text-xs text-gray-600">
+                                        <Badge variant="secondary" className="mb-1 text-xs">
+                                          {bed.bedType.replace(/_/g, " ")}
+                                        </Badge>
+                                      </div>
+
+                                      {/* Patient info if occupied */}
+                                      {bed.status === "occupied" && bed.currentPatient && (
+                                        <div className="text-xs font-medium text-gray-700">
+                                          <p className="truncate">
+                                            {bed.currentPatient.firstName} {bed.currentPatient.lastName}
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      <div className={`text-xs font-medium ${style.text}`}>
+                                        {style.label}
+                                      </div>
+                                    </div>
+
+                                    {/* Hover indicator */}
+                                    <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-current opacity-0 group-hover:opacity-30 transition-all" />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      <div className="text-xs text-gray-600">
-                        <Badge variant="secondary" className="mb-1 text-xs">
-                          {bed.bedType}
-                        </Badge>
-                      </div>
-
-                      {/* Patient info if occupied */}
-                      {bed.status === "occupied" && bed.currentPatient && (
-                        <div className="text-xs font-medium text-gray-700">
-                          <p className="truncate">
-                            {bed.currentPatient.firstName} {bed.currentPatient.lastName}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className={`text-xs font-medium ${style.text}`}>
-                        {style.label}
-                      </div>
-                    </div>
-
-                    {/* Hover indicator */}
-                    <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-current opacity-0 group-hover:opacity-30 transition-all" />
-                  </button>
-                );
-              })}
-            </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -32,6 +32,7 @@ import { canAccessModule, getRoleLabel } from "@/lib/rbac";
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
   { title: "Bed Management", url: "/beds", icon: Bed, module: "beds" },
+  { title: "Admissions", url: "/admissions", icon: Hospital, module: "admissions" },
   { title: "Patients", url: "/patients", icon: Users, module: "patients" },
   { title: "Doctors", url: "/doctors", icon: Stethoscope, module: "doctors" },
   { title: "Appointments", url: "/appointments", icon: Calendar, module: "appointments" },

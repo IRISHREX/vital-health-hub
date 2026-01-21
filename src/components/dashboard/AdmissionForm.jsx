@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,13 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import { createAdmission, getAvailableBeds } from '@/lib/admissions';
 import { getPatients } from '@/lib/patients';
 import { getDoctors } from '@/lib/doctors';
-import { Loader2, User, Bed, Stethoscope, FileText, AlertCircle } from 'lucide-react';
-
-const admissionTypes = [
-  { value: 'emergency', label: 'Emergency' },
-  { value: 'elective', label: 'Elective' },
-  { value: 'transfer', label: 'Transfer' },
-];
+import { Loader2, User, Bed, Stethoscope, FileText, Building2, X } from 'lucide-react';
 
 export default function AdmissionForm({ onAdmissionCreated, onClose }) {
   const [loading, setLoading] = useState(false);
@@ -29,42 +23,37 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
   const [doctors, setDoctors] = useState([]);
   const [availableBeds, setAvailableBeds] = useState([]);
   const [loadingDropdowns, setLoadingDropdowns] = useState(true);
-  const [step, setStep] = useState(1);
+  const [registrationType, setRegistrationType] = useState('emergency'); // emergency, opd, ipd
 
   const [formData, setFormData] = useState({
     patientId: '',
     bedId: '',
     admittingDoctorId: '',
-    attendingDoctors: [],
-    admissionType: 'emergency',
-    diagnosis: {
-      primary: '',
-      secondary: [],
-    },
-    symptoms: [],
+    facility: '',
+    diagnosis: '',
     treatmentPlan: '',
-    expectedDischargeDate: '',
     notes: '',
   });
 
   // Load patients and doctors on mount
-  React.useEffect(() => {
+  useEffect(() => {
     const loadData = async () => {
       try {
         setLoadingDropdowns(true);
         const [patientsData, doctorsData, bedsData] = await Promise.all([
-          getPatients({ limit: 100 }),
-          getDoctors({ limit: 100 }),
+          getPatients(),
+          getDoctors(),
           getAvailableBeds(),
         ]);
 
-        setPatients(patientsData.data?.patients || []);
-        setDoctors(doctorsData.data?.doctors || []);
-        setAvailableBeds(bedsData);
+        setPatients(patientsData.data?.patients || patientsData.data || []);
+        setDoctors(doctorsData.data?.doctors || doctorsData.data || []);
+        setAvailableBeds(bedsData?.data?.beds || bedsData || []);
       } catch (error) {
+        console.error('Error loading data:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load form data',
+          description: 'Failed to load form data: ' + error.message,
           variant: 'destructive',
         });
       } finally {
@@ -75,14 +64,29 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
     loadData();
   }, []);
 
+  // Filter patients by registration type
+  const filteredPatients = patients.filter(
+    (patient) => patient.registrationType === registrationType
+  );
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
-    if (!formData.patientId || !formData.bedId || !formData.admittingDoctorId || !formData.admissionType) {
+    // Validation - only patient and diagnosis are required
+    if (!formData.patientId || !formData.diagnosis) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in required fields: Patient and Diagnosis',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // For IPD admission, bed is required
+    if (registrationType === 'ipd' && !formData.bedId) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a bed for IPD admission',
         variant: 'destructive',
       });
       return;
@@ -90,18 +94,29 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
 
     setLoading(true);
     try {
-      const response = await createAdmission({
-        ...formData,
-        expectedDischargeDate: formData.expectedDischargeDate || undefined,
-      });
+      const admissionPayload = {
+        patientId: formData.patientId,
+        // Only send bedId for IPD (elective) admissions
+        ...(registrationType === 'ipd' && formData.bedId && { bedId: formData.bedId }),
+        // Doctor is optional
+        ...(formData.admittingDoctorId && { admittingDoctorId: formData.admittingDoctorId }),
+        // Map registrationType to admissionType: emergency/opd -> 'emergency', ipd -> 'elective'
+        admissionType: registrationType === 'ipd' ? 'elective' : 'emergency',
+        diagnosis: formData.diagnosis,
+        treatmentPlan: formData.treatmentPlan,
+        facility: formData.facility,
+        notes: formData.notes,
+      };
+
+      const response = await createAdmission(admissionPayload);
 
       toast({
         title: 'Success',
-        description: `Patient admitted successfully - Admission ID: ${response.data.admission.admissionId}`,
+        description: `${registrationType.toUpperCase()} Patient admitted successfully - ID: ${response.data?.admission?.admissionId || 'Created'}`,
       });
 
       if (onAdmissionCreated) {
-        onAdmissionCreated(response.data.admission);
+        onAdmissionCreated(response.data?.admission);
       }
 
       if (onClose) {
@@ -125,21 +140,14 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
     }));
   };
 
-  const handleDiagnosisChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      diagnosis: {
-        ...prev.diagnosis,
-        [field]: value,
-      },
-    }));
-  };
-
   if (loadingDropdowns) {
     return (
       <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Loading Admission Form...</CardTitle>
+        </CardHeader>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </CardContent>
       </Card>
     );
@@ -150,292 +158,295 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
   const selectedDoctor = doctors.find((d) => d._id === formData.admittingDoctorId);
 
   return (
-    <div className="w-full">
-      <CardHeader className="border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>New Patient Admission</CardTitle>
-            <p className="text-sm text-gray-500 mt-1">Step {step} of 3</p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
+    <div className="w-full space-y-6">
+      <div className="flex items-center justify-between border-b pb-4">
+        <div>
+          <h2 className="text-2xl font-bold">Quick Admission</h2>
+          <p className="text-sm text-gray-500 mt-1">Complete admission in one step</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} disabled={loading}>
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Registration Type Selection */}
+        <Card className="border-2 border-blue-200 bg-blue-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Select Patient Type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: 'emergency', label: 'Emergency', icon: '🚨' },
+                { value: 'opd', label: 'OPD (Out-Patient)', icon: '🏥' },
+                { value: 'ipd', label: 'IPD (In-Patient)', icon: '🛏️' },
+              ].map((type) => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => {
+                    setRegistrationType(type.value);
+                    setFormData({ ...formData, patientId: '', bedId: '' });
+                  }}
+                  className={`p-4 rounded-lg border-2 transition ${
+                    registrationType === type.value
+                      ? 'border-blue-600 bg-white shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">{type.icon}</div>
+                  <p className="font-semibold text-sm">{type.label}</p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Patient Selection */}
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center gap-2">
+            <User className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-base">Patient Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">
+                Select Patient * 
+                <Badge className="ml-2" variant="outline">
+                  {registrationType === 'emergency' ? 'EMERGENCY' : registrationType === 'opd' ? 'OPD OUTPATIENT' : 'IPD PATIENTS'}
+                </Badge>
+              </label>
+              <Select value={formData.patientId} onValueChange={(value) => handleInputChange('patientId', value)}>
+                <SelectTrigger className="border-2">
+                  <SelectValue placeholder={`Choose a ${registrationType} patient...`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredPatients.length > 0 ? (
+                    filteredPatients.map((patient) => (
+                      <SelectItem key={patient._id} value={patient._id}>
+                        {patient.firstName} {patient.lastName} ({patient.patientId})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-gray-500">No {registrationType} patients found</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedPatient && (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-600">Phone</p>
+                      <p className="font-medium">{selectedPatient.phoneNumber || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Blood Group</p>
+                      <p className="font-medium">{selectedPatient.bloodGroup || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Age</p>
+                      <p className="font-medium">{selectedPatient.age || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Medical History</p>
+                      <p className="font-medium text-xs truncate">
+                        {typeof selectedPatient.medicalHistory === 'string'
+                          ? selectedPatient.medicalHistory
+                          : selectedPatient.medicalHistory?.condition || 'None'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Doctor & Facility Selection */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Doctor */}
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center gap-2">
+              <Stethoscope className="h-5 w-5 text-green-600" />
+              <CardTitle className="text-base">Doctor Assignment</CardTitle>
+              <Badge variant="secondary" className="ml-auto">Optional</Badge>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select value={formData.admittingDoctorId} onValueChange={(value) => handleInputChange('admittingDoctorId', value)}>
+                <SelectTrigger className="border-2">
+                  <SelectValue placeholder="Select doctor (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctors.map((doctor) => (
+                    <SelectItem key={doctor._id} value={doctor._id}>
+                      Dr. {doctor.user?.firstName} {doctor.user?.lastName} ({doctor.specialization})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {selectedDoctor && (
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="pt-3">
+                    <p className="text-sm text-gray-600">Specialization</p>
+                    <p className="font-semibold">{selectedDoctor.specialization}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Facility */}
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center gap-2">
+              <Building2 className="h-5 w-5 text-purple-600" />
+              <CardTitle className="text-base">Facility/Ward</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Input
+                placeholder="e.g., ICU, General Ward, Emergency Department"
+                value={formData.facility}
+                onChange={(e) => handleInputChange('facility', e.target.value)}
+                className="border-2"
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bed Selection (Only for IPD) */}
+        {registrationType === 'ipd' && (
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center gap-2">
+              <Bed className="h-5 w-5 text-orange-600" />
+              <CardTitle className="text-base">Bed Allocation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Select value={formData.bedId} onValueChange={(value) => handleInputChange('bedId', value)}>
+                <SelectTrigger className="border-2">
+                  <SelectValue placeholder="Select available bed *" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableBeds.length > 0 ? (
+                    availableBeds.map((bed) => (
+                      <SelectItem key={bed._id} value={bed._id}>
+                        Bed {bed.bedNumber} | {bed.bedType} | Floor {bed.floor} | Room {bed.roomNumber} | ₹{bed.pricePerDay}/day
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-gray-500">No beds available</div>
+                  )}
+                </SelectContent>
+              </Select>
+
+              {selectedBed && (
+                <Card className="bg-orange-50 border-orange-200">
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-600">Bed Type</p>
+                        <p className="font-medium">{selectedBed.bedType}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Location</p>
+                        <p className="font-medium">F{selectedBed.floor} R{selectedBed.roomNumber}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Price/Day</p>
+                        <p className="font-medium text-orange-600">₹{selectedBed.pricePerDay}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Ward</p>
+                        <p className="font-medium">{selectedBed.ward}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Medical Information */}
+        <Card>
+          <CardHeader className="pb-3 flex flex-row items-center gap-2">
+            <FileText className="h-5 w-5 text-red-600" />
+            <CardTitle className="text-base">Medical Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Primary Diagnosis *</label>
+              <Input
+                placeholder="e.g., COVID-19, Pneumonia, Fracture, Fever"
+                value={formData.diagnosis}
+                onChange={(e) => handleInputChange('diagnosis', e.target.value)}
+                className="border-2"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Treatment Plan</label>
+              <Textarea
+                placeholder="Detailed treatment plan and procedures"
+                value={formData.treatmentPlan}
+                onChange={(e) => handleInputChange('treatmentPlan', e.target.value)}
+                className="min-h-20 border-2"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Additional Notes</label>
+              <Textarea
+                placeholder="Any additional notes or special requirements"
+                value={formData.notes}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
+                className="min-h-16 border-2"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Summary */}
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Admission Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600">Type</p>
+                <Badge className="mt-1">{registrationType.toUpperCase()}</Badge>
+              </div>
+              <div>
+                <p className="text-gray-600">Patient</p>
+                <p className="font-semibold truncate">{selectedPatient?.firstName || 'Not selected'}</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Doctor</p>
+                <p className="font-semibold truncate">Dr. {selectedDoctor?.user?.firstName || 'Not selected'}</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Status</p>
+                <Badge variant="outline" className="mt-1">Ready</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-end pt-4 border-t">
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading} size="lg" className="gap-2">
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {loading ? 'Admitting...' : `Admit ${registrationType.toUpperCase()} Patient`}
           </Button>
         </div>
-      </CardHeader>
-
-      <CardContent className="pt-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Step 1: Patient & Bed Selection */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-blue-800">
-                  Select an available bed for this patient. One bed can only be assigned to one patient at a time.
-                </p>
-              </div>
-
-              {/* Patient Selection */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Select Patient *
-                </label>
-                <Select value={formData.patientId} onValueChange={(value) => handleInputChange('patientId', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map((patient) => (
-                      <SelectItem key={patient._id} value={patient._id}>
-                        <div className="flex items-center gap-2">
-                          <span>{patient.firstName} {patient.lastName}</span>
-                          <span className="text-gray-500">({patient.patientId})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedPatient && (
-                  <Card className="bg-gray-50 border-gray-200">
-                    <CardContent className="pt-4 grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-gray-600">Phone</p>
-                        <p className="font-medium">{selectedPatient.phone}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Blood Group</p>
-                        <p className="font-medium">{selectedPatient.bloodGroup}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* Bed Selection */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold flex items-center gap-2">
-                  <Bed className="h-4 w-4" />
-                  Select Bed *
-                </label>
-                <Select value={formData.bedId} onValueChange={(value) => handleInputChange('bedId', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose available bed" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableBeds.map((bed) => (
-                      <SelectItem key={bed._id} value={bed._id}>
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium">{bed.bedNumber}</span>
-                          <span className="text-gray-500">|</span>
-                          <Badge variant="secondary" className="text-xs">
-                            {bed.bedType.toUpperCase()}
-                          </Badge>
-                          <span className="text-gray-500">|</span>
-                          <span className="text-gray-600">{bed.ward}</span>
-                          <span className="text-gray-500">|</span>
-                          <span className="font-semibold text-green-600">₹{bed.pricePerDay}/day</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedBed && (
-                  <Card className="bg-green-50 border-green-200">
-                    <CardContent className="pt-4 grid grid-cols-3 gap-2 text-sm">
-                      <div>
-                        <p className="text-gray-600">Room</p>
-                        <p className="font-medium">{selectedBed.roomNumber}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Floor</p>
-                        <p className="font-medium">{selectedBed.floor}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Amenities</p>
-                        <div className="flex gap-1 mt-1">
-                          {selectedBed.amenities?.slice(0, 2).map((amenity) => (
-                            <Badge key={amenity} variant="outline" className="text-xs">
-                              {amenity}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Doctor & Admission Type */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-purple-800">
-                  Select the doctor responsible for this admission and specify the admission type.
-                </p>
-              </div>
-
-              {/* Admission Type */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold">Admission Type *</label>
-                <Select value={formData.admissionType} onValueChange={(value) => handleInputChange('admissionType', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="emergency">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">🚨 Emergency</span>
-                        <span className="text-gray-500">Urgent admission</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="elective">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">📅 Elective</span>
-                        <span className="text-gray-500">Planned admission</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="transfer">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">↻ Transfer</span>
-                        <span className="text-gray-500">From another facility</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Admitting Doctor */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold flex items-center gap-2">
-                  <Stethoscope className="h-4 w-4" />
-                  Admitting Doctor *
-                </label>
-                <Select value={formData.admittingDoctorId} onValueChange={(value) => handleInputChange('admittingDoctorId', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select doctor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {doctors.map((doctor) => (
-                      <SelectItem key={doctor._id} value={doctor._id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Dr. {doctor.user?.firstName} {doctor.user?.lastName}</span>
-                          <span className="text-gray-500">({doctor.specialization})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedDoctor && (
-                  <Card className="bg-indigo-50 border-indigo-200">
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-gray-600">Specialization</p>
-                      <p className="font-medium">{selectedDoctor.specialization}</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Diagnosis & Treatment */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-orange-800">
-                  Enter medical information for proper treatment planning.
-                </p>
-              </div>
-
-              {/* Primary Diagnosis */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold">Primary Diagnosis</label>
-                <Input
-                  placeholder="e.g., COVID-19, Pneumonia, Fracture"
-                  value={formData.diagnosis.primary}
-                  onChange={(e) => handleDiagnosisChange('primary', e.target.value)}
-                />
-              </div>
-
-              {/* Symptoms */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold">Symptoms</label>
-                <Textarea
-                  placeholder="Enter symptoms (comma-separated)"
-                  value={formData.symptoms.join(', ')}
-                  onChange={(e) =>
-                    handleInputChange('symptoms', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))
-                  }
-                  className="min-h-20"
-                />
-              </div>
-
-              {/* Treatment Plan */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold">Treatment Plan</label>
-                <Textarea
-                  placeholder="Detailed treatment plan"
-                  value={formData.treatmentPlan}
-                  onChange={(e) => handleInputChange('treatmentPlan', e.target.value)}
-                  className="min-h-24"
-                />
-              </div>
-
-              {/* Expected Discharge Date */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold">Expected Discharge Date</label>
-                <Input
-                  type="date"
-                  value={formData.expectedDischargeDate}
-                  onChange={(e) => handleInputChange('expectedDischargeDate', e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-3">
-                <label className="text-sm font-semibold">Additional Notes</label>
-                <Textarea
-                  placeholder="Any additional notes for this admission"
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  className="min-h-20"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Buttons */}
-          <div className="flex gap-3 justify-end pt-6 border-t">
-            {step > 1 && (
-              <Button type="button" variant="outline" onClick={() => setStep(step - 1)} disabled={loading}>
-                Back
-              </Button>
-            )}
-            {step < 3 && (
-              <Button type="button" onClick={() => setStep(step + 1)} disabled={
-                (step === 1 && (!formData.patientId || !formData.bedId)) ||
-                (step === 2 && (!formData.admittingDoctorId || !formData.admissionType))
-              }>
-                Next
-              </Button>
-            )}
-            {step === 3 && (
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Admit Patient
-              </Button>
-            )}
-            <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </CardContent>
+      </form>
     </div>
   );
 }

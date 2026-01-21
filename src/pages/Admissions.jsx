@@ -19,9 +19,10 @@ import {
   getStatusColor,
   calculateLengthOfStay,
 } from '@/lib/admissions';
-import AdmissionForm from './AdmissionForm';
-import AdmissionActionModal from './AdmissionActionModal';
-import AdmissionTimeline from './AdmissionTimeline';
+import AdmissionForm from '@/components/dashboard/AdmissionForm';
+import AdmissionActionModal from '@/components/dashboard/AdmissionActionModal';
+import AdmissionTimeline from '@/components/dashboard/AdmissionTimeline';
+import AdmissionDetailsModal from '@/components/dashboard/AdmissionDetailsModal';
 import {
   Plus,
   Search,
@@ -34,6 +35,11 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  History,
+  ArrowRight,
+  LogOut,
+  Eye,
+  MoreVertical,
 } from 'lucide-react';
 
 const statusColors = {
@@ -56,6 +62,7 @@ export default function AdmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [showAdmissionForm, setShowAdmissionForm] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -260,6 +267,12 @@ export default function AdmissionsPage() {
         onClose={() => setSelectedAdmission(null)}
         onActionComplete={handleActionComplete}
       />
+
+      <AdmissionDetailsModal
+        admission={selectedAdmission}
+        isOpen={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+      />
     </div>
   );
 }
@@ -313,6 +326,12 @@ function AdmissionsList({
               admission={admission}
               isSelected={selectedAdmission?._id === admission._id}
               onSelect={() => setSelectedAdmission(admission)}
+              onViewDetails={() => {
+                setSelectedAdmission(admission);
+                setDetailsModalOpen(true);
+              }}
+              onTransfer={() => setSelectedAdmission(admission)}
+              onDischarge={() => setSelectedAdmission(admission)}
             />
           ))}
         </div>
@@ -321,10 +340,25 @@ function AdmissionsList({
   );
 }
 
-function AdmissionCard({ admission, isSelected, onSelect }) {
+function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTransfer, onDischarge }) {
   const formattedData = formatAdmissionData(admission);
   const statusColor = statusColors[admission.status];
   const statusIcon = statusIcons[admission.status];
+
+  const handleViewDetails = (e) => {
+    e.stopPropagation();
+    onViewDetails();
+  };
+
+  const handleTransfer = (e) => {
+    e.stopPropagation();
+    onTransfer();
+  };
+
+  const handleDischarge = (e) => {
+    e.stopPropagation();
+    onDischarge();
+  };
 
   return (
     <Card
@@ -334,7 +368,7 @@ function AdmissionCard({ admission, isSelected, onSelect }) {
       onClick={onSelect}
     >
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Patient Info */}
           <div>
             <p className="text-sm font-medium text-gray-600">Patient</p>
@@ -353,12 +387,23 @@ function AdmissionCard({ admission, isSelected, onSelect }) {
             </p>
           </div>
 
+          {/* Registration Type */}
+          <div>
+            <p className="text-sm font-medium text-gray-600">Registration Type</p>
+            <Badge variant="outline" className="mt-1 capitalize">
+              {admission.patient?.registrationType || 'ipd'}
+            </Badge>
+            <p className="text-xs text-gray-500 mt-1">
+              {admission.bed?.bedType || 'N/A'}
+            </p>
+          </div>
+
           {/* Bed Info */}
           <div>
             <p className="text-sm font-medium text-gray-600">Current Bed</p>
             <p className="font-semibold">{admission.bed?.bedNumber}</p>
             <p className="text-xs text-gray-500">
-              {admission.bed?.bedType} • {admission.bed?.ward}
+              Floor {admission.bed?.floor} • Room {admission.bed?.roomNumber}
             </p>
           </div>
 
@@ -374,6 +419,56 @@ function AdmissionCard({ admission, isSelected, onSelect }) {
               <p className="font-medium">{formattedData.lengthOfStay} days</p>
               <p className="text-xs text-gray-500">Length of stay</p>
             </div>
+          </div>
+        </div>
+
+        {/* Diagnosis and Doctor Info */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+          <div>
+            <p className="text-sm font-medium text-gray-600">Diagnosis</p>
+            <p className="text-sm text-gray-700 truncate">
+              {admission.diagnosis || 'Not specified'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">Doctor</p>
+            <p className="text-sm text-gray-700">
+              {admission.doctor?.firstName} {admission.doctor?.lastName}
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={handleViewDetails}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              title="View Full Details & History"
+            >
+              <History className="h-4 w-4 text-blue-600" />
+            </button>
+            <button
+              onClick={handleViewDetails}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              title="View Details"
+            >
+              <Eye className="h-4 w-4 text-green-600" />
+            </button>
+            {admission.status === 'ADMITTED' && (
+              <>
+                <button
+                  onClick={handleTransfer}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                  title="Transfer Bed"
+                >
+                  <ArrowRight className="h-4 w-4 text-orange-600" />
+                </button>
+                <button
+                  onClick={handleDischarge}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                  title="Discharge"
+                >
+                  <LogOut className="h-4 w-4 text-red-600" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </CardContent>

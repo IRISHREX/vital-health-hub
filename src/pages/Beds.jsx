@@ -49,10 +49,24 @@ const getWards = (beds) => {
   return Array.from(wards).sort();
 };
 
+// Get unique floors from all beds
+const getFloors = (beds) => {
+  const floors = new Set(beds?.map(bed => bed.floor) || []);
+  return Array.from(floors).sort((a, b) => a - b);
+};
+
+// Get unique rooms from all beds
+const getRooms = (beds) => {
+  const rooms = new Set(beds?.map(bed => bed.roomNumber).filter(Boolean) || []);
+  return Array.from(rooms).sort();
+};
+
 export default function Beds() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [floorFilter, setFloorFilter] = useState("all");
+  const [roomFilter, setRoomFilter] = useState("all");
   const [beds, setBeds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -114,11 +128,15 @@ export default function Beds() {
         const matchesType = typeFilter === "all" || bed.bedType === typeFilter;
         const matchesStatus = statusFilter === "all" || bed.status === statusFilter;
         const matchesWard = selectedWard === "all" || bed.ward === selectedWard;
-        return matchesSearch && matchesType && matchesStatus && matchesWard;
+        const matchesFloor = floorFilter === "all" || bed.floor.toString() === floorFilter;
+        const matchesRoom = roomFilter === "all" || bed.roomNumber === roomFilter;
+        return matchesSearch && matchesType && matchesStatus && matchesWard && matchesFloor && matchesRoom;
       })
     : [];
 
   const wards = getWards(beds);
+  const floors = getFloors(beds);
+  const rooms = getRooms(beds);
   const wardStats = wards.reduce((acc, ward) => {
     const wardBeds = beds.filter(b => b.ward === ward);
     acc[ward] = {
@@ -255,7 +273,7 @@ export default function Beds() {
                   />
                 </div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[160px]">
                     <Filter className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Bed Type" />
                   </SelectTrigger>
@@ -269,7 +287,7 @@ export default function Beds() {
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[140px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -278,6 +296,32 @@ export default function Beds() {
                     <SelectItem value="occupied">Occupied</SelectItem>
                     <SelectItem value="cleaning">Cleaning</SelectItem>
                     <SelectItem value="reserved">Reserved</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={floorFilter} onValueChange={setFloorFilter}>
+                  <SelectTrigger className="w-full sm:w-[120px]">
+                    <SelectValue placeholder="Floor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Floors</SelectItem>
+                    {floors.map((floor) => (
+                      <SelectItem key={floor} value={floor.toString()}>
+                        Floor {floor}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={roomFilter} onValueChange={setRoomFilter}>
+                  <SelectTrigger className="w-full sm:w-[120px]">
+                    <SelectValue placeholder="Room" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Rooms</SelectItem>
+                    {rooms.map((room) => (
+                      <SelectItem key={room} value={room}>
+                        {room}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
