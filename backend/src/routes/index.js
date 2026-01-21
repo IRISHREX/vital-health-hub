@@ -9,7 +9,7 @@ const facilityRoutes = require('./facilities');
 const invoiceRoutes = require('./invoices');
 const reportRoutes = require('./reports');
 const admissionRoutes = require('./admissions');
-
+const settingsRoutes = require('./settings');
 
 const router = express.Router();
 
@@ -26,6 +26,7 @@ v1Router.use('/facilities', facilityRoutes);
 v1Router.use('/invoices', invoiceRoutes);
 v1Router.use('/reports', reportRoutes);
 v1Router.use('/admissions', admissionRoutes);
+v1Router.use('/settings', settingsRoutes);
 
 // Health check
 v1Router.get('/health', (req, res) => {
