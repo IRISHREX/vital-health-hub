@@ -9,7 +9,28 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   X,
   User,
@@ -21,10 +42,23 @@ import {
   FileText,
   ArrowRight,
   Clock,
+  LogOut,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
+import { dischargePatient } from '@/lib/admissions';
+import { toast } from '@/hooks/use-toast';
 
-export default function AdmissionDetailsModal({ admission, isOpen, onClose }) {
+export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDischarge }) {
   if (!admission) return null;
+
+  const [showDischargeModal, setShowDischargeModal] = useState(false);
+  const [dischargeFormData, setDischargeFormData] = useState({
+    dischargeReason: '',
+    dischargingDoctorId: '',
+    notes: '',
+  });
+  const [loading, setLoading] = useState(false);
 
   const calculateDays = (startDate, endDate = new Date()) => {
     const start = new Date(startDate);
@@ -34,9 +68,68 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose }) {
     return diffDays || 1;
   };
 
-  const los = calculateDays(admission.admissionDate, admission.dischargeDate);
+  const los = calculateDays(admission.admissionDate, admission.dischargeDate || new Date());
   const bedAllocations = admission.bedAllocations || [];
   const transferHistory = admission.transferHistory || [];
+
+  const dischargeReasons = [
+    'Recovery - Fit for discharge',
+    'Against medical advice',
+    'Referred to other facility',
+    'Patient request',
+    'Deceased',
+    'Self discharge',
+  ];
+
+  const handleDischargeSubmit = async () => {
+    if (!dischargeFormData.dischargeReason || !dischargeFormData.dischargingDoctorId) {
+      toast({
+        title: 'Required Fields',
+        description: 'Please fill in discharge reason and select a doctor',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await dischargePatient(admission._id, {
+        dischargeReason: dischargeFormData.dischargeReason,
+        dischargingDoctorId: dischargeFormData.dischargingDoctorId,
+        notes: dischargeFormData.notes,
+      });
+
+      toast({
+        title: 'Success',
+        description: `Patient ${admission.patient?.firstName} has been successfully discharged`,
+        variant: 'success',
+      });
+
+      // Reset form
+      setDischargeFormData({
+        dischargeReason: '',
+        dischargingDoctorId: '',
+        notes: '',
+      });
+      setShowDischargeModal(false);
+
+      // Call parent callback if provided
+      if (onDischarge) {
+        onDischarge(response);
+      }
+
+      // Close the modal
+      onClose();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to discharge patient',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -359,12 +452,185 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose }) {
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-between gap-2 pt-4 border-t">
+          <div>
+            {admission.status === 'ADMITTED' && (
+              <Button
+                variant="destructive"
+                onClick={() => setShowDischargeModal(true)}
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Discharge Patient
+              </Button>
+            )}
+          </div>
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
         </div>
       </DialogContent>
+
+      {/* Discharge Modal */}
+      <Dialog open={showDischargeModal} onOpenChange={setShowDischargeModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-red-600" />
+              Discharge Patient
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Patient Info */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Patient Name</p>
+                    <p className="text-lg font-semibold">
+                      {admission.patient?.firstName} {admission.patient?.lastName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Admission Date</p>
+                    <p className="text-lg font-semibold">
+                      {new Date(admission.admissionDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Length of Stay</p>
+                    <p className="text-lg font-semibold text-blue-600">{los} days</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Discharge Form */}
+            <div className="space-y-4">
+              {/* Discharge Reason */}
+              <div className="space-y-2">
+                <Label htmlFor="discharge-reason" className="font-semibold">
+                  Discharge Reason *
+                </Label>
+                <Select
+                  value={dischargeFormData.dischargeReason}
+                  onValueChange={(value) =>
+                    setDischargeFormData({
+                      ...dischargeFormData,
+                      dischargeReason: value,
+                    })
+                  }
+                >
+                  <SelectTrigger id="discharge-reason">
+                    <SelectValue placeholder="Select discharge reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dischargeReasons.map((reason) => (
+                      <SelectItem key={reason} value={reason}>
+                        {reason}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Discharging Doctor */}
+              <div className="space-y-2">
+                <Label htmlFor="doctor" className="font-semibold">
+                  Discharging Doctor *
+                </Label>
+                <Select
+                  value={dischargeFormData.dischargingDoctorId}
+                  onValueChange={(value) =>
+                    setDischargeFormData({
+                      ...dischargeFormData,
+                      dischargingDoctorId: value,
+                    })
+                  }
+                >
+                  <SelectTrigger id="doctor">
+                    <SelectValue placeholder="Select discharging doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {admission.admittingDoctor && (
+                      <SelectItem value={admission.admittingDoctor._id || admission.admittingDoctor}>
+                        Dr. {admission.admittingDoctor?.user?.firstName || admission.admittingDoctor?.firstName}{' '}
+                        {admission.admittingDoctor?.user?.lastName || admission.admittingDoctor?.lastName}
+                      </SelectItem>
+                    )}
+                    {admission.attendingDoctors?.map((doctor) => (
+                      <SelectItem key={doctor._id} value={doctor._id || doctor}>
+                        Dr. {doctor?.user?.firstName || doctor?.firstName}{' '}
+                        {doctor?.user?.lastName || doctor?.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Discharge Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="font-semibold">
+                  Discharge Notes
+                </Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Enter any additional discharge notes (instructions, follow-up care, medications, etc.)"
+                  value={dischargeFormData.notes}
+                  onChange={(e) =>
+                    setDischargeFormData({
+                      ...dischargeFormData,
+                      notes: e.target.value,
+                    })
+                  }
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Summary */}
+            <Card className="bg-gray-50 border-gray-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Discharge Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Current Status:</span>
+                  <Badge className="bg-blue-100 text-blue-900">{admission.status}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Reason:</span>
+                  <span className="font-medium">{dischargeFormData.dischargeReason || 'Not selected'}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-gray-600">Discharge Date:</span>
+                  <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDischargeModal(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDischargeSubmit}
+              disabled={loading || !dischargeFormData.dischargeReason || !dischargeFormData.dischargingDoctorId}
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm Discharge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
