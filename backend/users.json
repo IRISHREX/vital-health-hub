@@ -1,0 +1,79 @@
+[
+  {
+    "_id": { "$oid": "65a2d6c9c6f2a7a4f8e3b1a1" },
+    "email": "super.admin@medicare.com",
+    "password": "$2a$12$YOUR_BCRYPT_HASH_HERE_FOR_password123",
+    "firstName": "Super",
+    "lastName": "Admin",
+    "role": "super_admin",
+    "phone": "9999999999",
+    "isActive": true,
+    "createdAt": { "$date": "2024-01-13T18:30:00Z" },
+    "updatedAt": { "$date": "2024-01-13T18:30:00Z" }
+  },
+  {
+    "_id": { "$oid": "65a2d6c9c6f2a7a4f8e3b1a2" },
+    "email": "admin@medicare.com",
+    "password": "$2a$12$YOUR_BCRYPT_HASH_HERE_FOR_password123",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "hospital_admin",
+    "phone": "9876543210",
+    "department": "Administration",
+    "isActive": true,
+    "createdAt": { "$date": "2024-01-13T18:30:00Z" },
+    "updatedAt": { "$date": "2024-01-13T18:30:00Z" }
+  },
+  {
+    "_id": { "$oid": "65a2d6c9c6f2a7a4f8e3b1a3" },
+    "email": "doctor.smith@medicare.com",
+    "password": "$2a$12$YOUR_BCRYPT_HASH_HERE_FOR_password123",
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "role": "doctor",
+    "phone": "8765432109",
+    "department": "Cardiology",
+    "isActive": true,
+    "createdAt": { "$date": "2024-01-13T18:30:00Z" },
+    "updatedAt": { "$date": "2024-01-13T18:30:00Z" }
+  },
+  {
+    "_id": { "$oid": "65a2d6c9c6f2a7a4f8e3b1a4" },
+    "email": "reception@medicare.com",
+    "password": "$2a$12$YOUR_BCRYPT_HASH_HERE_FOR_password123",
+    "firstName": "Emily",
+    "lastName": "Jones",
+    "role": "receptionist",
+    "phone": "7654321098",
+    "department": "Front Desk",
+    "isActive": true,
+    "createdAt": { "$date": "2024-01-13T18:30:00Z" },
+    "updatedAt": { "$date": "2024-01-13T18:30:00Z" }
+  },
+  {
+    "_id": { "$oid": "65a2d6c9c6f2a7a4f8e3b1a5" },
+    "email": "billing@medicare.com",
+    "password": "$2a$12$YOUR_BCRYPT_HASH_HERE_FOR_password123",
+    "firstName": "Michael",
+    "lastName": "Brown",
+    "role": "billing_staff",
+    "phone": "6543210987",
+    "department": "Finance",
+    "isActive": true,
+    "createdAt": { "$date": "2024-01-13T18:30:00Z" },
+    "updatedAt": { "$date": "2024-01-13T18:30:00Z" }
+  },
+  {
+    "_id": { "$oid": "65a2d6c9c6f2a7a4f8e3b1a6" },
+    "email": "nurse.davis@medicare.com",
+    "password": "$2a$12$YOUR_BCRYPT_HASH_HERE_FOR_password123",
+    "firstName": "Sarah",
+    "lastName": "Davis",
+    "role": "nurse",
+    "phone": "5432109876",
+    "department": "General Ward",
+    "isActive": true,
+    "createdAt": { "$date": "2024-01-13T18:30:00Z" },
+    "updatedAt": { "$date": "2024-01-13T18:30:00Z" }
+  }
+]
