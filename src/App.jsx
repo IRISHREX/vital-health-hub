@@ -9,6 +9,7 @@ import AuthorizedRoute from "./components/AuthorizedRoute";
 import Dashboard from "./pages/Dashboard";
 import Beds from "./pages/Beds";
 import Patients from "./pages/Patients";
+import Admissions from "./pages/Admissions";
 import Doctors from "./pages/Doctors";
 import Appointments from "./pages/Appointments";
 import Facilities from "./pages/Facilities";
@@ -36,6 +37,9 @@ const App = () => (
               </Route>
               <Route element={<AuthorizedRoute module="beds" />}>
                 <Route path="/beds" element={<Beds />} />
+              </Route>
+              <Route element={<AuthorizedRoute module="admissions" />}>
+                <Route path="/admissions" element={<Admissions />} />
               </Route>
               <Route element={<AuthorizedRoute module="patients" />}>
                 <Route path="/patients" element={<Patients />} />

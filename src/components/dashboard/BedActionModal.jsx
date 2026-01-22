@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +29,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { updateBed, deleteBed } from "@/lib/beds";
-import { AlertTriangle, Trash2, Loader2 } from "lucide-react";
+import { dischargePatient } from "@/lib/admissions";
+import { AlertTriangle, Trash2, Loader2, LogOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const statusOptions = [
@@ -41,9 +43,14 @@ const statusOptions = [
 ];
 
 export default function BedActionModal({ bed, isOpen, onClose }) {
-  const [mode, setMode] = useState("view"); // view, status, assign, delete
+  const [mode, setMode] = useState("view"); // view, status, assign, discharge, delete
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPatient, setSelectedPatient] = useState("");
+  const [dischargeFormData, setDischargeFormData] = useState({
+    dischargeReason: '',
+    dischargingDoctorId: '',
+    notes: '',
+  });
   const [loading, setLoading] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
@@ -95,6 +102,49 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
       toast({
         title: "Error",
         description: error.message || "Failed to delete bed",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDischargePatient = async () => {
+    if (!dischargeFormData.dischargeReason || !dischargeFormData.dischargingDoctorId) {
+      toast({
+        title: "Required Fields",
+        description: "Please fill in discharge reason and select a doctor",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const currentAdmission = bed.currentAdmission;
+      await dischargePatient(currentAdmission, {
+        dischargeReason: dischargeFormData.dischargeReason,
+        dischargingDoctorId: dischargeFormData.dischargingDoctorId,
+        notes: dischargeFormData.notes,
+      });
+
+      toast({
+        title: "Success",
+        description: `Patient has been discharged. Bed will be marked for cleaning.`,
+      });
+
+      // Reset form
+      setDischargeFormData({
+        dischargeReason: '',
+        dischargingDoctorId: '',
+        notes: '',
+      });
+      setMode("view");
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to discharge patient",
         variant: "destructive",
       });
     } finally {
@@ -238,6 +288,16 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                     Assign Patient
                   </Button>
                 )}
+                {bed.status === "occupied" && bed.currentPatient && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => setMode("discharge")}
+                    className="flex-1 gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Discharge Patient
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   size="sm"
@@ -317,6 +377,144 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                   onClick={() => setMode("view")}
                 >
                   Back
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {mode === "discharge" && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <LogOut className="h-5 w-5 text-red-600" />
+                  Discharge Patient
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6">
+                {/* Current Patient Info */}
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="pt-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Patient Name</p>
+                        <p className="text-lg font-semibold">
+                          {bed.currentPatient?.firstName} {bed.currentPatient?.lastName}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Patient ID</p>
+                        <p className="text-sm">{bed.currentPatient?.patientId}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Discharge Form */}
+                <div className="space-y-4">
+                  {/* Discharge Reason */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Discharge Reason *</label>
+                    <Select
+                      value={dischargeFormData.dischargeReason}
+                      onValueChange={(value) =>
+                        setDischargeFormData({
+                          ...dischargeFormData,
+                          dischargeReason: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select discharge reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Recovery - Fit for discharge">Recovery - Fit for discharge</SelectItem>
+                        <SelectItem value="Against medical advice">Against medical advice</SelectItem>
+                        <SelectItem value="Referred to other facility">Referred to other facility</SelectItem>
+                        <SelectItem value="Patient request">Patient request</SelectItem>
+                        <SelectItem value="Deceased">Deceased</SelectItem>
+                        <SelectItem value="Self discharge">Self discharge</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Discharging Doctor */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Discharging Doctor *</label>
+                    <Select
+                      value={dischargeFormData.dischargingDoctorId}
+                      onValueChange={(value) =>
+                        setDischargeFormData({
+                          ...dischargeFormData,
+                          dischargingDoctorId: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select discharging doctor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="current">Current Attending Doctor</SelectItem>
+                        <SelectItem value="primary">Primary Care Doctor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Discharge Notes */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Discharge Notes</label>
+                    <Textarea
+                      placeholder="Enter discharge instructions, follow-up care, medications, etc."
+                      value={dischargeFormData.notes}
+                      onChange={(e) =>
+                        setDischargeFormData({
+                          ...dischargeFormData,
+                          notes: e.target.value,
+                        })
+                      }
+                      rows={4}
+                      className="resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <Card className="bg-gray-50 border-gray-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Action Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Bed Number:</span>
+                      <span className="font-medium">{bed.bedNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Discharge Date:</span>
+                      <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-gray-600">Next Status:</span>
+                      <Badge className="bg-yellow-100 text-yellow-900">Cleaning</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setMode("view")}
+                  disabled={loading}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDischargePatient}
+                  disabled={loading || !dischargeFormData.dischargeReason || !dischargeFormData.dischargingDoctorId}
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirm Discharge
                 </Button>
               </DialogFooter>
             </>
