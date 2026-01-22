@@ -105,7 +105,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {mode === "view" && (
             <>
               <DialogHeader>

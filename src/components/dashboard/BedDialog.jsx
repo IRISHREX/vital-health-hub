@@ -228,7 +228,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {showAssignMode

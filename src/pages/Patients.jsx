@@ -96,9 +96,9 @@ export default function Patients() {
 
   const filteredPatients = patients ? patients.filter((patient) => {
     const matchesSearch =
-      `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.contactNumber.includes(searchQuery) ||
-      patient.email.toLowerCase().includes(searchQuery.toLowerCase());
+      `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (patient.contactNumber && patient.contactNumber.includes(searchQuery)) ||
+      (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesType = typeFilter === "all" || patient.registrationType === typeFilter;
     return matchesSearch && matchesType;
   }) : [];
@@ -238,7 +238,7 @@ export default function Patients() {
                       <Badge
                         variant={patient.registrationType === "ipd" ? "default" : "secondary"}
                       >
-                        {patient.registrationType}
+                        {patient.registrationType.toUpperCase()}
                       </Badge>
                     </TableCell>
                     <TableCell>

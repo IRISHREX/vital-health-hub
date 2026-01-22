@@ -120,7 +120,7 @@ export default function BedGrid({ beds, onBedSelect, loading }) {
 
                     {/* Animated rotation for cleaning */}
                     {bed.status === "cleaning" && (
-                      <div className="absolute inset-0 rounded-lg border-2 border-transparent border-t-yellow-500 border-r-yellow-500 opacity-20 animate-spin" />
+                      <div className="absolute inset-0 rounded-lg border-2 border-transparent border-t-yellow-500 border-r-yellow-500 opacity-20 " />
                     )}
 
                     {/* Content */}
