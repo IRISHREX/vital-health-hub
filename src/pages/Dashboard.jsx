@@ -51,8 +51,8 @@ export default function Dashboard() {
         setStats({
           totalBeds: bedsData.data.beds.length,
           availableBeds: bedsData.data.beds.filter((b) => b.status === "available").length,
-          admittedPatients: patientsData.data.patients.filter((p) => p.type === "IPD").length,
-          availableDoctors: doctorsData.data.doctors.filter((d) => d.isAvailable).length,
+          admittedPatients: patientsData.data.patients.filter((p) => p.registrationType === "ipd").length,
+          availableDoctors: doctorsData.data.doctors.filter((d) => d.availabilityStatus).length,
           pendingBills: 12,
           todayAppointments: todayAppointments.length,
           todayDischarges: 5,

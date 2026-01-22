@@ -54,12 +54,12 @@ export function QuickActions() {
           <Button
             key={action.label}
             variant={action.variant}
-            className="h-auto flex-col gap-2 py-4"
+            className="h-auto flex-col gap-2 py-4 "
             asChild
           >
             <Link to={action.href}>
               <action.icon className="h-5 w-5" />
-              <span className="text-xs">{action.label}</span>
+              <span className="text-xs text-wrap text-center">{action.label}</span>
             </Link>
           </Button>
         ))}

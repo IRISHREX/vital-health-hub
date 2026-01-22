@@ -58,7 +58,7 @@ export function Header() {
               <Bell className="h-5 w-5" />
               <Badge
                 variant="destructive"
-                className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px]"
+                className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px] justify-center flex items-center"
               >
                 3
               </Badge>

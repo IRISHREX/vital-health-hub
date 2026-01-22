@@ -144,10 +144,6 @@ export default function BedGrid({ beds, onBedSelect, loading }) {
               />
             </button>
 
-                    {/* Animated rotation for cleaning */}
-                    {bed.status === "cleaning" && (
-                      <div className="absolute inset-0 rounded-lg border-2 border-transparent border-t-yellow-500 border-r-yellow-500 opacity-20 " />
-                    )}
             {/* Floor Content */}
             {expandedFloors[floor] && (
               <div className="bg-white space-y-2 p-4">
