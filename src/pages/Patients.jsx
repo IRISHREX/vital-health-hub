@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "lucide-react";
 import PatientDialog from "@/components/dashboard/PatientDialog";
+import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
 
 export default function Patients() {
   const { user } = useAuth();
@@ -41,6 +42,8 @@ export default function Patients() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [dialogMode, setDialogMode] = useState("create");
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedViewPatient, setSelectedViewPatient] = useState(null);
 
   const openCreateDialog = () => {
     setSelectedPatient(null);
@@ -52,6 +55,11 @@ export default function Patients() {
     setSelectedPatient(patient);
     setDialogMode("edit");
     setDialogOpen(true);
+  };
+
+  const openViewDialog = (patient) => {
+    setSelectedViewPatient(patient);
+    setViewDialogOpen(true);
   };
 
   const handleDialogClose = () => {
@@ -136,6 +144,12 @@ export default function Patients() {
         onClose={handleDialogClose}
         patient={selectedPatient}
         mode={dialogMode}
+      />
+
+      <ViewPatientDialog
+        isOpen={viewDialogOpen}
+        onClose={() => setViewDialogOpen(false)}
+        patient={selectedViewPatient}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -236,7 +250,7 @@ export default function Patients() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={patient.registrationType === "ipd" ? "default" : "secondary"}
+                        variant={patient.registrationType === "ipd" ? "default" : patient.registrationType === 'emergency' ? 'destructive' : "secondary"}
                       >
                         {patient.registrationType.toUpperCase()}
                       </Badge>
@@ -258,7 +272,7 @@ export default function Patients() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="View Details">
+                        <Button variant="ghost" size="icon" title="View Details" onClick={() => openViewDialog(patient)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         {permissions.canEdit && (
@@ -271,7 +285,7 @@ export default function Patients() {
                             variant="ghost" 
                             size="icon" 
                             title="Delete"
-                            className="text-destructive hover:text-destructive"
+                            className="text-destructive hover:bg-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

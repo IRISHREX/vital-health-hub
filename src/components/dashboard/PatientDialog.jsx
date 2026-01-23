@@ -529,7 +529,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                         <SelectContent>
                           {beds.map((bed) => (
                             <SelectItem key={bed._id} value={bed._id}>
-                              {bed.bedNumber} - {bed.ward} ({bed.bedType})
+                              {bed.bedNumber} - {bed.ward} ({bed.bedType}) {"F"+bed.floor} ({"₹"+bed.pricePerDay+"/day"})
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -39,11 +39,12 @@ const patientSchema = new mongoose.Schema({
     enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
   },
   address: {
-    street: String,
-    city: String,
-    state: String,
-    zipCode: String,
-    country: { type: String, default: 'India' }
+    type: String,
+    // street: String,
+    // city: String,
+    // state: String,
+    // zipCode: String,
+    // country: { type: String, default: 'India' }
   },
   emergencyContact: {
     name: String,

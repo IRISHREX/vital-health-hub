@@ -132,7 +132,7 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Add New Doctor" : "Edit Doctor"}</DialogTitle>
           <DialogDescription>

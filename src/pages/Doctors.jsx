@@ -306,7 +306,7 @@ export default function Doctors() {
                     variant="ghost" 
                     size="icon" 
                     title="Delete"
-                    className="text-destructive hover:text-destructive"
+                    className="text-destructive hover:bg-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
