@@ -27,6 +27,7 @@ import {
   Trash2,
 } from "lucide-react";
 import DoctorDialog from "@/components/dashboard/DoctorDialog";
+import ViewDoctorDialog from "@/components/dashboard/ViewDoctorDialog";
 import { updateAvailability } from "@/lib/doctors";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -55,6 +56,8 @@ export default function Doctors() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [dialogMode, setDialogMode] = useState("create");
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedViewDoctor, setSelectedViewDoctor] = useState(null);
 
   const availabilityMutation = useMutation({
     mutationFn: (data) =>
@@ -84,6 +87,11 @@ export default function Doctors() {
     setSelectedDoctor(doctor);
     setDialogMode("edit");
     setDialogOpen(true);
+  };
+
+  const openViewDialog = (doctor) => {
+    setSelectedViewDoctor(doctor);
+    setViewDialogOpen(true);
   };
 
   const handleDialogClose = () => {
@@ -154,6 +162,12 @@ export default function Doctors() {
         onClose={handleDialogClose}
         doctor={selectedDoctor}
         mode={dialogMode}
+      />
+
+      <ViewDoctorDialog
+        isOpen={viewDialogOpen}
+        onClose={() => setViewDialogOpen(false)}
+        doctor={selectedViewDoctor}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -291,7 +305,7 @@ export default function Doctors() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                  <Button variant="ghost" size="icon" title="View Details">
+                  <Button variant="ghost" size="icon" title="View Details" onClick={() => openViewDialog(doctor)}>
                     <Eye className="h-4 w-4" />
                   </Button>
                   <Button

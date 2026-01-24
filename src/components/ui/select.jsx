@@ -60,6 +60,11 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
         className,
       )}
       position={position}
+      side="bottom"
+      sideOffset={4}
+      align="start"
+      avoidCollisions={true}
+      collisionPadding={20}
       {...props}
     >
       <SelectScrollUpButton />
@@ -67,7 +72,7 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
         className={cn(
           "p-1",
           position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] max-h-[min(24rem,var(--radix-select-content-available-height))]",
         )}
       >
         {children}
