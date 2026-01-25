@@ -9,6 +9,7 @@ const noAccess = { canView: false, canCreate: false, canEdit: false, canDelete: 
 export const rolePermissions = {
   super_admin: {
     dashboard: fullAccess,
+    departments: fullAccess,
     beds: fullAccess,
     admissions: fullAccess,
     patients: fullAccess,
@@ -22,6 +23,7 @@ export const rolePermissions = {
   },
   hospital_admin: {
     dashboard: fullAccess,
+    departments: fullAccess,
     beds: fullAccess,
     admissions: fullAccess,
     patients: fullAccess,
@@ -35,6 +37,7 @@ export const rolePermissions = {
   },
   doctor: {
     dashboard: viewOnly,
+    departments: viewOnly,
     beds: viewOnly,
     admissions: viewAndEdit,
     patients: viewAndEdit,
@@ -48,6 +51,7 @@ export const rolePermissions = {
   },
   nurse: {
     dashboard: viewOnly,
+    departments: viewOnly,
     beds: viewAndEdit,
     admissions: viewAndEdit,
     patients: viewAndEdit,
@@ -61,6 +65,7 @@ export const rolePermissions = {
   },
   receptionist: {
     dashboard: viewOnly,
+    departments: viewOnly,
     beds: viewOnly,
     admissions: viewAndCreate,
     patients: viewAndCreate,
@@ -74,6 +79,7 @@ export const rolePermissions = {
   },
   billing_staff: {
     dashboard: viewOnly,
+    departments: viewOnly,
     beds: noAccess,
     admissions: viewOnly,
     patients: viewOnly,

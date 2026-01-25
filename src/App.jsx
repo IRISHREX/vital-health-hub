@@ -19,6 +19,7 @@ import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import Departments from "./pages/Departments";
 
 const queryClient = new QueryClient();
 
@@ -31,9 +32,12 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route element={<AuthorizedRoute module="departments" />}>
+              <Route path="/" element={<Departments />} />
+            </Route>
             <Route element={<DashboardLayout />}>
               <Route element={<AuthorizedRoute module="dashboard" />}>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
               </Route>
               <Route element={<AuthorizedRoute module="beds" />}>
                 <Route path="/beds" element={<Beds />} />
