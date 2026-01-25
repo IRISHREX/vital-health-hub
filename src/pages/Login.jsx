@@ -6,6 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const roles = ["Super Admin", "Admin", "Doctor", "Management"];
 
 export default function Login() {
   const navigate = useNavigate();
@@ -28,6 +37,8 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  const [selectedRole, setSelectedRole] = useState("");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
@@ -59,6 +70,20 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
               />
+            </div>
+            <div className="space-y-2">
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role)=>(
+                    <SelectItem value={role} key={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
