@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { Bell, Search, User, LogOut, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -15,11 +15,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/AuthContext";
+import { useTheme } from "@/lib/ThemeContext";
 import { getNotifications, markAsRead } from "@/lib/notifications";
 
 export function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme, resolvedTheme } = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -102,6 +104,21 @@ export function Header() {
           </span>
           <span className="text-xs font-medium text-status-available">Live</span>
         </div>
+
+        {/* Theme Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="text-muted-foreground hover:text-foreground"
+          title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {resolvedTheme === 'dark' ? (
+            <Sun className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
+        </Button>
 
         {/* Notifications */}
         <DropdownMenu>
