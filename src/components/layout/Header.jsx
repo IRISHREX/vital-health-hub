@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,19 +15,70 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/AuthContext";
+import { getNotifications, markAsRead } from "@/lib/notifications";
 
 export function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await getNotifications({ limit: 5, isRead: false });
+        setNotifications(response.data?.notifications || []);
+        setUnreadCount(response.data?.unreadCount || 0);
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      }
+    };
+
+    if (user) {
+      fetchNotifications();
+      // Poll every 30 seconds for new notifications
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
+  const handleNotificationClick = async (notification) => {
+    try {
+      if (!notification.isRead) {
+        await markAsRead(notification._id);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notification._id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
+  };
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  };
+
   const userInitials = user?.fullName
     ? user.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "SA";
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-6 shadow-sm">
       <div className="flex items-center gap-4">
@@ -56,37 +108,61 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <Badge
-                variant="destructive"
-                className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px] justify-center flex items-center"
-              >
-                3
-              </Badge>
+              {unreadCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px] justify-center flex items-center"
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuLabel className="flex items-center justify-between">
+              <span>Notifications</span>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                onClick={() => navigate("/notifications")}
+              >
+                View All
+              </Button>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">ICU Bed Available</span>
-              <span className="text-sm text-muted-foreground">
-                ICU-002 is now available for admission
-              </span>
-              <span className="text-xs text-muted-foreground">2 min ago</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Pending Bill Alert</span>
-              <span className="text-sm text-muted-foreground">
-                3 invoices pending for more than 7 days
-              </span>
-              <span className="text-xs text-muted-foreground">1 hour ago</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Discharge Reminder</span>
-              <span className="text-sm text-muted-foreground">
-                Patient Rajesh Kumar scheduled for discharge
-              </span>
-              <span className="text-xs text-muted-foreground">3 hours ago</span>
+            {notifications.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                No new notifications
+              </div>
+            ) : (
+              notifications.slice(0, 5).map((notification) => (
+                <DropdownMenuItem
+                  key={notification._id}
+                  className="flex flex-col items-start gap-1 py-3 cursor-pointer"
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="font-medium flex-1">{notification.title}</span>
+                    {!notification.isRead && (
+                      <span className="h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <span className="text-sm text-muted-foreground line-clamp-2">
+                    {notification.message}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatTimeAgo(notification.createdAt)}
+                  </span>
+                </DropdownMenuItem>
+              ))
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="justify-center text-primary"
+              onClick={() => navigate("/notifications")}
+            >
+              See all notifications
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

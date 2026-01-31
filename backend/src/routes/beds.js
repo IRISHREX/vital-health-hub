@@ -5,6 +5,9 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { body } = require('express-validator');
 const validate = require('../middleware/validate');
 
+// Stats route (must be before :id route)
+router.get('/stats', authenticate, bedController.getBedStats);
+
 router.post('/', [
   authenticate,
   authorize('hospital_admin', 'super_admin'),
@@ -15,9 +18,13 @@ router.post('/', [
   body('pricePerDay').isFloat({ min: 0 }).withMessage('Price per day must be a positive number'),
   validate
 ], bedController.createBed);
+
 router.get('/', authenticate, bedController.getBeds);
 router.get('/:id', authenticate, bedController.getBed);
 router.put('/:id', authenticate, authorize('hospital_admin', 'super_admin'), bedController.updateBed);
+router.patch('/:id/status', authenticate, bedController.updateBedStatus);
+router.post('/:id/assign', authenticate, bedController.assignBed);
+router.post('/:id/release', authenticate, bedController.releaseBed);
 router.delete('/:id', authenticate, authorize('hospital_admin', 'super_admin'), bedController.deleteBed);
 
 module.exports = router;

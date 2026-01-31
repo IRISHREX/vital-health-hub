@@ -1,8 +1,19 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import {
+  getNotifications,
+  getNotificationStats,
+  markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  clearReadNotifications,
+} from "@/lib/notifications";
 import {
   Bell,
   Bed,
@@ -10,73 +21,218 @@ import {
   Receipt,
   Users,
   AlertTriangle,
-  CheckCircle2,
   Clock,
   Settings,
+  Trash2,
+  CheckCircle2,
+  RefreshCw,
+  LogOut,
+  CreditCard,
+  Info,
+  AlertCircle,
 } from "lucide-react";
 
-const notifications = [
-  {
-    id: 1,
-    type: "bed",
-    title: "ICU Bed Available",
-    message: "ICU-002 is now available for admission",
-    time: "2 minutes ago",
-    read: false,
-    icon: Bed,
-    priority: "high",
-  },
-  {
-    id: 2,
-    type: "billing",
-    title: "Pending Bill Alert",
-    message: "3 invoices pending for more than 7 days",
-    time: "1 hour ago",
-    read: false,
-    icon: Receipt,
-    priority: "medium",
-  },
-  {
-    id: 3,
-    type: "discharge",
-    title: "Discharge Reminder",
-    message: "Patient Rajesh Kumar scheduled for discharge today",
-    time: "3 hours ago",
-    read: true,
-    icon: Users,
-    priority: "normal",
-  },
-  {
-    id: 4,
-    type: "appointment",
-    title: "Appointment Reminder",
-    message: "Dr. Anil Kapoor has 3 appointments in the next hour",
-    time: "30 minutes ago",
-    read: false,
-    icon: Calendar,
-    priority: "normal",
-  },
-  {
-    id: 5,
-    type: "emergency",
-    title: "Emergency Bed Shortage",
-    message: "Only 1 emergency bed remaining - consider discharges",
-    time: "45 minutes ago",
-    read: false,
-    icon: AlertTriangle,
-    priority: "critical",
-  },
-];
+// Icon mapping based on notification type
+const typeIcons = {
+  bed_available: Bed,
+  bed_assigned: Bed,
+  bed_released: Bed,
+  patient_admitted: Users,
+  patient_discharged: LogOut,
+  appointment_scheduled: Calendar,
+  appointment_reminder: Calendar,
+  appointment_cancelled: Calendar,
+  invoice_generated: Receipt,
+  payment_received: CreditCard,
+  payment_overdue: AlertTriangle,
+  schedule_update: Clock,
+  leave_approved: CheckCircle2,
+  system: Info,
+  alert: AlertCircle,
+  info: Info,
+};
 
 const priorityColors = {
-  critical: "text-status-occupied bg-status-occupied/10",
+  urgent: "text-status-occupied bg-status-occupied/10",
   high: "text-status-cleaning bg-status-cleaning/10",
   medium: "text-primary bg-primary/10",
-  normal: "text-muted-foreground bg-muted",
+  low: "text-muted-foreground bg-muted",
+};
+
+const priorityBadgeVariants = {
+  urgent: "destructive",
+  high: "secondary",
+  medium: "default",
+  low: "outline",
 };
 
 export default function Notifications() {
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const [notifications, setNotifications] = useState([]);
+  const [stats, setStats] = useState({
+    unreadCount: 0,
+    todayCount: 0,
+    criticalCount: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { toast } = useToast();
+
+  // Notification preferences (stored in backend via settings)
+  const [preferences, setPreferences] = useState({
+    bedAvailability: true,
+    billingAlerts: true,
+    dischargeReminders: true,
+    doctorSchedule: true,
+    emergencyAlerts: true,
+    emailNotifications: false,
+  });
+
+  const fetchData = async () => {
+    try {
+      const [notifResponse, statsResponse] = await Promise.all([
+        getNotifications({ limit: 50 }),
+        getNotificationStats(),
+      ]);
+
+      setNotifications(notifResponse.data.notifications || []);
+      setStats(statsResponse.data || {});
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
+      setStats((prev) => ({
+        ...prev,
+        unreadCount: Math.max(0, prev.unreadCount - 1),
+      }));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to mark as read",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setStats((prev) => ({ ...prev, unreadCount: 0 }));
+      toast({
+        title: "Success",
+        description: "All notifications marked as read",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to mark all as read",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteNotification(id);
+      const notification = notifications.find((n) => n._id === id);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      if (!notification?.isRead) {
+        setStats((prev) => ({
+          ...prev,
+          unreadCount: Math.max(0, prev.unreadCount - 1),
+        }));
+      }
+      toast({
+        title: "Deleted",
+        description: "Notification removed",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete notification",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClearRead = async () => {
+    try {
+      await clearReadNotifications();
+      setNotifications((prev) => prev.filter((n) => !n.isRead));
+      toast({
+        title: "Cleared",
+        description: "Read notifications cleared",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear read notifications",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="mt-2 h-4 w-64" />
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -90,9 +246,20 @@ export default function Notifications() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Mark All as Read</Button>
-          <Button variant="outline" size="icon">
-            <Settings className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          </Button>
+          <Button variant="outline" onClick={handleMarkAllAsRead}>
+            Mark All as Read
+          </Button>
+          <Button variant="outline" onClick={handleClearRead}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear Read
           </Button>
         </div>
       </div>
@@ -102,58 +269,94 @@ export default function Notifications() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
               Recent Notifications
-              {unreadCount > 0 && (
+              {stats.unreadCount > 0 && (
                 <Badge variant="default" className="ml-2">
-                  {unreadCount} new
+                  {stats.unreadCount} new
                 </Badge>
               )}
             </h2>
           </div>
 
-          <div className="space-y-3">
-            {notifications.map((notification) => {
-              const Icon = notification.icon;
-              return (
-                <Card
-                  key={notification.id}
-                  className={`transition-all hover:shadow-md ${
-                    !notification.read ? "border-l-4 border-l-primary" : ""
-                  }`}
-                >
-                  <CardContent className="flex items-start gap-4 p-4">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        priorityColors[notification.priority]
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-medium text-foreground">
-                            {notification.title}
-                          </h3>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {notification.message}
-                          </p>
+          {notifications.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Bell className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No notifications yet</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((notification) => {
+                const Icon = typeIcons[notification.type] || Bell;
+                return (
+                  <Card
+                    key={notification._id}
+                    className={`transition-all hover:shadow-md cursor-pointer ${
+                      !notification.isRead ? "border-l-4 border-l-primary" : ""
+                    }`}
+                    onClick={() =>
+                      !notification.isRead && handleMarkAsRead(notification._id)
+                    }
+                  >
+                    <CardContent className="flex items-start gap-4 p-4">
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                          priorityColors[notification.priority] || priorityColors.medium
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium text-foreground">
+                                {notification.title}
+                              </h3>
+                              <Badge
+                                variant={
+                                  priorityBadgeVariants[notification.priority] ||
+                                  "default"
+                                }
+                                className="text-xs"
+                              >
+                                {notification.priority}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {notification.message}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!notification.isRead && (
+                              <div className="h-2 w-2 rounded-full bg-primary" />
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(notification._id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            </Button>
+                          </div>
                         </div>
-                        {!notification.read && (
-                          <div className="h-2 w-2 rounded-full bg-primary" />
-                        )}
+                        <div className="mt-2 flex items-center gap-2">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {formatTimeAgo(notification.createdAt)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {notification.time}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -172,7 +375,12 @@ export default function Notifications() {
                     Alerts when beds become available
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={preferences.bedAvailability}
+                  onCheckedChange={(v) =>
+                    setPreferences({ ...preferences, bedAvailability: v })
+                  }
+                />
               </div>
 
               <div className="flex items-center justify-between">
@@ -182,7 +390,12 @@ export default function Notifications() {
                     Pending payment reminders
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={preferences.billingAlerts}
+                  onCheckedChange={(v) =>
+                    setPreferences({ ...preferences, billingAlerts: v })
+                  }
+                />
               </div>
 
               <div className="flex items-center justify-between">
@@ -192,7 +405,12 @@ export default function Notifications() {
                     Patient discharge notifications
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={preferences.dischargeReminders}
+                  onCheckedChange={(v) =>
+                    setPreferences({ ...preferences, dischargeReminders: v })
+                  }
+                />
               </div>
 
               <div className="flex items-center justify-between">
@@ -202,7 +420,12 @@ export default function Notifications() {
                     Schedule change alerts
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={preferences.doctorSchedule}
+                  onCheckedChange={(v) =>
+                    setPreferences({ ...preferences, doctorSchedule: v })
+                  }
+                />
               </div>
 
               <div className="flex items-center justify-between">
@@ -212,7 +435,12 @@ export default function Notifications() {
                     Critical system notifications
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={preferences.emergencyAlerts}
+                  onCheckedChange={(v) =>
+                    setPreferences({ ...preferences, emergencyAlerts: v })
+                  }
+                />
               </div>
 
               <div className="flex items-center justify-between">
@@ -222,7 +450,12 @@ export default function Notifications() {
                     Receive alerts via email
                   </p>
                 </div>
-                <Switch />
+                <Switch
+                  checked={preferences.emailNotifications}
+                  onCheckedChange={(v) =>
+                    setPreferences({ ...preferences, emailNotifications: v })
+                  }
+                />
               </div>
             </CardContent>
           </Card>
@@ -236,19 +469,17 @@ export default function Notifications() {
                 <span className="text-sm text-muted-foreground">
                   Total notifications today
                 </span>
-                <span className="font-medium">12</span>
+                <span className="font-medium">{stats.todayCount || 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
                   Critical alerts
                 </span>
-                <Badge variant="destructive">1</Badge>
+                <Badge variant="destructive">{stats.criticalCount || 0}</Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Unread
-                </span>
-                <Badge>{unreadCount}</Badge>
+                <span className="text-sm text-muted-foreground">Unread</span>
+                <Badge>{stats.unreadCount || 0}</Badge>
               </div>
             </CardContent>
           </Card>
