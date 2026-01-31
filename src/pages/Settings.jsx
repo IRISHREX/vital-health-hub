@@ -24,6 +24,9 @@ import {
   Loader2,
   User,
   Camera,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,10 +38,12 @@ import {
 } from "@/lib/settings";
 import { updateProfile } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
+import { useTheme } from "@/lib/ThemeContext";
 import { setUser as setStoredUser } from "@/lib/api-client";
 
 export default function Settings() {
   const { user, logout } = useAuth();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -385,6 +390,70 @@ export default function Settings() {
                       setProfile((prev) => ({ ...prev, phone: e.target.value }))
                     }
                   />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Theme Selection */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium">Appearance</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Customize how the dashboard looks
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:bg-accent ${
+                      theme === 'light' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                      <Sun className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <span className="text-sm font-medium">Light</span>
+                    {theme === 'light' && (
+                      <span className="text-xs text-primary">Active</span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:bg-accent ${
+                      theme === 'dark' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800">
+                      <Moon className="h-5 w-5 text-slate-200" />
+                    </div>
+                    <span className="text-sm font-medium">Dark</span>
+                    {theme === 'dark' && (
+                      <span className="text-xs text-primary">Active</span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTheme('system')}
+                    className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:bg-accent ${
+                      theme === 'system' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-100 to-slate-800">
+                      <Monitor className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">System</span>
+                    {theme === 'system' && (
+                      <span className="text-xs text-primary">
+                        Active ({resolvedTheme})
+                      </span>
+                    )}
+                  </button>
                 </div>
               </div>
 
