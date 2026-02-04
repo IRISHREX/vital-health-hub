@@ -44,9 +44,9 @@ export default function NurseDashboard() {
           (nurseIdToQuery && (['super_admin','hospital_admin','doctor'].includes(user?.role))) ? getTasks({ assignedTo: nurseIdToQuery }) : getMyTasks(),
         ]);
 
-        setStats(dashRes.data.data || {});
-        setPatients(patientsRes.data.data || []);
-        setAppointments(appointmentsRes.data.data || []);
+        setStats(dashRes.data || {});
+        setPatients(patientsRes.data || []);
+        setAppointments(appointmentsRes.data || []);
 
         // Normalize tasks response
         const tasks = tasksRes?.data?.tasks || tasksRes?.data || tasksRes?.data?.length ? (tasksRes.data.tasks || tasksRes.data) : [];

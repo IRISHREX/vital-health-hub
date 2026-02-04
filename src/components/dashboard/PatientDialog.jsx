@@ -66,6 +66,8 @@ const patientSchema = z.object({
   medicalHistory: z.string().optional(),
   assignedDoctor: z.string().optional(),
   assignedBed: z.string().optional(),
+  assignedNurses: z.array(z.string()).optional(),
+  primaryNurse: z.string().nullable().optional(),
 });
 
 export default function PatientDialog({ isOpen, onClose, patient, mode }) {
@@ -161,6 +163,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         medicalHistory: "",
         assignedDoctor: "",
         assignedBed: "",
+        assignedNurses: [],
+        primaryNurse: "",
       });
     }
   }, [patient?._id, mode]);
@@ -243,6 +247,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
           primaryNurse: data.primaryNurse || null
         };
 
+        console.info('[PatientDialog] nurse update payload', payload);
         return await updatePatient(patient._id, payload);
       }
 
@@ -260,6 +265,11 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         medicalHistory,
         assignedDoctor: data.assignedDoctor || null,
         assignedBed: data.assignedBed || null,
+        assignedNurses: data.assignedNurses && data.assignedNurses.length ? data.assignedNurses : [],
+        primaryNurse: data.primaryNurse || null
+      });
+
+      console.info('[PatientDialog] update payload', {
         assignedNurses: data.assignedNurses && data.assignedNurses.length ? data.assignedNurses : [],
         primaryNurse: data.primaryNurse || null
       });
@@ -287,6 +297,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Patient updated successfully." });
+      toast({ title: "Debug", description: "Patient update sent. Check console for payload.", duration: 2500 });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();

@@ -13,7 +13,7 @@ export default function NursePatients() {
       try {
         setLoading(true);
         const res = await getAssignedPatients();
-        setPatients(res.data.data || []);
+        setPatients(res.data || []);
       } catch (err) {
         console.error(err);
       } finally {

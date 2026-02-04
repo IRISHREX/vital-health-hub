@@ -281,14 +281,20 @@ exports.updatePatient = async (req, res, next) => {
       }
 
       const updatePayload = {};
-      if (req.body.assignedNurses) updatePayload.assignedNurses = req.body.assignedNurses;
-      if (req.body.primaryNurse) updatePayload.primaryNurse = req.body.primaryNurse;
+      if (req.body.assignedNurses !== undefined) updatePayload.assignedNurses = req.body.assignedNurses;
+      if (req.body.primaryNurse !== undefined) updatePayload.primaryNurse = req.body.primaryNurse;
 
       const updatedPatient = await Patient.findByIdAndUpdate(
         req.params.id,
         updatePayload,
         { new: true, runValidators: true }
       ).populate('assignedNurses', 'firstName lastName email').populate('primaryNurse', 'firstName lastName email');
+
+      console.log('[NH_patientController] nurse assignment update', {
+        patientId: req.params.id,
+        assignedNurses: updatePayload.assignedNurses,
+        primaryNurse: updatePayload.primaryNurse
+      });
 
       return res.json({
         success: true,
@@ -301,14 +307,22 @@ exports.updatePatient = async (req, res, next) => {
     const updatePayload = {
       ...req.body
     };
-    if (req.body.assignedNurses) updatePayload.assignedNurses = req.body.assignedNurses;
-    if (req.body.primaryNurse) updatePayload.primaryNurse = req.body.primaryNurse;
+    if (req.body.assignedNurses !== undefined) updatePayload.assignedNurses = req.body.assignedNurses;
+    if (req.body.primaryNurse !== undefined) updatePayload.primaryNurse = req.body.primaryNurse;
 
     const updatedPatient = await Patient.findByIdAndUpdate(
       req.params.id,
       updatePayload,
       { new: true, runValidators: true }
     );
+
+    if (updatePayload.assignedNurses !== undefined || updatePayload.primaryNurse !== undefined) {
+      console.log('[NH_patientController] assignment update', {
+        patientId: req.params.id,
+        assignedNurses: updatePayload.assignedNurses,
+        primaryNurse: updatePayload.primaryNurse
+      });
+    }
 
     res.json({
       success: true,

@@ -65,11 +65,13 @@ export default function Patients() {
   const handleDialogClose = () => {
     setDialogOpen(false);
     setSelectedPatient(null);
+    console.info("[Patients] dialog closed - refetching patients");
     fetchData();
   };
 
   const fetchData = async () => {
     try {
+      console.info("[Patients] fetching patients/doctors/beds");
       setLoading(true);
       const [patientsData, doctorsData, bedsData] = await Promise.all([
         getPatients(),
