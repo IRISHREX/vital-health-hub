@@ -131,8 +131,14 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
     }
   };
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

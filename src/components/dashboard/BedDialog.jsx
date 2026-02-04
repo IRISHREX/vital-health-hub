@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createBed, updateBed } from "@/lib/beds";
 import { getPatients } from "@/lib/patients";
+import { getNurses } from "@/lib/users";
 import { createInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -70,6 +71,12 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
   const patients = patientsData?.data?.patients || [];
   const availablePatients = patients.filter((p) => !p.assignedBed);
 
+  const { data: nursesData } = useQuery({
+    queryKey: ["nurses"],
+    queryFn: () => getNurses(),
+  });
+  const nurses = nursesData?.data?.users || [];
+
   const form = useForm({
     resolver: zodResolver(bedSchema),
     defaultValues: {
@@ -82,6 +89,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       roomNumber: "",
       amenities: [],
       notes: "",
+      nurseInCharge: "none",
     },
   });
 
@@ -97,6 +105,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
         roomNumber: bed.roomNumber || "",
         amenities: bed.amenities || [],
         notes: bed.notes || "",
+        nurseInCharge: bed?.nurseInCharge?._id || 'none',
       });
       if (assignMode) {
         setShowAssignMode(true);
@@ -112,13 +121,18 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
         roomNumber: "",
         amenities: [],
         notes: "",
+        nurseInCharge: "none",
       });
       setShowAssignMode(false);
     }
-  }, [bed, mode, form, assignMode]);
+  }, [bed?._id, mode, assignMode]);
 
   const createMutation = useMutation({
-    mutationFn: createBed,
+    mutationFn: (values) => {
+      const payload = { ...values };
+      if (payload.nurseInCharge === 'none') payload.nurseInCharge = null;
+      return createBed(payload);
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Bed added successfully." });
       queryClient.invalidateQueries({ queryKey: ["beds"] });
@@ -130,7 +144,11 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => updateBed(bed._id, data),
+    mutationFn: (data) => {
+      const payload = { ...data };
+      if (payload.nurseInCharge === 'none') payload.nurseInCharge = null;
+      return updateBed(bed._id, payload);
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Bed updated successfully." });
       queryClient.invalidateQueries({ queryKey: ["beds"] });
@@ -212,6 +230,12 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
     onClose();
   };
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      handleClose();
+    }
+  };
+
   const handleAssignPatient = () => {
     if (!selectedPatient) {
       toast({
@@ -227,7 +251,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
   const isLoading = createMutation.isPending || updateMutation.isPending || assignPatientMutation.isPending;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -324,7 +348,31 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
                     </FormItem>
                   )}
                 />
-
+                <FormField
+                  control={form.control}
+                  name="nurseInCharge"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nurse In Charge (Optional)</FormLabel>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select nurse" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {nurses.map((n) => (
+                              <SelectItem key={n._id} value={n._id}>{n.firstName} {n.lastName}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}

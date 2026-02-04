@@ -6,6 +6,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createPatient, updatePatient } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
+import { getNurses } from "@/lib/users";
 import { createInvoice, getInvoices, updateInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/AuthContext";
@@ -26,7 +27,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Select,
   SelectContent,
@@ -35,7 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
 const patientSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(50),
@@ -72,9 +83,17 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     queryFn: getBeds,
   });
 
+  const { data: nursesData } = useQuery({
+    queryKey: ["nurses"],
+    queryFn: () => getNurses()
+  });
+
   const doctors = doctorsData?.data?.doctors || [];
   const beds = (bedsData?.data?.beds || []).filter((b) => b.status === "available");
+  const nurses = nursesData?.data?.users || [];
+  const nursesById = new Map(nurses.map((n) => [n._id || n.id, n]));
 
+  // Add nurse fields to form defaultValues
   const form = useForm({
     resolver: zodResolver(patientSchema),
     defaultValues: {
@@ -95,10 +114,16 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
       medicalHistory: "",
       assignedDoctor: "",
       assignedBed: "",
+      // new nurse fields
+      assignedNurses: [],
+      primaryNurse: ""
     },
   });
 
   useEffect(() => {
+    // Reset form values only when the selected patient (by id) or mode actually changes.
+    // Using `patient?._id` avoids resetting on every render when the parent passes a new
+    // object reference but the patient identity hasn't changed.
     if (patient && mode === "edit") {
       form.reset({
         firstName: patient.firstName || "",
@@ -114,6 +139,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         medicalHistory: patient.medicalHistory?.[0]?.condition || "",
         assignedDoctor: patient.assignedDoctor || "",
         assignedBed: patient.assignedBed || "",
+        assignedNurses: (patient.assignedNurses || []).map(n => n._id || n),
+        primaryNurse: patient.primaryNurse?._id || patient.primaryNurse || "",
       });
     } else {
       form.reset({
@@ -136,7 +163,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         assignedBed: "",
       });
     }
-  }, [patient, mode, form]);
+  }, [patient?._id, mode]);
 
   const createMutation = useMutation({
     mutationFn: async (values) => {
@@ -158,6 +185,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         medicalHistory,
         assignedDoctor: values.assignedDoctor || null,
         assignedBed: values.assignedBed || null,
+        assignedNurses: values.assignedNurses && values.assignedNurses.length ? values.assignedNurses : [],
+        primaryNurse: values.primaryNurse || null,
       });
 
       if (patientData?.data?._id || patientData?._id) {
@@ -190,12 +219,33 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
   });
 
+  const canEditAssignments = () => {
+    if (user?.role !== 'nurse') return true;
+    const bedId = form.getValues('assignedBed') || patient?.assignedBed;
+    const bed = (bedsData?.data?.beds || []).find((b) => b._id === bedId);
+    return !!(bed && (bed.nurseInCharge?._id === user._id || bed.nurseInCharge === user._id));
+  };
+
   const updateMutation = useMutation({
     mutationFn: async (data) => {
       const medicalHistory = data.medicalHistory 
         ? [{ condition: data.medicalHistory, diagnosedDate: new Date() }]
         : [];
-      
+
+      // If a nurse is making the update, restrict payload and ensure bed ownership
+      if (user?.role === 'nurse') {
+        if (!canEditAssignments()) {
+          throw new Error('Unauthorized: you are not the nurse in charge of the bed for this patient');
+        }
+
+        const payload = {
+          assignedNurses: data.assignedNurses && data.assignedNurses.length ? data.assignedNurses : [],
+          primaryNurse: data.primaryNurse || null
+        };
+
+        return await updatePatient(patient._id, payload);
+      }
+
       const updatedPatient = await updatePatient(patient._id, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -210,6 +260,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         medicalHistory,
         assignedDoctor: data.assignedDoctor || null,
         assignedBed: data.assignedBed || null,
+        assignedNurses: data.assignedNurses && data.assignedNurses.length ? data.assignedNurses : [],
+        primaryNurse: data.primaryNurse || null
       });
 
       if (data.assignedDoctor || data.assignedBed) {
@@ -253,14 +305,19 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
   };
 
   const handleClose = () => {
-    form.reset();
     onClose();
   };
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      handleClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Register New Patient" : "Edit Patient"}</DialogTitle>
@@ -539,13 +596,118 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                   )}
                 />
               )}
+
+              {/* Nurse assignment controls */}
+              <FormField
+                control={form.control}
+                name="assignedNurses"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>Assign Nurses</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          {(field.value || []).length > 0
+                            ? `${(field.value || []).length} nurse${(field.value || []).length > 1 ? "s" : ""} selected`
+                            : "Select nurses"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 w-full" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search nurses..." />
+                          <CommandList className="max-h-64">
+                            <CommandEmpty>No nurses found.</CommandEmpty>
+                            <CommandGroup>
+                              {nurses.map((n) => {
+                                const id = n._id || n.id;
+                                const checked = (field.value || []).includes(id);
+                                return (
+                                  <CommandItem
+                                    key={id}
+                                    value={`${n.firstName || ""} ${n.lastName || ""}`.trim() || id}
+                                    onSelect={() => {
+                                      const arr = Array.isArray(field.value) ? [...field.value] : [];
+                                      if (checked) {
+                                        const idx = arr.indexOf(id);
+                                        if (idx !== -1) arr.splice(idx, 1);
+                                      } else {
+                                        arr.push(id);
+                                      }
+                                      field.onChange(arr);
+                                      const primary = form.getValues("primaryNurse");
+                                      if (primary && !arr.includes(primary)) {
+                                        form.setValue("primaryNurse", "");
+                                      }
+                                    }}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <span className="flex h-4 w-4 items-center justify-center rounded border">
+                                      <Check className={`h-3 w-3 ${checked ? "opacity-100" : "opacity-0"}`} />
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium text-sm">{n.firstName} {n.lastName}</div>
+                                      <div className="text-xs text-muted-foreground">{n.role || n.position || "Nurse"}</div>
+                                    </div>
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="primaryNurse"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>Primary Nurse</FormLabel>
+                    <Select
+                      onValueChange={(val) => field.onChange(val)}
+                      value={field.value || ""}
+                      disabled={(form.watch("assignedNurses") || []).length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select primary nurse" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {(form.watch("assignedNurses") || []).map((id) => {
+                          const n = nursesById.get(id);
+                          if (!n) return null;
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {n.firstName} {n.lastName} ({n.role || "Nurse"})
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
             </div>
 
             <DialogFooter>
+              {user?.role === 'nurse' && !canEditAssignments() && (
+                <div className="text-xs text-muted-foreground mr-4">You are not the nurse in charge of this patient's bed — you can not change assignments.</div>
+              )}
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || (user?.role === 'nurse' && !canEditAssignments())}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {mode === "create" ? "Register Patient" : "Update Patient"}
               </Button>

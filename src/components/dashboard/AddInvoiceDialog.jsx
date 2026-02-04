@@ -189,10 +189,16 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
     onClose();
   };
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      handleClose();
+    }
+  };
+
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Create New Invoice" : "Edit Invoice"}</DialogTitle>

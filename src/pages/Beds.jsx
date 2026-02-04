@@ -372,6 +372,7 @@ export default function Beds() {
                         <TableHead>Room</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Patient</TableHead>
+                        <TableHead>Nurse</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -405,6 +406,9 @@ export default function Beds() {
                               {bed.currentPatient
                                 ? `${bed.currentPatient.firstName} ${bed.currentPatient.lastName}`
                                 : "-"}
+                            </TableCell>
+                            <TableCell>
+                              {bed.nurseInCharge ? `${bed.nurseInCharge.firstName} ${bed.nurseInCharge.lastName}` : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">

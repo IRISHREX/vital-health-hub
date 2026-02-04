@@ -45,6 +45,7 @@ export const apiClient = {
     if (!response.ok) {
       throw new Error(data.message || 'API Error');
     }
+    // Normalize to axios-like response: { data: <parsed JSON> }
     return data;
   },
 

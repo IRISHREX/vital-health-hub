@@ -146,3 +146,15 @@ exports.getUserStats = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get nurses (authenticated)
+// @route   GET /api/users/nurses
+// @access  Authenticated
+exports.getNurses = async (req, res, next) => {
+  try {
+    const nurses = await User.find({ role: 'nurse', isActive: true }).select('firstName lastName email role department');
+    res.json({ success: true, data: { users: nurses } });
+  } catch (error) {
+    next(error);
+  }
+};

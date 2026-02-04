@@ -163,10 +163,16 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     onClose();
   };
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      handleClose();
+    }
+  };
+
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Book Appointment" : "Edit Appointment"}</DialogTitle>

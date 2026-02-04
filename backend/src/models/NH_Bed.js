@@ -35,6 +35,12 @@ const bedSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admission'
   },
+  // Nurse responsible for this room/bed
+  nurseInCharge: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   pricePerDay: {
     type: Number,
     required: true

@@ -7,6 +7,9 @@ const Appointment = require('./NH_Appointment');
 const Facility = require('./NH_Facility');
 const Invoice = require('./NH_Invoice');
 const Notification = require('./NH_Notification');
+const Vital = require('./NH_Vital');
+const ActivityLog = require('./NH_ActivityLog');
+const Task = require('./NH_Task');
 const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences } = require('./NH_Settings');
 
 module.exports = {
@@ -19,6 +22,9 @@ module.exports = {
   Facility,
   Invoice,
   Notification,
+  Vital,
+  ActivityLog,
+  Task,
   HospitalSettings,
   SecuritySettings,
   NotificationSettings,

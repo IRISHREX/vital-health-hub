@@ -13,6 +13,12 @@ import { Calendar, Phone, Mail, Stethoscope, Award, Clock, Star, Users, MapPin, 
 const ViewDoctorDialog = ({ isOpen, onClose, doctor }) => {
   if (!doctor) return null;
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      onClose();
+    }
+  };
+
   const getAvailabilityColor = (status) => {
     switch (status) {
       case 'available': return 'bg-green-500';
@@ -34,7 +40,7 @@ const ViewDoctorDialog = ({ isOpen, onClose, doctor }) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">

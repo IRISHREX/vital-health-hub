@@ -152,9 +152,15 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
     }
   };
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      onClose();
+    }
+  };
+
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {mode === "view" && (
             <>

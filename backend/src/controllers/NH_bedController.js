@@ -19,6 +19,7 @@ exports.getBeds = async (req, res, next) => {
     const total = await Bed.countDocuments(query);
     const beds = await Bed.find(query)
       .populate('currentPatient', 'firstName lastName patientId')
+      .populate('nurseInCharge', 'firstName lastName email')
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
       .sort({ ward: 1, floor: 1, bedNumber: 1 });
@@ -111,7 +112,8 @@ exports.getBed = async (req, res, next) => {
   try {
     const bed = await Bed.findById(req.params.id)
       .populate('currentPatient')
-      .populate('currentAdmission');
+      .populate('currentAdmission')
+      .populate('nurseInCharge', 'firstName lastName email');
     
     if (!bed) {
       throw new AppError('Bed not found', 404);
@@ -180,7 +182,8 @@ exports.updateBed = async (req, res, next) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('currentPatient', 'firstName lastName patientId');
+    ).populate('currentPatient', 'firstName lastName patientId')
+     .populate('nurseInCharge', 'firstName lastName email');
 
     // Emit real-time update
     emitBedUpdate(updatedBed);
@@ -189,6 +192,36 @@ exports.updateBed = async (req, res, next) => {
       success: true,
       message: 'Bed updated successfully',
       data: { bed: updatedBed }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Assign a nurse to be in charge of this bed/room
+// @route   PATCH /api/beds/:id/assign-nurse
+// @access  Admin
+exports.assignNurse = async (req, res, next) => {
+  try {
+    const { nurseId } = req.body;
+    const bed = await Bed.findById(req.params.id);
+
+    if (!bed) {
+      throw new AppError('Bed not found', 404);
+    }
+
+    bed.nurseInCharge = nurseId || null;
+    await bed.save();
+
+    await bed.populate('nurseInCharge', 'firstName lastName email');
+
+    // Emit update to sockets
+    emitBedUpdate(bed);
+
+    res.json({
+      success: true,
+      message: 'Nurse assigned to bed successfully',
+      data: { bed }
     });
   } catch (error) {
     next(error);

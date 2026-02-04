@@ -1,0 +1,170 @@
+const { Vital, Patient, Notification, ActivityLog } = require('../models');
+const { AppError } = require('../middleware/errorHandler');
+
+// Get vitals for a patient
+exports.getPatientVitals = async (req, res, next) => {
+  try {
+    const { limit = 50, startDate, endDate } = req.query;
+
+    const query = { patient: req.params.patientId };
+
+    if (startDate || endDate) {
+      query.recordedAt = {};
+      if (startDate) query.recordedAt.$gte = new Date(startDate);
+      if (endDate) query.recordedAt.$lte = new Date(endDate);
+    }
+
+    const vitals = await Vital.find(query)
+      .populate('recordedBy', 'firstName lastName')
+      .sort('-recordedAt')
+      .limit(parseInt(limit));
+
+    res.json({ success: true, data: vitals });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get latest vital
+exports.getLatestVital = async (req, res, next) => {
+  try {
+    const vital = await Vital.findOne({ patient: req.params.patientId })
+      .populate('recordedBy', 'firstName lastName')
+      .sort('-recordedAt');
+
+    if (!vital) throw new AppError('No vitals found for this patient', 404);
+
+    res.json({ success: true, data: vital });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create vital
+exports.createVital = async (req, res, next) => {
+  try {
+    const vitalData = {
+      ...req.body,
+      recordedBy: req.user._id
+    };
+
+    const vital = await Vital.create(vitalData);
+
+    // Check for critical values and create notifications
+    const criticalAlerts = [];
+
+    if (vital.heartRate.isAbnormal) {
+      criticalAlerts.push({
+        type: 'alert',
+        title: 'Abnormal Heart Rate',
+        message: `Heart rate: ${vital.heartRate.value} bpm`,
+        priority: vital.heartRate.value < 50 || vital.heartRate.value > 120 ? 'urgent' : 'high',
+        data: { entityType: 'patient', entityId: vital.patient }
+      });
+    }
+
+    if (vital.bloodPressure.isAbnormal) {
+      criticalAlerts.push({
+        type: 'alert',
+        title: 'Abnormal Blood Pressure',
+        message: `BP: ${vital.bloodPressure.systolic}/${vital.bloodPressure.diastolic} mmHg`,
+        priority: vital.bloodPressure.systolic > 180 || vital.bloodPressure.systolic < 80 ? 'urgent' : 'high',
+        data: { entityType: 'patient', entityId: vital.patient }
+      });
+    }
+
+    if (vital.oxygenSaturation.isAbnormal) {
+      criticalAlerts.push({
+        type: 'alert',
+        title: 'Low Oxygen Saturation',
+        message: `SpO2: ${vital.oxygenSaturation.value}%`,
+        priority: vital.oxygenSaturation.value < 90 ? 'urgent' : 'high',
+        data: { entityType: 'patient', entityId: vital.patient }
+      });
+    }
+
+    if (vital.temperature.isAbnormal) {
+      criticalAlerts.push({
+        type: 'alert',
+        title: 'Abnormal Temperature',
+        message: `Temperature: ${vital.temperature.value}°F`,
+        priority: vital.temperature.value > 103 || vital.temperature.value < 95 ? 'urgent' : 'high',
+        data: { entityType: 'patient', entityId: vital.patient }
+      });
+    }
+
+    // Create notifications for critical values
+    if (criticalAlerts.length > 0) {
+      // For now create notifications for patient's primary nurse if assigned, otherwise for admin
+      const patient = await Patient.findById(vital.patient).select('primaryNurse');
+
+      const recipientIds = [];
+      if (patient && patient.primaryNurse) recipientIds.push(patient.primaryNurse);
+
+      if (recipientIds.length === 0) {
+        // fallback to admins
+        // No recipient discovery logic here; keep notification without recipient
+      }
+
+      if (recipientIds.length > 0) {
+        await Promise.all(criticalAlerts.map(a => (
+          Notification.create({
+            recipient: recipientIds[0],
+            type: a.type,
+            title: a.title,
+            message: a.message,
+            priority: a.priority,
+            data: a.data
+          })
+        )));
+      }
+
+      const hasCritical = criticalAlerts.some(a => a.priority === 'urgent');
+      if (hasCritical) {
+        await Patient.findByIdAndUpdate(vital.patient, { status: 'admitted' });
+      }
+    }
+
+    // Log activity
+    await ActivityLog.create({
+      action: 'vital_recorded',
+      description: 'Vital signs recorded for patient',
+      user: req.user._id,
+      patient: vital.patient,
+      metadata: {
+        heartRate: vital.heartRate.value,
+        bloodPressure: `${vital.bloodPressure.systolic}/${vital.bloodPressure.diastolic}`,
+        temperature: vital.temperature.value,
+        oxygenSaturation: vital.oxygenSaturation.value
+      }
+    });
+
+    res.status(201).json({ success: true, data: vital, alerts: criticalAlerts.length > 0 ? criticalAlerts : undefined });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Vital trends
+exports.getVitalTrends = async (req, res, next) => {
+  try {
+    const { hours = 24 } = req.query;
+    const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    const vitals = await Vital.find({ patient: req.params.patientId, recordedAt: { $gte: startTime } }).sort('recordedAt');
+
+    const trends = vitals.map(v => ({
+      time: v.recordedAt,
+      heartRate: v.heartRate.value,
+      systolic: v.bloodPressure.systolic,
+      diastolic: v.bloodPressure.diastolic,
+      temperature: v.temperature.value,
+      oxygenSaturation: v.oxygenSaturation.value,
+      respiratoryRate: v.respiratoryRate?.value
+    }));
+
+    res.json({ success: true, data: trends });
+  } catch (error) {
+    next(error);
+  }
+};

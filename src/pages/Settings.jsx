@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ import { updateProfile } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { setUser as setStoredUser } from "@/lib/api-client";
+import UserDialog from "@/components/dashboard/UserDialog";
 
 export default function Settings() {
   const { user, logout } = useAuth();
@@ -91,6 +93,19 @@ export default function Settings() {
     nurse: 0,
     receptionist: 0,
     billingStaff: 0,
+  });
+
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+
+  // Fetch user stats using react-query (v5 object syntax)
+  useQuery({
+    queryKey: ["user-stats"],
+    queryFn: getUserStats,
+    onSuccess: (res) => {
+      if (res && res.success && res.data) {
+        setUserStats(res.data);
+      }
+    }
   });
 
   // Load all settings on mount
@@ -649,11 +664,14 @@ export default function Settings() {
 
                   <div className="flex justify-end gap-2">
                     <Button variant="outline">Add Role</Button>
-                    <Button>Add User</Button>
+                    <Button onClick={() => setIsUserDialogOpen(true)}>Add User</Button>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* User dialog */}
+            <UserDialog isOpen={isUserDialogOpen} onClose={() => setIsUserDialogOpen(false)} />
 
             <TabsContent value="security">
               <Card>

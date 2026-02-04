@@ -50,7 +50,9 @@ exports.getPatients = async (req, res, next) => {
 exports.getPatient = async (req, res, next) => {
   try {
     const patient = await Patient.findById(req.params.id)
-      .populate('registeredBy', 'firstName lastName');
+      .populate('registeredBy', 'firstName lastName')
+      .populate('assignedNurses', 'firstName lastName email')
+      .populate('primaryNurse', 'firstName lastName email');
     
     if (!patient) {
       throw new AppError('Patient not found', 404);
@@ -99,6 +101,14 @@ exports.createPatient = async (req, res, next) => {
     // Assign doctor if provided
     if (assignedDoctor) {
       patientData.assignedDoctor = assignedDoctor;
+    }
+
+    // Assign nurses if provided
+    if (req.body.assignedNurses) {
+      patientData.assignedNurses = req.body.assignedNurses;
+    }
+    if (req.body.primaryNurse) {
+      patientData.primaryNurse = req.body.primaryNurse;
     }
 
     // Assign bed if IPD and bed provided
@@ -258,9 +268,45 @@ exports.updatePatient = async (req, res, next) => {
       );
     }
 
+    // If a nurse is making the update, restrict to nurse assignment fields only
+    if (req.user.role === 'nurse') {
+      // Nurse can only update assigned nurses if they are in charge of the bed where the patient is
+      if (!patient.assignedBed) {
+        throw new AppError('Nurses can only update assignments for patients assigned to a bed', 403);
+      }
+
+      const bed = await Bed.findById(patient.assignedBed).populate('nurseInCharge');
+      if (!bed || !bed.nurseInCharge || bed.nurseInCharge._id.toString() !== req.user._id.toString()) {
+        throw new AppError('Unauthorized. You are not the nurse in charge of this bed.', 403);
+      }
+
+      const updatePayload = {};
+      if (req.body.assignedNurses) updatePayload.assignedNurses = req.body.assignedNurses;
+      if (req.body.primaryNurse) updatePayload.primaryNurse = req.body.primaryNurse;
+
+      const updatedPatient = await Patient.findByIdAndUpdate(
+        req.params.id,
+        updatePayload,
+        { new: true, runValidators: true }
+      ).populate('assignedNurses', 'firstName lastName email').populate('primaryNurse', 'firstName lastName email');
+
+      return res.json({
+        success: true,
+        message: 'Patient updated successfully',
+        data: { patient: updatedPatient }
+      });
+    }
+
+    // Allow update of nurse assignments as well for other roles
+    const updatePayload = {
+      ...req.body
+    };
+    if (req.body.assignedNurses) updatePayload.assignedNurses = req.body.assignedNurses;
+    if (req.body.primaryNurse) updatePayload.primaryNurse = req.body.primaryNurse;
+
     const updatedPatient = await Patient.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updatePayload,
       { new: true, runValidators: true }
     );
 

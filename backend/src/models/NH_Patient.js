@@ -81,6 +81,9 @@ const patientSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Doctor'
   },
+  // Nurses assigned to the patient
+  assignedNurses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  primaryNurse: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   assignedBed: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Bed'

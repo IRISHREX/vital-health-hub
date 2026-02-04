@@ -166,6 +166,12 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
     onClose();
   };
 
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      handleClose();
+    }
+  };
+
   const getPreviewBedInfo = () => {
     const newBed = availableBeds.find((b) => b._id === formData.newBedId);
     if (!newBed) return null;
@@ -184,7 +190,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>

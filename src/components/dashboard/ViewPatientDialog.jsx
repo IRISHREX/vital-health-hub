@@ -9,13 +9,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Phone, Mail, MapPin, User, Heart, Pill, Shield } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getNurses } from "@/lib/users";
 
 const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
   if (!patient) return null;
 
+  const { data: nursesData } = useQuery({
+    queryKey: ["nurses"],
+    queryFn: () => getNurses(),
+  });
+  const nurses = nursesData?.data?.users || [];
+  const nursesById = new Map(nurses.map((n) => [n._id || n.id, n]));
+
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) {
+      onClose();
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
@@ -243,6 +257,35 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Assigned Bed</label>
                 <p className="text-lg">{patient.assignedBed || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Assigned Nurses</label>
+                <div className="text-lg">
+                  {patient.assignedNurses && patient.assignedNurses.length > 0 ? (
+                    <ul className="list-disc list-inside mt-2">
+                      {patient.assignedNurses.map((n, idx) => {
+                        const id = n?._id || n;
+                        const nurse = nursesById.get(id);
+                        const label = nurse
+                          ? `${nurse.firstName || ""} ${nurse.lastName || ""}`.trim()
+                          : (n && (n.firstName || n.lastName))
+                            ? `${n.firstName || ""} ${n.lastName || ""}`.trim()
+                            : id;
+                        return (
+                          <li key={idx} className="text-sm">
+                            {label || "Nurse"}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No nurses assigned</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Primary Nurse</label>
+                <p className="text-lg">{patient.primaryNurse ? ((patient.primaryNurse.firstName || patient.primaryNurse.lastName) ? `${patient.primaryNurse.firstName || ''} ${patient.primaryNurse.lastName || ''}` : patient.primaryNurse) : 'N/A'}</p>
               </div>
             </CardContent>
           </Card>

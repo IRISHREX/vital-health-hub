@@ -18,6 +18,9 @@ import Billing from "./pages/Billing";
 import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
+import NurseDashboard from "./pages/NurseDashboard";
+import Tasks from "./pages/Tasks";
+import NursePatients from "./pages/NursePatients";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 
@@ -52,6 +55,9 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="appointments" />}>
                   <Route path="/appointments" element={<Appointments />} />
                 </Route>
+                <Route element={<AuthorizedRoute module="tasks" />}>
+                  <Route path="/tasks" element={<Tasks />} />
+                </Route>
                 <Route element={<AuthorizedRoute module="facilities" />}>
                   <Route path="/facilities" element={<Facilities />} />
                 </Route>
@@ -63,6 +69,12 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="notifications" />}>
                   <Route path="/notifications" element={<Notifications />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="dashboard" />}>
+                  <Route path="/nurse" element={<NurseDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="patients" />}>
+                  <Route path="/nurse/patients" element={<NursePatients />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<Settings />} />

@@ -87,20 +87,37 @@ export default function Appointments() {
     fetchData();
   }, []);
 
-  const getPatientName = (patientId) => {
-    const patient = patients.find((p) => p._id === patientId);
+  const getPatientName = (patientRef) => {
+    if (!patientRef) return "Unknown";
+    // If already populated object
+    if (typeof patientRef === 'object') {
+      const p = patientRef;
+      if (p.firstName || p.lastName) return `${p.firstName || ''} ${p.lastName || ''}`.trim();
+      return p.name || 'Unknown';
+    }
+    // Otherwise lookup from patients list (supports _id or patientId)
+    const patient = patients.find((p) => p._id === patientRef || p.patientId === patientRef);
     return patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
   };
 
-  const getDoctorName = (doctorId) => {
-    const doctor = doctors.find((d) => d._id === doctorId);
-    return doctor?.name || "Unknown";
+  const getDoctorName = (doctorRef) => {
+    if (!doctorRef) return "Unknown";
+    // If already populated object
+    if (typeof doctorRef === 'object') {
+      const d = doctorRef;
+      if (d.user) return `${d.user.firstName || ''} ${d.user.lastName || ''}`.trim() || d.name || 'Unknown';
+      return d.name || 'Unknown';
+    }
+    // Otherwise lookup from doctors list (supports _id or doctorId)
+    const doctor = doctors.find((d) => d._id === doctorRef || d.doctorId === doctorRef);
+    if (!doctor) return "Unknown";
+    return doctor.user ? `${doctor.user.firstName || ''} ${doctor.user.lastName || ''}`.trim() : doctor.name || 'Unknown';
   };
 
   const filteredAppointments = appointments
     ? appointments.filter((apt) => {
-        const patientName = getPatientName(apt.patientId).toLowerCase();
-        const doctorName = getDoctorName(apt.doctorId).toLowerCase();
+        const patientName = getPatientName(apt.patient || apt.patientId).toLowerCase();
+        const doctorName = getDoctorName(apt.doctor || apt.doctorId).toLowerCase();
         return (
           patientName.includes(searchQuery.toLowerCase()) ||
           doctorName.includes(searchQuery.toLowerCase())
@@ -218,9 +235,9 @@ export default function Appointments() {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{getPatientName(apt.patientId)}</p>
+                    <p className="font-medium">{getPatientName(apt.patient || apt.patientId)}</p>
                     <p className="text-sm text-muted-foreground">
-                      {getDoctorName(apt.doctorId)}
+                      {getDoctorName(apt.doctor || apt.doctorId)}
                     </p>
                   </div>
                   {statusConfig[apt.status] && (
@@ -271,18 +288,18 @@ export default function Appointments() {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {getPatientName(apt.patientId)
+                            {getPatientName(apt.patient || apt.patientId)
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
                         <span className="font-medium">
-                          {getPatientName(apt.patientId)}
+                          {getPatientName(apt.patient || apt.patientId)}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{getDoctorName(apt.doctorId)}</TableCell>
+                    <TableCell>{getDoctorName(apt.doctor || apt.doctorId)}</TableCell>
                     <TableCell>
                       {new Date(apt.appointmentDate).toLocaleDateString()}
                     </TableCell>

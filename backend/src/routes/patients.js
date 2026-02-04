@@ -18,7 +18,7 @@ router.post('/', [
 
 router.get('/', authenticate, patientController.getPatients);
 router.get('/:id', authenticate, patientController.getPatient);
-router.put('/:id', authenticate, authorize('doctor', 'hospital_admin', 'super_admin'), patientController.updatePatient);
+router.put('/:id', authenticate, authorize('doctor', 'hospital_admin', 'super_admin', 'nurse'), patientController.updatePatient);
 router.delete('/:id', authenticate, authorize('hospital_admin', 'super_admin'), patientController.deletePatient);
 
 module.exports = router;

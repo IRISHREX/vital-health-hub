@@ -16,6 +16,11 @@ const appointmentSchema = new mongoose.Schema({
     ref: 'Doctor',
     required: true
   },
+  // Optional nurse assigned to assist this appointment
+  assignedNurse: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   appointmentDate: {
     type: Date,
     required: true
@@ -69,14 +74,15 @@ const appointmentSchema = new mongoose.Schema({
 });
 
 // Auto-generate appointment ID and token
-appointmentSchema.pre('save', async function(next) {
+// Run this before validation so required validators see the generated values
+appointmentSchema.pre('validate', async function(next) {
   if (!this.appointmentId) {
     const count = await mongoose.model('Appointment').countDocuments();
     this.appointmentId = `APT${String(count + 1).padStart(6, '0')}`;
   }
   
-  // Generate token number for the day
-  if (!this.tokenNumber) {
+  // Generate token number for the day (only if appointmentDate is present)
+  if (!this.tokenNumber && this.appointmentDate) {
     const startOfDay = new Date(this.appointmentDate);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(this.appointmentDate);

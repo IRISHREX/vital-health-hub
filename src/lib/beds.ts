@@ -39,3 +39,8 @@ export const assignBed = async (id, patientId, admissionId) => {
 export const releaseBed = async (id) => {
   return await apiClient.post(`/beds/${id}/release`);
 };
+
+// Assign a nurse in charge for a bed/room (admin)
+export const assignNurse = async (id, nurseId) => {
+  return await apiClient.patch(`/beds/${id}/assign-nurse`, { nurseId });
+};

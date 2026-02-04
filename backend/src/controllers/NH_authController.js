@@ -97,20 +97,27 @@ exports.login = async (req, res, next) => {
 
     const token = generateToken(user);
 
+    const responseUser = {
+      id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      role: user.role,
+      department: user.department,
+      avatar: user.avatar
+    };
+
+    // Admins can view multiple perspectives
+    if (['super_admin', 'hospital_admin'].includes(user.role)) {
+      responseUser.availableViews = ['admin', 'doctor', 'nurse'];
+    }
+
     res.json({
       success: true,
       message: 'Login successful',
       data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.fullName,
-          role: user.role,
-          department: user.department,
-          avatar: user.avatar
-        },
+        user: responseUser,
         token
       }
     });
