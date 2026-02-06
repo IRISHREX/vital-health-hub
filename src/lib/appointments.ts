@@ -4,8 +4,10 @@ export const createAppointment = async (appointmentData) => {
   return await apiClient.post('/appointments', appointmentData);
 };
 
-export const getAppointments = async () => {
-  return await apiClient.get('/appointments');
+export const getAppointments = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const suffix = query ? `?${query}` : '';
+  return await apiClient.get(`/appointments${suffix}`);
 };
 
 export const getAppointmentById = async (id) => {

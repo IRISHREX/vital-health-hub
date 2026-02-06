@@ -21,8 +21,8 @@ router.post('/', [
 
 router.get('/', authenticate, bedController.getBeds);
 router.get('/:id', authenticate, bedController.getBed);
-// Assign a nurse in charge of this bed/room (admin only)
-router.patch('/:id/assign-nurse', authenticate, authorize('hospital_admin', 'super_admin'), bedController.assignNurse);
+// Assign a nurse in charge of this bed/room
+router.patch('/:id/assign-nurse', authenticate, authorize('hospital_admin', 'super_admin', 'doctor', 'head_nurse', 'nurse'), bedController.assignNurse);
 router.put('/:id', authenticate, authorize('hospital_admin', 'super_admin'), bedController.updateBed);
 router.patch('/:id/status', authenticate, bedController.updateBedStatus);
 router.post('/:id/assign', authenticate, bedController.assignBed);

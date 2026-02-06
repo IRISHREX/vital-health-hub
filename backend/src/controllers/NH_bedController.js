@@ -1,6 +1,34 @@
-const { Bed, Patient, Admission } = require('../models');
+const { Bed, Patient, Admission, User } = require('../models');
 const { emitBedUpdate } = require('../config/socket');
 const { AppError } = require('../middleware/errorHandler');
+
+const isRoomAssignedToNurse = (nurse, bed) => {
+  if (!nurse?.assignedRooms || nurse.assignedRooms.length === 0) return false;
+  return nurse.assignedRooms.some((r) =>
+    r.ward === bed.ward &&
+    Number(r.floor) === Number(bed.floor) &&
+    r.roomNumber === bed.roomNumber
+  );
+};
+
+const ensurePatientAssignedToNurse = async (patientId, nurseId) => {
+  if (!patientId || !nurseId) return;
+  const patient = await Patient.findById(patientId).select('assignedNurses primaryNurse');
+  if (!patient) return;
+
+  const assignedIds = (patient.assignedNurses || []).map((id) => id.toString());
+  const updates = {};
+  if (!assignedIds.includes(nurseId.toString())) {
+    updates.assignedNurses = [...patient.assignedNurses, nurseId];
+  }
+  if (!patient.primaryNurse) {
+    updates.primaryNurse = nurseId;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await Patient.findByIdAndUpdate(patientId, updates, { new: true });
+  }
+};
 
 // @desc    Get all beds
 // @route   GET /api/beds
@@ -185,6 +213,10 @@ exports.updateBed = async (req, res, next) => {
     ).populate('currentPatient', 'firstName lastName patientId')
      .populate('nurseInCharge', 'firstName lastName email');
 
+    if (req.body.nurseInCharge && updatedBed?.currentPatient) {
+      await ensurePatientAssignedToNurse(updatedBed.currentPatient._id || updatedBed.currentPatient, req.body.nurseInCharge);
+    }
+
     // Emit real-time update
     emitBedUpdate(updatedBed);
 
@@ -210,10 +242,31 @@ exports.assignNurse = async (req, res, next) => {
       throw new AppError('Bed not found', 404);
     }
 
-    bed.nurseInCharge = nurseId || null;
+    if (nurseId) {
+      const nurse = await User.findById(nurseId).select('role assignedRooms');
+      if (!nurse || !['nurse', 'head_nurse'].includes(nurse.role)) {
+        throw new AppError('Invalid nurseId', 400);
+      }
+
+      if (req.user.role === 'nurse' && nurseId.toString() !== req.user._id.toString()) {
+        throw new AppError('Nurses can only assign themselves to beds', 403);
+      }
+
+      if (req.user.role === 'nurse' && !isRoomAssignedToNurse(req.user, bed)) {
+        throw new AppError('You are not assigned to this room', 403);
+      }
+
+      bed.nurseInCharge = nurseId;
+    } else {
+      bed.nurseInCharge = null;
+    }
     await bed.save();
 
     await bed.populate('nurseInCharge', 'firstName lastName email');
+
+    if (bed.currentPatient && nurseId) {
+      await ensurePatientAssignedToNurse(bed.currentPatient, nurseId);
+    }
 
     // Emit update to sockets
     emitBedUpdate(bed);
@@ -294,6 +347,10 @@ exports.assignBed = async (req, res, next) => {
     bed.currentAdmission = admissionId;
     bed.lastOccupied = new Date();
     await bed.save();
+
+    if (bed.nurseInCharge) {
+      await ensurePatientAssignedToNurse(patientId, bed.nurseInCharge);
+    }
 
     // Update patient's assignedBed but DO NOT change admission status
     // Admission status should only be updated when an actual admission record is created

@@ -5,13 +5,13 @@ export const getPatientVitals = (patientId, limit = 20) => {
 };
 
 export const getLatestVital = (patientId) => {
-  return apiClient.get(`/vitals/latest?patientId=${patientId}`);
+  return apiClient.get(`/vitals/patient/${patientId}/latest`);
 };
 
 export const createVital = (data) => {
   return apiClient.post('/vitals', data);
 };
 
-export const getVitalTrends = (patientId, days = 7) => {
-  return apiClient.get(`/vitals/trends?patientId=${patientId}&days=${days}`);
+export const getVitalTrends = (patientId, hours = 24) => {
+  return apiClient.get(`/vitals/patient/${patientId}/trends?hours=${hours}`);
 };

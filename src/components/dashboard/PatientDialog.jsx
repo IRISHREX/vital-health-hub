@@ -94,6 +94,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
   const beds = (bedsData?.data?.beds || []).filter((b) => b.status === "available");
   const nurses = nursesData?.data?.users || [];
   const nursesById = new Map(nurses.map((n) => [n._id || n.id, n]));
+  const formatFullName = (entity) =>
+    `${entity?.firstName || ""} ${entity?.lastName || ""}`.trim();
 
   // Add nurse fields to form defaultValues
   const form = useForm({
@@ -571,7 +573,12 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                         <SelectContent>
                           {doctors.map((doctor) => (
                             <SelectItem key={doctor._id} value={doctor._id}>
-                              {doctor.user?.firstName} {doctor.user?.lastName} ({doctor.specialization})
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold">
+                                  {formatFullName(doctor.user) || "Doctor"}{doctor.specialization ? ` (${doctor.specialization})` : ""}
+                                </span>
+                                <span className="text-xs text-muted-foreground">{doctor._id}</span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -597,7 +604,13 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                         <SelectContent>
                           {beds.map((bed) => (
                             <SelectItem key={bed._id} value={bed._id}>
-                              {bed.bedNumber} - {bed.ward} ({bed.bedType}) {"F"+bed.floor} ({"₹"+bed.pricePerDay+"/day"})
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold">
+                                  {bed.bedNumber} - {bed.ward} ({bed.bedType}) {"F"+bed.floor} ({"₹"+bed.pricePerDay+"/day"})
+                                </span>
+                                <span className="text-xs text-muted-foreground">{bed._id}</span>
+                              </div>
+
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -660,8 +673,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                                       <Check className={`h-3 w-3 ${checked ? "opacity-100" : "opacity-0"}`} />
                                     </span>
                                     <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm">{n.firstName} {n.lastName}</div>
-                                      <div className="text-xs text-muted-foreground">{n.role || n.position || "Nurse"}</div>
+                                      <div className="font-semibold text-sm">{n.firstName} {n.lastName}</div>
+                                      <div className="text-xs text-muted-foreground">{id}</div>
                                     </div>
                                   </CommandItem>
                                 );
@@ -698,7 +711,10 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                           if (!n) return null;
                           return (
                             <SelectItem key={id} value={id}>
-                              {n.firstName} {n.lastName} ({n.role || "Nurse"})
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold">{n.firstName} {n.lastName}</span>
+                                <span className="text-xs text-muted-foreground">{id}</span>
+                              </div>
                             </SelectItem>
                           );
                         })}
@@ -729,3 +745,4 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     </Dialog>
   );
 }
+

@@ -268,7 +268,8 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
                     <div>
                       <p className="text-sm font-medium text-gray-600 mb-2">Diagnosis</p>
                       <p className="text-sm p-3 bg-gray-50 rounded-lg">
-                        {admission.diagnosis || 'Not specified'}
+                        {admission.diagnosis?.primary ||
+                          (typeof admission.diagnosis === 'string' ? admission.diagnosis : 'Not specified')}
                       </p>
                     </div>
                     <div>

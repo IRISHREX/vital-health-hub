@@ -51,6 +51,8 @@ exports.getPatient = async (req, res, next) => {
   try {
     const patient = await Patient.findById(req.params.id)
       .populate('registeredBy', 'firstName lastName')
+      .populate({ path: 'assignedDoctor', populate: { path: 'user', select: 'firstName lastName' } })
+      .populate('assignedBed', 'bedNumber ward floor roomNumber bedType')
       .populate('assignedNurses', 'firstName lastName email')
       .populate('primaryNurse', 'firstName lastName email');
     

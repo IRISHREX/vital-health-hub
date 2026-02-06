@@ -10,9 +10,9 @@ import { apiClient } from './api-client';
 export const createAdmission = async (data) => {
   try {
     const response = await apiClient.post('/admissions', data);
-    return response.data;
+    return response;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to create admission' };
+    throw error?.message ? { message: error.message } : { message: 'Failed to create admission' };
   }
 };
 
@@ -21,10 +21,17 @@ export const createAdmission = async (data) => {
 // @returns Promise with admissions list and pagination
 export const getAdmissions = async (filters = {}) => {
   try {
-    const response = await apiClient.get('/admissions', { params: filters });
-    return response.data;
+    const params = new URLSearchParams();
+    Object.entries(filters || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+    const qs = params.toString();
+    const response = await apiClient.get(`/admissions${qs ? `?${qs}` : ''}`);
+    return response;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch admissions' };
+    throw error?.message ? { message: error.message } : { message: 'Failed to fetch admissions' };
   }
 };
 
@@ -34,9 +41,9 @@ export const getAdmissions = async (filters = {}) => {
 export const getAdmission = async (admissionId) => {
   try {
     const response = await apiClient.get(`/admissions/${admissionId}`);
-    return response.data;
+    return response;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch admission' };
+    throw error?.message ? { message: error.message } : { message: 'Failed to fetch admission' };
   }
 };
 
@@ -45,9 +52,9 @@ export const getAdmission = async (admissionId) => {
 export const getAdmissionStats = async () => {
   try {
     const response = await apiClient.get('/admissions/stats');
-    return response.data;
+    return response;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch admission stats' };
+    throw error?.message ? { message: error.message } : { message: 'Failed to fetch admission stats' };
   }
 };
 
@@ -58,9 +65,9 @@ export const getAdmissionStats = async () => {
 export const transferPatient = async (admissionId, data) => {
   try {
     const response = await apiClient.post(`/admissions/${admissionId}/transfer`, data);
-    return response.data;
+    return response;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to transfer patient' };
+    throw error?.message ? { message: error.message } : { message: 'Failed to transfer patient' };
   }
 };
 
@@ -71,9 +78,9 @@ export const transferPatient = async (admissionId, data) => {
 export const dischargePatient = async (admissionId, data) => {
   try {
     const response = await apiClient.post(`/admissions/${admissionId}/discharge`, data);
-    return response.data;
+    return response;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to discharge patient' };
+    throw error?.message ? { message: error.message } : { message: 'Failed to discharge patient' };
   }
 };
 
@@ -131,13 +138,14 @@ export const formatAdmissionData = (admission) => {
 // Get available beds for transfer
 export const getAvailableBeds = async (filters = {}) => {
   try {
-    const response = await apiClient.get('/beds', { 
-      params: { 
-        status: 'available',
-        ...filters 
-      } 
-    });
-    return response.data.data?.beds || [];
+    const params = new URLSearchParams({ status: 'available', ...(filters || {}) });
+    const response = await apiClient.get(`/beds?${params.toString()}`);
+    const beds =
+      response?.data?.beds ||
+      response?.data?.data?.beds ||
+      response?.beds ||
+      (Array.isArray(response?.data) ? response.data : []);
+    return Array.isArray(beds) ? beds : [];
   } catch (error) {
     console.error('Failed to fetch available beds:', error);
     return [];
@@ -147,13 +155,9 @@ export const getAvailableBeds = async (filters = {}) => {
 // Get patient's current admission
 export const getPatientCurrentAdmission = async (patientId) => {
   try {
-    const response = await apiClient.get('/admissions', {
-      params: {
-        patientId,
-        status: 'ADMITTED'
-      }
-    });
-    return response.data.data?.admissions?.[0] || null;
+    const params = new URLSearchParams({ patientId, status: 'ADMITTED' });
+    const response = await apiClient.get(`/admissions?${params.toString()}`);
+    return response.data?.admissions?.[0] || null;
   } catch (error) {
     console.error('Failed to fetch patient admission:', error);
     return null;

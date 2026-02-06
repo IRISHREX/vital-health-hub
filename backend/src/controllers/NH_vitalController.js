@@ -43,10 +43,49 @@ exports.getLatestVital = async (req, res, next) => {
 // Create vital
 exports.createVital = async (req, res, next) => {
   try {
-    const vitalData = {
-      ...req.body,
-      recordedBy: req.user._id
-    };
+    // Normalize payload to support quick-entry (flat) and nested schema shapes
+    const vitalData = { ...req.body };
+
+    // Support `patientId` alias
+    if (!vitalData.patient && vitalData.patientId) {
+      vitalData.patient = vitalData.patientId;
+      delete vitalData.patientId;
+    }
+
+    // Normalize heart rate (number -> { value })
+    if (typeof vitalData.heartRate === 'number') {
+      vitalData.heartRate = { value: vitalData.heartRate };
+    }
+
+    // Normalize temperature (number -> { value })
+    if (typeof vitalData.temperature === 'number') {
+      vitalData.temperature = { value: vitalData.temperature };
+    }
+
+    // Normalize oxygen saturation (number -> { value })
+    if (typeof vitalData.oxygenSaturation === 'number') {
+      vitalData.oxygenSaturation = { value: vitalData.oxygenSaturation };
+    }
+
+    // Normalize respiratory rate (number -> { value })
+    if (typeof vitalData.respiratoryRate === 'number') {
+      vitalData.respiratoryRate = { value: vitalData.respiratoryRate };
+    }
+
+    // Normalize blood pressure:
+    // - "120/80" string
+    // - { systolic, diastolic } already ok
+    if (typeof vitalData.bloodPressure === 'string') {
+      const [systolicStr, diastolicStr] = vitalData.bloodPressure.split('/');
+      const systolic = Number(systolicStr);
+      const diastolic = Number(diastolicStr);
+      if (!Number.isNaN(systolic) && !Number.isNaN(diastolic)) {
+        vitalData.bloodPressure = { systolic, diastolic };
+      }
+    }
+
+    // Attach recorder
+    vitalData.recordedBy = req.user._id;
 
     const vital = await Vital.create(vitalData);
 

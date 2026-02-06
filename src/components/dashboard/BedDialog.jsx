@@ -3,11 +3,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { createBed, updateBed } from "@/lib/beds";
+import { assignNurse, createBed, updateBed } from "@/lib/beds";
 import { getPatients } from "@/lib/patients";
 import { getNurses } from "@/lib/users";
 import { createInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -55,11 +56,13 @@ const bedSchema = z.object({
   roomNumber: z.string().optional(),
   amenities: z.array(z.string()).optional(),
   notes: z.string().optional(),
+  nurseInCharge: z.string().optional(),
 });
 
 export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = false }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [showAssignMode, setShowAssignMode] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState("");
 
@@ -76,6 +79,11 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
     queryFn: () => getNurses(),
   });
   const nurses = nursesData?.data?.users || [];
+  const canEditBedDetails = ["super_admin", "hospital_admin"].includes(user?.role);
+  const canAssignNurse = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"].includes(user?.role);
+  const nurseOptions = user?.role === "nurse"
+    ? [{ _id: user?.id || user?._id, firstName: user?.firstName, lastName: user?.lastName }]
+    : nurses;
 
   const form = useForm({
     resolver: zodResolver(bedSchema),
@@ -160,6 +168,19 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
     },
   });
 
+  const assignNurseMutation = useMutation({
+    mutationFn: (nurseId) => assignNurse(bed._id, nurseId),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Nurse assigned to bed." });
+      queryClient.invalidateQueries({ queryKey: ["beds"] });
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+      handleClose();
+    },
+    onError: (error) => {
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to assign nurse." });
+    },
+  });
+
   const assignPatientMutation = useMutation({
     mutationFn: async (patientId) => {
       const bedResponse = await updateBed(bed._id, {
@@ -218,9 +239,16 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
   const onSubmit = (values) => {
     if (mode === "create") {
       createMutation.mutate(values);
-    } else {
-      updateMutation.mutate(values);
+      return;
     }
+
+    if (!canEditBedDetails && canAssignNurse) {
+      const nurseId = values.nurseInCharge === "none" ? null : values.nurseInCharge;
+      assignNurseMutation.mutate(nurseId);
+      return;
+    }
+
+    updateMutation.mutate(values);
   };
 
   const handleClose = () => {
@@ -248,7 +276,11 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
     assignPatientMutation.mutate(selectedPatient);
   };
 
-  const isLoading = createMutation.isPending || updateMutation.isPending || assignPatientMutation.isPending;
+  const isLoading =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    assignPatientMutation.isPending ||
+    assignNurseMutation.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -335,191 +367,196 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
           <>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="bedNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bed Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., ICU-101" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="nurseInCharge"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nurse In Charge (Optional)</FormLabel>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                {canEditBedDetails && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="bedNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bed Number</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select nurse" />
-                            </SelectTrigger>
+                            <Input placeholder="e.g., ICU-101" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {nurses.map((n) => (
-                              <SelectItem key={n._id} value={n._id}>{n.firstName} {n.lastName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="bedType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bed Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="icu">ICU</SelectItem>
-                            <SelectItem value="ccu">CCU</SelectItem>
-                            <SelectItem value="general">General</SelectItem>
-                            <SelectItem value="semi_private">
-                              Semi-Private
-                            </SelectItem>
-                            <SelectItem value="private">Private</SelectItem>
-                            <SelectItem value="emergency">Emergency</SelectItem>
-                            <SelectItem value="ventilator">Ventilator</SelectItem>
-                            <SelectItem value="pediatric">Pediatric</SelectItem>
-                            <SelectItem value="maternity">Maternity</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="available">Available</SelectItem>
-                            <SelectItem value="occupied">Occupied</SelectItem>
-                            <SelectItem value="cleaning">Cleaning</SelectItem>
-                            <SelectItem value="reserved">Reserved</SelectItem>
-                            <SelectItem value="maintenance">Maintenance</SelectItem>
-                            <SelectItem value="out_of_service">
-                              Out of Service
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="bedType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bed Type</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="icu">ICU</SelectItem>
+                                <SelectItem value="ccu">CCU</SelectItem>
+                                <SelectItem value="general">General</SelectItem>
+                                <SelectItem value="semi_private">Semi-Private</SelectItem>
+                                <SelectItem value="private">Private</SelectItem>
+                                <SelectItem value="emergency">Emergency</SelectItem>
+                                <SelectItem value="ventilator">Ventilator</SelectItem>
+                                <SelectItem value="pediatric">Pediatric</SelectItem>
+                                <SelectItem value="maternity">Maternity</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="available">Available</SelectItem>
+                                <SelectItem value="occupied">Occupied</SelectItem>
+                                <SelectItem value="cleaning">Cleaning</SelectItem>
+                                <SelectItem value="reserved">Reserved</SelectItem>
+                                <SelectItem value="maintenance">Maintenance</SelectItem>
+                                <SelectItem value="out_of_service">Out of Service</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="ward"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ward</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Ward A" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="floor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Floor</FormLabel>
+                            <FormControl>
+                              <Input type="number" min="0" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="pricePerDay"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price Per Day (INR)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="1000"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="roomNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Room Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., 101" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes</FormLabel>
+                          <FormControl>
+                            <textarea
+                              placeholder="Additional notes..."
+                              className="w-full p-2 border rounded"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+
+                {canAssignNurse && (
                   <FormField
                     control={form.control}
-                    name="ward"
+                    name="nurseInCharge"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ward</FormLabel>
+                        <FormLabel>Nurse In Charge (Optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Ward A" {...field} />
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select nurse" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {nurseOptions.map((n) => (
+                                <SelectItem key={n._id || n.id} value={n._id || n.id}>
+                                  {n.firstName} {n.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="floor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Floor</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="pricePerDay"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price Per Day (₹)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="1000"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="roomNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Room Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., 101" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <textarea
-                          placeholder="Additional notes..."
-                          className="w-full p-2 border rounded"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                )}
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={handleClose}>
                     Cancel
                   </Button>
-                  {mode === "edit" && bed?.status === "available" && (
+                  {canEditBedDetails && mode === "edit" && bed?.status === "available" && (
                     <Button
                       type="button"
                       variant="secondary"
@@ -544,3 +581,4 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
     </Dialog>
   );
 }
+

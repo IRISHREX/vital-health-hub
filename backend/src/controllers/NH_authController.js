@@ -105,7 +105,8 @@ exports.login = async (req, res, next) => {
       fullName: user.fullName,
       role: user.role,
       department: user.department,
-      avatar: user.avatar
+      avatar: user.avatar,
+      assignedRooms: user.assignedRooms || []
     };
 
     // Admins can view multiple perspectives
@@ -147,7 +148,8 @@ exports.getMe = async (req, res, next) => {
           department: user.department,
           avatar: user.avatar,
           address: user.address,
-          lastLogin: user.lastLogin
+          lastLogin: user.lastLogin,
+          assignedRooms: user.assignedRooms || []
         }
       }
     });

@@ -8,10 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Phone, Mail, MapPin, User, Heart, Pill, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getNurses } from "@/lib/users";
 import { getPatientById } from "@/lib/patients";
+import { getPatientVitals, getVitalTrends } from "@/lib/vitals";
+import { getAppointments } from "@/lib/appointments";
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 
 const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
   if (!patient) return null;
@@ -30,6 +43,48 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
   const nurses = nursesData?.data?.users || [];
   const nursesById = new Map(nurses.map((n) => [n._id || n.id, n]));
   const patientData = patientDetails?.data?.patient || patient;
+  const formatFullName = (entity) =>
+    `${entity?.firstName || ""} ${entity?.lastName || ""}`.trim();
+
+  const assignedDoctorName = patientData.assignedDoctor?.user
+    ? formatFullName(patientData.assignedDoctor.user)
+    : formatFullName(patientData.assignedDoctor);
+  const assignedDoctorId =
+    typeof patientData.assignedDoctor === "string"
+      ? patientData.assignedDoctor
+      : patientData.assignedDoctor?._id;
+
+  const assignedBedName =
+    typeof patientData.assignedBed === "object" && patientData.assignedBed
+      ? `${patientData.assignedBed.bedNumber || ""} ${patientData.assignedBed.ward ? `- ${patientData.assignedBed.ward}` : ""}`.trim()
+      : "";
+  const assignedBedId =
+    typeof patientData.assignedBed === "string"
+      ? patientData.assignedBed
+      : patientData.assignedBed?._id;
+
+  const { data: vitalsRes } = useQuery({
+    queryKey: ["patient-vitals", patientId],
+    queryFn: () => getPatientVitals(patientId, 10),
+    enabled: !!patientId && isOpen,
+  });
+
+  const { data: trendsRes } = useQuery({
+    queryKey: ["patient-vitals-trends", patientId],
+    queryFn: () => getVitalTrends(patientId, 24),
+    enabled: !!patientId && isOpen,
+  });
+
+  const { data: appointmentsRes } = useQuery({
+    queryKey: ["patient-appointments", patientId],
+    queryFn: () => getAppointments({ patientId }),
+    enabled: !!patientId && isOpen,
+  });
+
+  const vitals = vitalsRes?.data || [];
+  const latestVital = vitals[0];
+  const trends = trendsRes?.data || [];
+  const appointments = appointmentsRes?.data?.appointments || [];
 
   const handleOpenChange = (nextOpen) => {
     if (!nextOpen) {
@@ -261,17 +316,31 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Assigned Doctor</label>
-                <p className="text-lg">{patientData.assignedDoctor || 'N/A'}</p>
+                {assignedDoctorName || assignedDoctorId ? (
+                  <div className="text-lg">
+                    <div className="font-semibold">{assignedDoctorName || "Unknown"}</div>
+                    <div className="text-xs text-muted-foreground">{assignedDoctorId || "N/A"}</div>
+                  </div>
+                ) : (
+                  <p className="text-lg">N/A</p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Assigned Bed</label>
-                <p className="text-lg">{patientData.assignedBed || 'N/A'}</p>
+                {assignedBedName || assignedBedId ? (
+                  <div className="text-lg">
+                    <div className="font-semibold">{assignedBedName || "Unknown bed"}</div>
+                    <div className="text-xs text-muted-foreground">{assignedBedId || "N/A"}</div>
+                  </div>
+                ) : (
+                  <p className="text-lg">N/A</p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Assigned Nurses</label>
                 <div className="text-lg">
                   {patientData.assignedNurses && patientData.assignedNurses.length > 0 ? (
-                    <ul className="list-disc list-inside mt-2">
+                    <div className="mt-2 space-y-2">
                       {patientData.assignedNurses.map((n, idx) => {
                         const id = n?._id || n;
                         const nurse = nursesById.get(id);
@@ -281,12 +350,13 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
                             ? `${n.firstName || ""} ${n.lastName || ""}`.trim()
                             : id;
                         return (
-                          <li key={idx} className="text-sm">
-                            {label || "Nurse"}
-                          </li>
+                          <div key={idx} className="text-sm">
+                            <div className="font-semibold">{label || "Nurse"}</div>
+                            <div className="text-xs text-muted-foreground">{id}</div>
+                          </div>
                         );
                       })}
-                    </ul>
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No nurses assigned</p>
                   )}
@@ -294,8 +364,192 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Primary Nurse</label>
-                <p className="text-lg">{patientData.primaryNurse ? ((patientData.primaryNurse.firstName || patientData.primaryNurse.lastName) ? `${patientData.primaryNurse.firstName || ''} ${patientData.primaryNurse.lastName || ''}` : patientData.primaryNurse) : 'N/A'}</p>
+                {patientData.primaryNurse ? (() => {
+                  const id = patientData.primaryNurse?._id || patientData.primaryNurse;
+                  const nurse = nursesById.get(id);
+                  const label = nurse
+                    ? `${nurse.firstName || ""} ${nurse.lastName || ""}`.trim()
+                    : (patientData.primaryNurse.firstName || patientData.primaryNurse.lastName)
+                      ? `${patientData.primaryNurse.firstName || ""} ${patientData.primaryNurse.lastName || ""}`.trim()
+                      : id;
+                  return (
+                    <div className="text-lg">
+                      <div className="font-semibold">{label || "Nurse"}</div>
+                      <div className="text-xs text-muted-foreground">{id}</div>
+                    </div>
+                  );
+                })() : (
+                  <p className="text-lg">N/A</p>
+                )}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Clinical Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="vitals" className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="vitals">Vitals</TabsTrigger>
+                  <TabsTrigger value="monitor">Monitor</TabsTrigger>
+                  <TabsTrigger value="meds">Meds</TabsTrigger>
+                  <TabsTrigger value="schedule">Schedule</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="vitals" className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">Heart Rate</p>
+                        <p className="text-lg font-semibold">{latestVital?.heartRate?.value ?? "—"} bpm</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">Blood Pressure</p>
+                        <p className="text-lg font-semibold">
+                          {latestVital?.bloodPressure?.systolic ?? "—"}/{latestVital?.bloodPressure?.diastolic ?? "—"}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">Temperature</p>
+                        <p className="text-lg font-semibold">{latestVital?.temperature?.value ?? "—"} °F</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">SpO2</p>
+                        <p className="text-lg font-semibold">{latestVital?.oxygenSaturation?.value ?? "—"}%</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Recorded</TableHead>
+                        <TableHead>HR</TableHead>
+                        <TableHead>BP</TableHead>
+                        <TableHead>Temp</TableHead>
+                        <TableHead>SpO2</TableHead>
+                        <TableHead>RR</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {vitals.length > 0 ? (
+                        vitals.map((v) => (
+                          <TableRow key={v._id}>
+                            <TableCell>{v.recordedAt ? new Date(v.recordedAt).toLocaleString() : "—"}</TableCell>
+                            <TableCell>{v.heartRate?.value ?? "—"}</TableCell>
+                            <TableCell>{v.bloodPressure?.systolic ?? "—"}/{v.bloodPressure?.diastolic ?? "—"}</TableCell>
+                            <TableCell>{v.temperature?.value ?? "—"}</TableCell>
+                            <TableCell>{v.oxygenSaturation?.value ?? "—"}</TableCell>
+                            <TableCell>{v.respiratoryRate?.value ?? "—"}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                            No vitals recorded
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+
+                <TabsContent value="monitor" className="mt-4">
+                  {trends.length > 0 ? (
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trends}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="time" tickFormatter={(t) => new Date(t).toLocaleTimeString()} />
+                          <YAxis />
+                          <Tooltip labelFormatter={(t) => new Date(t).toLocaleString()} />
+                          <Line type="monotone" dataKey="heartRate" stroke="#ef4444" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="oxygenSaturation" stroke="#22c55e" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="temperature" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">No trend data available</p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="meds" className="mt-4">
+                  {(patientData.currentMedications || []).length > 0 ? (
+                    <div className="space-y-2">
+                      {patientData.currentMedications.map((m, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <Pill className="h-5 w-5 text-primary" />
+                          <div>
+                            <div className="font-medium">{m.name}</div>
+                            <div className="text-xs text-muted-foreground">{m.dosage} • {m.frequency}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">No medications prescribed</p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="schedule" className="mt-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Doctor</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {appointments.length > 0 ? (
+                        appointments.map((a) => (
+                          <TableRow key={a._id}>
+                            <TableCell>{a.appointmentDate ? new Date(a.appointmentDate).toLocaleString() : "—"}</TableCell>
+                            <TableCell>{a.doctor?.user?.firstName ? `${a.doctor.user.firstName} ${a.doctor.user.lastName}` : a.doctor?.name || "—"}</TableCell>
+                            <TableCell>{a.type || "—"}</TableCell>
+                            <TableCell>{a.status || "—"}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                            No schedule entries
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+
+                <TabsContent value="notes" className="mt-4">
+                  {patientData.medicalHistory && patientData.medicalHistory.length > 0 ? (
+                    <div className="space-y-2">
+                      {patientData.medicalHistory.map((h, idx) => (
+                        <div key={idx} className="p-3 bg-muted/50 rounded-lg">
+                          <div className="font-medium">{h.condition || "Note"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {h.diagnosedDate ? new Date(h.diagnosedDate).toLocaleDateString() : "—"}
+                          </div>
+                          {h.notes && <div className="text-sm mt-2">{h.notes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">No notes recorded</p>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

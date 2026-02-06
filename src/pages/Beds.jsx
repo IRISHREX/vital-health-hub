@@ -23,6 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus, Filter, Bed, RefreshCw, Pencil, Eye, Trash2, LayoutGrid, Table as TableIcon } from "lucide-react";
 import BedDialog from "@/components/dashboard/BedDialog";
 import BedGrid from "@/components/dashboard/BedGrid";
+import RoomAssignDialog from "@/components/dashboard/RoomAssignDialog";
+import { useAuth } from "@/lib/AuthContext";
 
 const bedTypes = [
   "icu",
@@ -62,6 +64,7 @@ const getRooms = (beds) => {
 };
 
 export default function Beds() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -76,6 +79,7 @@ export default function Beds() {
   const [assignMode, setAssignMode] = useState(false);
   const [selectedWard, setSelectedWard] = useState("all");
   const [viewMode, setViewMode] = useState("grid"); // grid or table
+  const [roomAssignOpen, setRoomAssignOpen] = useState(false);
 
   const openCreateDialog = () => {
     setSelectedBed(null);
@@ -137,6 +141,13 @@ export default function Beds() {
   const wards = getWards(beds);
   const floors = getFloors(beds);
   const rooms = getRooms(beds);
+  const roomTuples = Array.from(
+    new Map(
+      (beds || [])
+        .filter((b) => b.roomNumber)
+        .map((b) => [`${b.ward}|${b.floor}|${b.roomNumber}`, { ward: b.ward, floor: b.floor, roomNumber: b.roomNumber }])
+    ).values()
+  );
   const wardStats = wards.reduce((acc, ward) => {
     const wardBeds = beds.filter(b => b.ward === ward);
     acc[ward] = {
@@ -173,10 +184,17 @@ export default function Beds() {
             Real-time bed availability and status management
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Bed
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"].includes(user?.role) && (
+            <Button variant="outline" onClick={() => setRoomAssignOpen(true)}>
+              Assign Room
+            </Button>
+          )}
+          <Button onClick={openCreateDialog}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Bed
+          </Button>
+        </div>
       </div>
 
       <BedDialog
@@ -185,6 +203,11 @@ export default function Beds() {
         bed={selectedBed}
         mode={dialogMode}
         assignMode={assignMode}
+      />
+      <RoomAssignDialog
+        isOpen={roomAssignOpen}
+        onClose={() => setRoomAssignOpen(false)}
+        rooms={roomTuples}
       />
 
       {/* Overall Stats */}

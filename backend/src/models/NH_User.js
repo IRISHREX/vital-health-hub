@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['super_admin', 'hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse'],
+    enum: ['super_admin', 'hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'],
     required: true
   },
   permissions: {
@@ -45,6 +45,11 @@ const userSchema = new mongoose.Schema({
   department: {
     type: String
   },
+  assignedRooms: [{
+    ward: { type: String, required: true },
+    floor: { type: Number, required: true },
+    roomNumber: { type: String, required: true }
+  }],
   address: {
     street: String,
     city: String,

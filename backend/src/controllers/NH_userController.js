@@ -152,7 +152,8 @@ exports.getUserStats = async (req, res, next) => {
 // @access  Authenticated
 exports.getNurses = async (req, res, next) => {
   try {
-    const nurses = await User.find({ role: 'nurse', isActive: true }).select('firstName lastName email role department');
+    const nurses = await User.find({ role: { $in: ['nurse', 'head_nurse'] }, isActive: true })
+      .select('firstName lastName email role department assignedRooms');
     res.json({ success: true, data: { users: nurses } });
   } catch (error) {
     next(error);

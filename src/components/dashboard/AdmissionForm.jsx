@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { createAdmission, getAvailableBeds } from '@/lib/admissions';
+import { getBeds } from '@/lib/beds';
+import { getFacilities } from '@/lib/facilities';
 import { getPatients } from '@/lib/patients';
 import { getDoctors } from '@/lib/doctors';
 import { Loader2, User, Bed, Stethoscope, FileText, Building2, X } from 'lucide-react';
@@ -22,6 +24,8 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [availableBeds, setAvailableBeds] = useState([]);
+  const [facilities, setFacilities] = useState([]);
+  const [wards, setWards] = useState([]);
   const [loadingDropdowns, setLoadingDropdowns] = useState(true);
   const [registrationType, setRegistrationType] = useState('emergency'); // emergency, opd, ipd
 
@@ -30,6 +34,7 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
     bedId: '',
     admittingDoctorId: '',
     facility: '',
+    ward: '',
     diagnosis: '',
     treatmentPlan: '',
     notes: '',
@@ -40,15 +45,21 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
     const loadData = async () => {
       try {
         setLoadingDropdowns(true);
-        const [patientsData, doctorsData, bedsData] = await Promise.all([
+        const [patientsData, doctorsData, bedsData, facilitiesData, allBedsData] = await Promise.all([
           getPatients(),
           getDoctors(),
           getAvailableBeds(),
+          getFacilities(),
+          getBeds(),
         ]);
 
         setPatients(patientsData.data?.patients || patientsData.data || []);
         setDoctors(doctorsData.data?.doctors || doctorsData.data || []);
         setAvailableBeds(bedsData?.data?.beds || bedsData || []);
+        setFacilities(facilitiesData || []);
+        const bedsForWards = allBedsData?.data?.beds || allBedsData || [];
+        const wardList = Array.from(new Set(bedsForWards.map((b) => b.ward).filter(Boolean)));
+        setWards(wardList);
       } catch (error) {
         console.error('Error loading data:', error);
         toast({
@@ -105,6 +116,7 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
         diagnosis: formData.diagnosis,
         treatmentPlan: formData.treatmentPlan,
         facility: formData.facility,
+        ward: formData.ward,
         notes: formData.notes,
       };
 
@@ -306,13 +318,40 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
               <Building2 className="h-5 w-5 text-purple-600" />
               <CardTitle className="text-base">Facility/Ward</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Input
-                placeholder="e.g., ICU, General Ward, Emergency Department"
-                value={formData.facility}
-                onChange={(e) => handleInputChange('facility', e.target.value)}
-                className="border-2"
-              />
+            <CardContent className="space-y-3">
+              <Select value={formData.facility} onValueChange={(value) => handleInputChange('facility', value)}>
+                <SelectTrigger className="border-2">
+                  <SelectValue placeholder="Select facility (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {facilities.length > 0 ? (
+                    facilities.map((facility) => (
+                      <SelectItem key={facility._id} value={facility.name}>
+                        {facility.name} ({facility.type})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-gray-500">No facilities found</div>
+                  )}
+                </SelectContent>
+              </Select>
+
+              <Select value={formData.ward} onValueChange={(value) => handleInputChange('ward', value)}>
+                <SelectTrigger className="border-2">
+                  <SelectValue placeholder="Select ward (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {wards.length > 0 ? (
+                    wards.map((ward) => (
+                      <SelectItem key={ward} value={ward}>
+                        {ward}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-gray-500">No wards found</div>
+                  )}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
         </div>

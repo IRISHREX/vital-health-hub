@@ -10,6 +10,7 @@ import AuthorizedRoute from "./components/AuthorizedRoute";
 import Dashboard from "./pages/Dashboard";
 import Beds from "./pages/Beds";
 import Patients from "./pages/Patients";
+import PatientDetails from "./pages/PatientDetails";
 import Admissions from "./pages/Admissions";
 import Doctors from "./pages/Doctors";
 import Appointments from "./pages/Appointments";
@@ -48,6 +49,7 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
                   <Route path="/patients" element={<Patients />} />
+                  <Route path="/patients/:id" element={<PatientDetails />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="doctors" />}>
                   <Route path="/doctors" element={<Doctors />} />

@@ -51,7 +51,7 @@ router.post(
 // @access  Private - Doctor/Admin
 router.post(
   '/:admissionId/discharge',
-  authorize('doctor', 'hospital_admin', 'super_admin'),
+  authorize('doctor', 'nurse', 'head_nurse', 'hospital_admin', 'super_admin'),
   dischargePatient
 );
 

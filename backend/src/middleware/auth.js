@@ -84,8 +84,9 @@ const getAllPermissions = () => {
 
 // Role hierarchy for easier permission checks
 const roleHierarchy = {
-  super_admin: ['super_admin', 'hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse'],
-  hospital_admin: ['hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse'],
+  super_admin: ['super_admin', 'hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'],
+  hospital_admin: ['hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'],
+  head_nurse: ['head_nurse', 'nurse'],
   doctor: ['doctor'],
   receptionist: ['receptionist', 'nurse'],
   billing_staff: ['billing_staff'],

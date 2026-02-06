@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { transferPatient, dischargePatient, getAvailableBeds, calculateBedCharges } from '@/lib/admissions';
 import { getDoctors } from '@/lib/doctors';
+import { getBeds } from '@/lib/beds';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 export default function AdmissionActionModal({ admission, isOpen, onClose, onActionComplete }) {
@@ -36,12 +38,11 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
     notes: '',
   });
 
-  if (!admission || admission.status !== 'ADMITTED') return null;
-
-  const currentBed = admission.bed;
+  const currentBed = admission?.bed;
 
   // Load data when mode changes
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!admission || admission.status !== 'ADMITTED') return;
     if (mode === 'transfer') {
       loadTransferData();
     } else if (mode === 'discharge') {
@@ -51,8 +52,18 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
 
   const loadTransferData = async () => {
     try {
-      const beds = await getAvailableBeds();
-      setAvailableBeds(beds.filter((b) => b._id !== currentBed._id));
+      let beds = await getAvailableBeds();
+      if (!beds || beds.length === 0) {
+        const allBedsRes = await getBeds();
+        const allBeds =
+          allBedsRes?.data?.beds ||
+          allBedsRes?.data?.data?.beds ||
+          allBedsRes?.beds ||
+          [];
+        beds = allBeds.filter((b) => b.status === 'available');
+      }
+      const currentBedId = currentBed?._id;
+      setAvailableBeds(currentBedId ? beds.filter((b) => b._id !== currentBedId) : beds);
     } catch (error) {
       toast({
         title: 'Error',
@@ -173,6 +184,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
   };
 
   const getPreviewBedInfo = () => {
+    if (!currentBed) return null;
     const newBed = availableBeds.find((b) => b._id === formData.newBedId);
     if (!newBed) return null;
 
@@ -190,6 +202,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
   };
 
   return (
+    admission && admission.status === 'ADMITTED' ? (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -334,11 +347,17 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
                   <SelectValue placeholder="Choose an available bed" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableBeds.map((bed) => (
-                    <SelectItem key={bed._id} value={bed._id}>
-                      {bed.bedNumber} ({bed.bedType.toUpperCase()}, {bed.ward}) - ₹{bed.pricePerDay}/day
-                    </SelectItem>
-                  ))}
+                  {availableBeds.length > 0 ? (
+                    availableBeds.map((bed) => (
+                      <SelectItem key={bed._id} value={bed._id}>
+                        {bed.bedNumber} ({bed.bedType.toUpperCase()}, {bed.ward}) - ₹{bed.pricePerDay}/day
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-muted-foreground">
+                      No available beds � mark a bed available first.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -509,5 +528,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    ) : null
   );
 }
+

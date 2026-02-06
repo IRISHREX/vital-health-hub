@@ -222,6 +222,7 @@ export default function AdmissionsPage() {
             setSearchTerm={setSearchTerm}
             selectedAdmission={selectedAdmission}
             setSelectedAdmission={setSelectedAdmission}
+            setDetailsModalOpen={setDetailsModalOpen}
             loading={loading}
           />
         </TabsContent>
@@ -233,6 +234,7 @@ export default function AdmissionsPage() {
             setSearchTerm={setSearchTerm}
             selectedAdmission={selectedAdmission}
             setSelectedAdmission={setSelectedAdmission}
+            setDetailsModalOpen={setDetailsModalOpen}
             loading={loading}
           />
         </TabsContent>
@@ -244,6 +246,7 @@ export default function AdmissionsPage() {
             setSearchTerm={setSearchTerm}
             selectedAdmission={selectedAdmission}
             setSelectedAdmission={setSelectedAdmission}
+            setDetailsModalOpen={setDetailsModalOpen}
             loading={loading}
           />
         </TabsContent>
@@ -283,6 +286,7 @@ function AdmissionsList({
   setSearchTerm,
   selectedAdmission,
   setSelectedAdmission,
+  setDetailsModalOpen,
   loading,
 }) {
   return (
@@ -427,7 +431,8 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
           <div>
             <p className="text-sm font-medium text-gray-600">Diagnosis</p>
             <p className="text-sm text-gray-700 truncate">
-              {admission.diagnosis || 'Not specified'}
+              {admission.diagnosis?.primary ||
+                (typeof admission.diagnosis === 'string' ? admission.diagnosis : 'Not specified')}
             </p>
           </div>
           <div>

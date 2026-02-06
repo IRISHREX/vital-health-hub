@@ -421,6 +421,16 @@ exports.dischargePatient = async (req, res, next) => {
 
     const dischargeDate = new Date();
 
+    // If nurse/head nurse, ensure they are assigned to the patient
+    if (['nurse', 'head_nurse'].includes(req.user.role)) {
+      const patient = await Patient.findById(admission.patient).select('assignedNurses primaryNurse');
+      const assigned = (patient?.assignedNurses || []).some((id) => id.toString() === req.user._id.toString()) ||
+        (patient?.primaryNurse && patient.primaryNurse.toString() === req.user._id.toString());
+      if (!assigned) {
+        throw new AppError('You are not assigned to this patient', 403);
+      }
+    }
+
     // Get current bed
     const currentBed = await Bed.findById(admission.bed);
     if (!currentBed) {
@@ -455,8 +465,11 @@ exports.dischargePatient = async (req, res, next) => {
     // Update admission status
     admission.status = 'DISCHARGED';
     admission.actualDischargeDate = dischargeDate;
-    admission.dischargingDoctor = dischargingDoctorId;
+    if (dischargingDoctorId) {
+      admission.dischargingDoctor = dischargingDoctorId;
+    }
     admission.dischargeNotes = notes;
+    admission.dischargedBy = req.user._id;
 
     await admission.save();
 
