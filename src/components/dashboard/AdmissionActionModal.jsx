@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -105,7 +104,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
 
       toast({
         title: 'Success',
-        description: `Patient transferred successfully. Previous bed charges: ₹${response.data.oldBedCharges}`,
+        description: `Patient transferred successfully. Previous bed charges: â‚¹${response.data.oldBedCharges}`,
       });
 
       if (onActionComplete) {
@@ -146,7 +145,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
 
       toast({
         title: 'Success',
-        description: `Patient discharged successfully. Total bed charges: ₹${totalCharges}`,
+        description: `Patient discharged successfully. Total bed charges: â‚¹${totalCharges}`,
       });
 
       if (onActionComplete) {
@@ -271,7 +270,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Price Per Day</p>
-                  <p className="text-sm font-semibold">₹{currentBed?.pricePerDay}</p>
+                  <p className="text-sm font-semibold">â‚¹{currentBed?.pricePerDay}</p>
                 </div>
               </CardContent>
             </Card>
@@ -350,12 +349,12 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
                   {availableBeds.length > 0 ? (
                     availableBeds.map((bed) => (
                       <SelectItem key={bed._id} value={bed._id}>
-                        {bed.bedNumber} ({bed.bedType.toUpperCase()}, {bed.ward}) - ₹{bed.pricePerDay}/day
+                        {bed.bedNumber} ({bed.bedType.toUpperCase()}, {bed.ward}) - â‚¹{bed.pricePerDay}/day
                       </SelectItem>
                     ))
                   ) : (
                     <div className="p-2 text-sm text-muted-foreground">
-                      No available beds � mark a bed available first.
+                      No available beds — mark a bed available first.
                     </div>
                   )}
                 </SelectContent>
@@ -398,11 +397,11 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
                     </div>
                     <div className="flex justify-between">
                       <span>Rate Per Day:</span>
-                      <span className="font-semibold">₹{currentBed?.pricePerDay}</span>
+                      <span className="font-semibold">â‚¹{currentBed?.pricePerDay}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t">
                       <span>Total Charge:</span>
-                      <span className="font-bold">₹{getPreviewBedInfo().currentBedCharges.amount}</span>
+                      <span className="font-bold">â‚¹{getPreviewBedInfo().currentBedCharges.amount}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -531,4 +530,5 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
     ) : null
   );
 }
+
 

@@ -110,10 +110,19 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
   };
 
   const handleDischargePatient = async () => {
-    if (!dischargeFormData.dischargeReason || !dischargeFormData.dischargingDoctorId) {
+    if (!bed.currentAdmission) {
+      toast({
+        title: "Error",
+        description: "No active admission found for this bed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!dischargeFormData.dischargeReason) {
       toast({
         title: "Required Fields",
-        description: "Please fill in discharge reason and select a doctor",
+        description: "Please fill in discharge reason",
         variant: "destructive",
       });
       return;
@@ -122,11 +131,16 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
     setLoading(true);
     try {
       const currentAdmission = bed.currentAdmission;
-      await dischargePatient(currentAdmission, {
+      const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(value);
+      const payload = {
         dischargeReason: dischargeFormData.dischargeReason,
-        dischargingDoctorId: dischargeFormData.dischargingDoctorId,
         notes: dischargeFormData.notes,
-      });
+      };
+      if (isMongoId(dischargeFormData.dischargingDoctorId)) {
+        payload.dischargingDoctorId = dischargeFormData.dischargingDoctorId;
+      }
+
+      await dischargePatient(currentAdmission, payload);
 
       toast({
         title: "Success",
@@ -446,7 +460,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
 
                   {/* Discharging Doctor */}
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold">Discharging Doctor *</label>
+                    <label className="text-sm font-semibold">Discharging Doctor</label>
                     <Select
                       value={dischargeFormData.dischargingDoctorId}
                       onValueChange={(value) =>
@@ -460,8 +474,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                         <SelectValue placeholder="Select discharging doctor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="current">Current Attending Doctor</SelectItem>
-                        <SelectItem value="primary">Primary Care Doctor</SelectItem>
+                        <SelectItem value="">Not specified</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -517,7 +530,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                 <Button
                   variant="destructive"
                   onClick={handleDischargePatient}
-                  disabled={loading || !dischargeFormData.dischargeReason || !dischargeFormData.dischargingDoctorId}
+                  disabled={loading || !dischargeFormData.dischargeReason}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Confirm Discharge

@@ -14,6 +14,8 @@ const notificationRoutes = require('./notifications');
 const vitalsRoutes = require('./vitals');
 const nurseRoutes = require('./nurse');
 const dashboardRoutes = require('./dashboard');
+const serviceOrderRoutes = require('./serviceOrders');
+const billingRoutes = require('./billing');
 
 const router = express.Router();
 
@@ -36,6 +38,8 @@ v1Router.use('/vitals', vitalsRoutes);
 v1Router.use('/tasks', require('./tasks'));
 v1Router.use('/nurse', nurseRoutes);
 v1Router.use('/dashboard', dashboardRoutes);
+v1Router.use('/service-orders', serviceOrderRoutes);
+v1Router.use('/billing', billingRoutes);
 
 // Health check
 v1Router.get('/health', (req, res) => {

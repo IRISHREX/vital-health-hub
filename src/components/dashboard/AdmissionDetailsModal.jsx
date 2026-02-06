@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,8 +45,13 @@ import {
   LogOut,
   Loader2,
   AlertTriangle,
+  ClipboardList,
+  Receipt,
 } from 'lucide-react';
 import { dischargePatient } from '@/lib/admissions';
+import { getFacilities } from '@/lib/facilities';
+import { getServiceOrders, createServiceOrder, updateServiceOrder } from '@/lib/serviceOrders';
+import { getLedgerEntries, generateProvisionalInvoice } from '@/lib/billingLedger';
 import { toast } from '@/hooks/use-toast';
 
 export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDischarge }) {
@@ -59,6 +64,21 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
     notes: '',
   });
   const [loading, setLoading] = useState(false);
+  const [serviceOrders, setServiceOrders] = useState([]);
+  const [ledgerEntries, setLedgerEntries] = useState([]);
+  const [facilities, setFacilities] = useState([]);
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [invoiceGenerating, setInvoiceGenerating] = useState(false);
+  const [orderForm, setOrderForm] = useState({
+    facilityId: '',
+    serviceId: '',
+    type: 'other',
+    quantity: 1,
+    unitPrice: '',
+    notes: ''
+  });
 
   const calculateDays = (startDate, endDate = new Date()) => {
     const start = new Date(startDate);
@@ -71,6 +91,32 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
   const los = calculateDays(admission.admissionDate, admission.dischargeDate || new Date());
   const bedAllocations = admission.bedAllocations || [];
   const transferHistory = admission.transferHistory || [];
+  const ledgerTotals = ledgerEntries.reduce(
+    (acc, entry) => {
+      acc.total += entry.amount || 0;
+      if (!entry.billed) acc.unbilled += entry.amount || 0;
+      acc.count += 1;
+      return acc;
+    },
+    { total: 0, unbilled: 0, count: 0 }
+  );
+  const selectedFacility = facilities.find((f) => f._id === orderForm.facilityId);
+  const availableServices = selectedFacility?.services || [];
+
+  const facilityTypeToOrderType = (facilityType) => {
+    switch (facilityType) {
+      case 'lab':
+        return 'lab';
+      case 'radiology':
+        return 'radiology';
+      case 'ot':
+        return 'procedure';
+      case 'physiotherapy':
+        return 'physiotherapy';
+      default:
+        return 'other';
+    }
+  };
 
   const dischargeReasons = [
     'Recovery - Fit for discharge',
@@ -134,6 +180,140 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
   const handleOpenChange = (nextOpen) => {
     if (!nextOpen) {
       onClose();
+    }
+  };
+
+  const loadServiceOrders = async () => {
+    if (!admission?._id) return;
+    setServiceLoading(true);
+    try {
+      const response = await getServiceOrders({ admissionId: admission._id, limit: 50 });
+      setServiceOrders(response?.data?.orders || []);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load service orders',
+        variant: 'destructive',
+      });
+    } finally {
+      setServiceLoading(false);
+    }
+  };
+
+  const loadLedger = async () => {
+    if (!admission?._id) return;
+    setLedgerLoading(true);
+    try {
+      const response = await getLedgerEntries({ admissionId: admission._id, limit: 100 });
+      setLedgerEntries(response?.data?.entries || []);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load ledger entries',
+        variant: 'destructive',
+      });
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
+  const loadFacilities = async () => {
+    if (facilities.length > 0) return;
+    try {
+      const response = await getFacilities();
+      setFacilities(Array.isArray(response) ? response : []);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load facilities',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen || !admission?._id) return;
+    loadServiceOrders();
+    loadLedger();
+    loadFacilities();
+  }, [isOpen, admission?._id]);
+
+  const handleCreateServiceOrder = async () => {
+    if (!admission?._id) return;
+    const parsedUnitPrice = Number(orderForm.unitPrice);
+    if (orderForm.unitPrice === '' || Number.isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+      toast({
+        title: 'Validation',
+        description: 'Please enter a valid unit price',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setOrderSubmitting(true);
+    try {
+      await createServiceOrder({
+        admissionId: admission._id,
+        patientId: admission.patient?._id,
+        facilityId: orderForm.facilityId || undefined,
+        serviceId: orderForm.serviceId || undefined,
+        type: orderForm.type,
+        quantity: Number(orderForm.quantity || 1),
+        unitPrice: parsedUnitPrice,
+        notes: orderForm.notes || undefined,
+      });
+      toast({ title: 'Success', description: 'Service order created' });
+      setOrderForm({
+        facilityId: orderForm.facilityId,
+        serviceId: '',
+        type: orderForm.type,
+        quantity: 1,
+        unitPrice: '',
+        notes: ''
+      });
+      await loadServiceOrders();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create service order',
+        variant: 'destructive',
+      });
+    } finally {
+      setOrderSubmitting(false);
+    }
+  };
+
+  const handleCompleteOrder = async (orderId) => {
+    try {
+      await updateServiceOrder(orderId, { status: 'completed' });
+      toast({ title: 'Updated', description: 'Service order marked completed' });
+      await Promise.all([loadServiceOrders(), loadLedger()]);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update service order',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!admission?._id) return;
+    setInvoiceGenerating(true);
+    try {
+      const response = await generateProvisionalInvoice(admission._id);
+      toast({
+        title: 'Invoice Generated',
+        description: `Invoice created with ${response?.data?.attachedCount || 0} ledger items.`,
+      });
+      await loadLedger();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate invoice from ledger',
+        variant: 'destructive',
+      });
+    } finally {
+      setInvoiceGenerating(false);
     }
   };
 
@@ -294,9 +474,9 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
               </CardContent>
             </Card>
 
-            {/* Tabs for Bed History and Transfers */}
+            {/* Tabs for Bed History, Transfers, Services, Ledger */}
             <Tabs defaultValue="beds" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="beds">
                   <Bed className="h-4 w-4 mr-2" />
                   Bed Allocations
@@ -304,6 +484,14 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
                 <TabsTrigger value="transfers">
                   <ArrowRight className="h-4 w-4 mr-2" />
                   Transfer History
+                </TabsTrigger>
+                <TabsTrigger value="services">
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  Service Orders
+                </TabsTrigger>
+                <TabsTrigger value="ledger">
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Billing Ledger
                 </TabsTrigger>
               </TabsList>
 
@@ -423,6 +611,221 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
                   </Card>
                 )}
               </TabsContent>
+
+              <TabsContent value="services" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Create Service Order</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Facility</Label>
+                        <Select
+                          value={orderForm.facilityId}
+                          onValueChange={(value) => {
+                            const facility = facilities.find((f) => f._id === value);
+                            setOrderForm((prev) => ({
+                              ...prev,
+                              facilityId: value,
+                              serviceId: '',
+                              unitPrice: '',
+                              type: facility ? facilityTypeToOrderType(facility.type) : 'other'
+                            }));
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select facility" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {facilities.map((facility) => (
+                              <SelectItem key={facility._id} value={facility._id}>
+                                {facility.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Service</Label>
+                        <Select
+                          value={orderForm.serviceId}
+                          onValueChange={(value) => {
+                            const service = availableServices.find((s) => s._id === value);
+                            setOrderForm((prev) => ({
+                              ...prev,
+                              serviceId: value,
+                              unitPrice: service?.price ?? prev.unitPrice
+                            }));
+                          }}
+                          disabled={!availableServices.length}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select service" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableServices.map((service) => (
+                              <SelectItem key={service._id} value={service._id}>
+                                {service.name} {service.price ? `- ₹${service.price}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Type</Label>
+                        <Select
+                          value={orderForm.type}
+                          onValueChange={(value) =>
+                            setOrderForm((prev) => ({ ...prev, type: value }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="lab">Lab</SelectItem>
+                            <SelectItem value="radiology">Radiology</SelectItem>
+                            <SelectItem value="procedure">Procedure</SelectItem>
+                            <SelectItem value="surgery">Surgery</SelectItem>
+                            <SelectItem value="physiotherapy">Physiotherapy</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Quantity</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={orderForm.quantity}
+                          onChange={(e) =>
+                            setOrderForm((prev) => ({ ...prev, quantity: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Unit Price</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={orderForm.unitPrice}
+                          onChange={(e) =>
+                            setOrderForm((prev) => ({ ...prev, unitPrice: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Notes</Label>
+                        <Input
+                          placeholder="Optional notes"
+                          value={orderForm.notes}
+                          onChange={(e) =>
+                            setOrderForm((prev) => ({ ...prev, notes: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={handleCreateServiceOrder} disabled={orderSubmitting}>
+                        {orderSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Create Order'
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Service Orders</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {serviceLoading ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                      </div>
+                    ) : serviceOrders.length === 0 ? (
+                      <div className="text-sm text-gray-500 text-center py-6">
+                        No service orders found
+                      </div>
+                    ) : (
+                      serviceOrders.map((order) => (
+                        <div key={order._id} className="flex items-center justify-between border rounded-lg p-3">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {order.service?.name || 'Service'}{' '}
+                              {order.facility?.name ? `(${order.facility?.name})` : ''}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {order.type} â€¢ Qty {order.quantity} â€¢ ₹{order.totalAmount}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(order.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="capitalize">
+                              {order.status}
+                            </Badge>
+                            {order.status !== 'completed' && (
+                              <Button size="sm" variant="outline" onClick={() => handleCompleteOrder(order._id)}>
+                                Mark Completed
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="ledger" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Billing Ledger</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {ledgerLoading ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                      </div>
+                    ) : ledgerEntries.length === 0 ? (
+                      <div className="text-sm text-gray-500 text-center py-6">
+                        No ledger entries found
+                      </div>
+                    ) : (
+                      ledgerEntries.map((entry) => (
+                        <div key={entry._id} className="flex items-center justify-between border rounded-lg p-3">
+                          <div>
+                            <p className="text-sm font-medium">{entry.description}</p>
+                            <p className="text-xs text-gray-500 capitalize">
+                              {entry.category.replace('_', ' ')} â€¢ Qty {entry.quantity}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(entry.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold">₹{entry.amount}</p>
+                            <Badge variant="outline">
+                              {entry.billed ? 'Billed' : 'Unbilled'}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
 
             {/* Summary Footer */}
@@ -459,9 +862,36 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
           </div>
         </ScrollArea>
 
-        <div className="flex justify-between gap-2 pt-4 border-t">
-          <div>
-            {admission.status === 'ADMITTED' && (
+        <div className="flex flex-col gap-3 pt-4 border-t">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <span className="font-medium text-gray-900">Ledger Summary</span>
+              <span>Total: ₹{ledgerTotals.total.toFixed(2)}</span>
+              <span>Unbilled: ₹{ledgerTotals.unbilled.toFixed(2)}</span>
+              <span>Entries: {ledgerTotals.count}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleGenerateInvoice}
+                disabled={invoiceGenerating || ledgerTotals.unbilled <= 0}
+              >
+                {invoiceGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Provisional Invoice'
+                )}
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          </div>
+          {admission.status === 'ADMITTED' && (
+            <div>
               <Button
                 variant="destructive"
                 onClick={() => setShowDischargeModal(true)}
@@ -470,11 +900,8 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
                 <LogOut className="h-4 w-4" />
                 Discharge Patient
               </Button>
-            )}
-          </div>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
 

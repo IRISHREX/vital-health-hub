@@ -1,6 +1,31 @@
-const { Admission, Bed, Patient, Invoice } = require('../models');
+const { Admission, Bed, Patient, Invoice, BillingLedger } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { emitBedUpdate, emitNotification } = require('../config/socket');
+
+const attachLedgerEntriesToInvoice = async (invoice, admissionId) => {
+  const ledgerEntries = await BillingLedger.find({ admission: admissionId, billed: false });
+  if (!ledgerEntries.length || !invoice) return 0;
+
+  ledgerEntries.forEach((entry) => {
+    invoice.items.push({
+      description: entry.description,
+      category: entry.category,
+      quantity: entry.quantity,
+      unitPrice: entry.unitPrice,
+      discount: 0,
+      tax: 0,
+      amount: entry.amount
+    });
+  });
+
+  const entryIds = ledgerEntries.map((entry) => entry._id);
+  await BillingLedger.updateMany(
+    { _id: { $in: entryIds } },
+    { billed: true, billedAt: new Date(), invoice: invoice._id }
+  );
+
+  return ledgerEntries.length;
+};
 
 /**
  * PATIENT ADMISSION FLOW
@@ -522,6 +547,8 @@ exports.dischargePatient = async (req, res, next) => {
           amount: finalBedCharges
         });
       }
+
+      await attachLedgerEntriesToInvoice(invoice, admissionId);
 
       // Recalculate totals
       invoice.subtotal = invoice.items.reduce((sum, item) => sum + item.amount, 0);
