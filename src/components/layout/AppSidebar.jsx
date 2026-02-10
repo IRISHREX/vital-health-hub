@@ -37,6 +37,7 @@ const mainNavItems = [
   { title: "Doctors", url: "/doctors", icon: Stethoscope, module: "doctors" },
   { title: "Appointments", url: "/appointments", icon: Calendar, module: "appointments" },
   { title: "Nurse", url: "/nurse", icon: Users, module: "patients" },
+  { title: "OPD", url: "/opd", icon: Users, module: "dashboard" },
 ];
 
 const managementItems = [
