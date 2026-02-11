@@ -116,6 +116,8 @@ exports.createPatient = async (req, res, next) => {
     // Assign bed if IPD and bed provided
     if (registrationType === 'ipd' && assignedBed) {
       patientData.assignedBed = assignedBed;
+      patientData.status = 'admitted';
+      patientData.admissionStatus = 'ADMITTED';
     }
 
     const patient = await Patient.create(patientData);
@@ -268,6 +270,10 @@ exports.updatePatient = async (req, res, next) => {
         },
         { new: true }
       );
+
+      // Update patient status to admitted when assigning a bed
+      req.body.status = 'admitted';
+      req.body.admissionStatus = 'ADMITTED';
     }
 
     // If a nurse is making the update, restrict to nurse assignment fields only

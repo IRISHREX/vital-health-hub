@@ -14,19 +14,28 @@ exports.getDoctors = async (req, res, next) => {
     if (specialization) query.specialization = specialization;
     if (availabilityStatus) query.availabilityStatus = availabilityStatus;
 
-    const doctors = await Doctor.find(query)
+    let doctors = await Doctor.find(query)
       .populate('user', 'firstName lastName email phone avatar isActive')
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
-      .sort({ department: 1 });
+      .sort({ department: 1 })
+      .lean();
+
+    doctors = doctors.map(doc => {
+      if (doc.user) {
+        doc.name = `${doc.user.firstName} ${doc.user.lastName}`;
+        doc.email = doc.user.email;
+        doc.phone = doc.user.phone;
+      }
+      return doc;
+    });
 
     // Apply search filter on populated fields
     let filteredDoctors = doctors;
     if (search) {
       const searchLower = search.toLowerCase();
       filteredDoctors = doctors.filter(doc => 
-        doc.user?.firstName?.toLowerCase().includes(searchLower) ||
-        doc.user?.lastName?.toLowerCase().includes(searchLower) ||
+        doc.name?.toLowerCase().includes(searchLower) ||
         doc.doctorId?.toLowerCase().includes(searchLower) ||
         doc.specialization?.toLowerCase().includes(searchLower)
       );

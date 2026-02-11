@@ -13,6 +13,7 @@ import Patients from "./pages/Patients";
 import PatientDetails from "./pages/PatientDetails";
 import Admissions from "./pages/Admissions";
 import Doctors from "./pages/Doctors";
+import Nurses from "./pages/Nurses";
 import Appointments from "./pages/Appointments";
 import Facilities from "./pages/Facilities";
 import Billing from "./pages/Billing";
@@ -55,6 +56,9 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="doctors" />}>
                   <Route path="/doctors" element={<Doctors />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="nurses" />}>
+                  <Route path="/nurses" element={<Nurses />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="appointments" />}>
                   <Route path="/appointments" element={<Appointments />} />
