@@ -49,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PrescriptionDialog from "@/components/dashboard/PrescriptionDialog";
 
 export default function OpdDashboard() {
   const navigate = useNavigate();
@@ -65,6 +66,8 @@ export default function OpdDashboard() {
   const [doctorFilter, setDoctorFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [patients, setPatients] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [isPrescriptionOpen, setIsPrescriptionOpen] = useState(false);
 
   const openCreateDialog = () => {
     setSelectedPatient(null);
@@ -81,6 +84,11 @@ export default function OpdDashboard() {
   const openViewDialog = (patient) => {
     setSelectedViewPatient(patient);
     setViewDialogOpen(true);
+  };
+
+  const openPrescriptionDialog = (patient) => {
+    setSelectedPatient(patient);
+    setIsPrescriptionOpen(true);
   };
 
   const handleDialogClose = () => {
@@ -170,8 +178,8 @@ export default function OpdDashboard() {
               Book Appointment
             </Button>
             <Button >
-              <Clock className="h-4 w-4" />
-              Schedule
+              <Calendar className="h-4 w-4" />
+              View Slots
             </Button>
           </div>
         <div className="w-40 h-40"><img src="opdF.svg" alt="OPD" className="w-full h-full" /></div>
@@ -335,7 +343,7 @@ export default function OpdDashboard() {
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openEditDialog(patient)}>
+                              <DropdownMenuItem onClick={() => openPrescriptionDialog(patient)}>
                                 <ClipboardPlus className="h-4 w-4 mr-2" />
                                 Prescription
                               </DropdownMenuItem>
@@ -366,6 +374,7 @@ export default function OpdDashboard() {
           </Table>
         </CardContent>
       </Card>
+      <PrescriptionDialog isOpen={isPrescriptionOpen} onClose={() => setIsPrescriptionOpen(false)} patient={selectedPatient} />
     </div>
   );
 }
