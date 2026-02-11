@@ -25,6 +25,7 @@ import NursePatients from "./pages/NursePatients";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import OpdDashboard from './pages/OpdDashboard';
+import LabDashboard from './pages/LabDashboard';
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,9 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="dashboard" />}>
                   <Route path="/opd" element={<OpdDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="lab" />}>
+                  <Route path="/lab" element={<LabDashboard />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<Settings />} />
