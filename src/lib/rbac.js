@@ -20,6 +20,7 @@ export const rolePermissions = {
     notifications: fullAccess,
     settings: fullAccess,
     tasks: fullAccess,
+    lab: fullAccess,
   },
   hospital_admin: {
     dashboard: fullAccess,
@@ -34,6 +35,7 @@ export const rolePermissions = {
     notifications: fullAccess,
     settings: viewAndEdit,
     tasks: fullAccess,
+    lab: fullAccess,
   },
   head_nurse: {
     dashboard: viewOnly,
@@ -48,6 +50,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
     tasks: viewAndEdit,
+    lab: viewAndEdit,
   },
   doctor: {
     dashboard: viewOnly,
@@ -62,6 +65,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
     tasks: viewAndEdit,
+    lab: viewAndEdit,
   },
   nurse: {
     dashboard: viewOnly,
@@ -76,6 +80,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
     tasks: viewAndEdit,
+    lab: viewAndEdit,
   },
   receptionist: {
     dashboard: viewOnly,
@@ -89,6 +94,7 @@ export const rolePermissions = {
     reports: noAccess,
     notifications: viewOnly,
     settings: viewOnly,
+    lab: viewAndCreate,
   },
   billing_staff: {
     dashboard: viewOnly,
@@ -102,6 +108,7 @@ export const rolePermissions = {
     reports: fullAccess,
     notifications: viewOnly,
     settings: viewOnly,
+    lab: viewOnly,
   },
 };
 

@@ -12,6 +12,8 @@ const ActivityLog = require('./NH_ActivityLog');
 const Task = require('./NH_Task');
 const BillingLedger = require('./NH_BillingLedger');
 const ServiceOrder = require('./NH_ServiceOrder');
+const LabTest = require('./NH_LabTest');
+const LabTestCatalog = require('./NH_LabTestCatalog');
 const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences } = require('./NH_Settings');
 
 module.exports = {
@@ -29,6 +31,8 @@ module.exports = {
   Task,
   BillingLedger,
   ServiceOrder,
+  LabTest,
+  LabTestCatalog,
   HospitalSettings,
   SecuritySettings,
   NotificationSettings,

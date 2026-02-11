@@ -40,6 +40,7 @@ v1Router.use('/nurse', nurseRoutes);
 v1Router.use('/dashboard', dashboardRoutes);
 v1Router.use('/service-orders', serviceOrderRoutes);
 v1Router.use('/billing', billingRoutes);
+v1Router.use('/lab-tests', require('./labTests'));
 
 // Health check
 v1Router.get('/health', (req, res) => {
