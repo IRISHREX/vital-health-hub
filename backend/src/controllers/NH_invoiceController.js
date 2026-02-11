@@ -142,7 +142,8 @@ const updateInvoice = asyncHandler(async (req, res) => {
     dueDate,
     items,
     subtotal,
-    totalAmount
+    totalAmount,
+    addOtherItem
   } = req.body;
 
   const invoice = await Invoice.findById(req.params.id);
@@ -151,9 +152,34 @@ const updateInvoice = asyncHandler(async (req, res) => {
     invoice.status = status || invoice.status;
     invoice.notes = notes || invoice.notes;
     invoice.dueDate = dueDate || invoice.dueDate;
-    invoice.items = items || invoice.items;
-    invoice.subtotal = subtotal || invoice.subtotal;
-    invoice.totalAmount = totalAmount || invoice.totalAmount;
+    
+    if (items) {
+      invoice.items = items;
+    }
+
+    if (addOtherItem) {
+      const { name, price, description } = addOtherItem;
+      if (price !== undefined) {
+        invoice.items.push({
+          description: description || name || 'Other Charge',
+          category: 'other',
+          quantity: 1,
+          unitPrice: Number(price),
+          amount: Number(price),
+          discount: 0,
+          tax: 0
+        });
+      }
+    }
+
+    if ((items || addOtherItem) && subtotal === undefined && totalAmount === undefined) {
+      invoice.subtotal = invoice.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+      invoice.totalAmount = invoice.subtotal + (invoice.totalTax || 0) - (invoice.discountAmount || 0);
+    } else {
+      if (subtotal !== undefined) invoice.subtotal = subtotal;
+      if (totalAmount !== undefined) invoice.totalAmount = totalAmount;
+    }
+
     invoice.lastUpdatedBy = req.user._id;
 
     const updatedInvoice = await invoice.save();

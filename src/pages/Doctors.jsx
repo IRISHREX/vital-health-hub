@@ -119,8 +119,8 @@ export default function Doctors() {
   const filteredDoctors = doctors
     ? doctors.filter((doctor) => {
         const matchesSearch =
-          doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          doctor.specialization.toLowerCase().includes(searchQuery.toLowerCase());
+          (doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          doctor.specialization?.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesDepartment =
           departmentFilter === "all" || doctor.department === departmentFilter;
         const matchesAvailability =
@@ -251,7 +251,7 @@ export default function Doctors() {
                   <Avatar className="h-14 w-14">
                     <AvatarFallback className="bg-primary/10 text-primary text-lg">
                       {doctor.name
-                        .split(" ")
+                        ?.split(" ")
                         .slice(1)
                         .map((n) => n[0])
                         .join("")}

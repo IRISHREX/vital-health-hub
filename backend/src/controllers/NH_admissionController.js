@@ -1,31 +1,6 @@
-const { Admission, Bed, Patient, Invoice, BillingLedger } = require('../models');
+const { Admission, Bed, Patient, Invoice } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { emitBedUpdate, emitNotification } = require('../config/socket');
-
-const attachLedgerEntriesToInvoice = async (invoice, admissionId) => {
-  const ledgerEntries = await BillingLedger.find({ admission: admissionId, billed: false });
-  if (!ledgerEntries.length || !invoice) return 0;
-
-  ledgerEntries.forEach((entry) => {
-    invoice.items.push({
-      description: entry.description,
-      category: entry.category,
-      quantity: entry.quantity,
-      unitPrice: entry.unitPrice,
-      discount: 0,
-      tax: 0,
-      amount: entry.amount
-    });
-  });
-
-  const entryIds = ledgerEntries.map((entry) => entry._id);
-  await BillingLedger.updateMany(
-    { _id: { $in: entryIds } },
-    { billed: true, billedAt: new Date(), invoice: invoice._id }
-  );
-
-  return ledgerEntries.length;
-};
 
 /**
  * PATIENT ADMISSION FLOW
@@ -127,7 +102,8 @@ exports.createAdmission = async (req, res, next) => {
     // Update patient's assigned bed and admission
     const patientUpdateData = { 
       currentAdmission: admission._id,
-      admissionStatus: 'ADMITTED'
+      admissionStatus: 'ADMITTED',
+      status: 'admitted'
     };
     if (bedId) {
       patientUpdateData.assignedBed = bedId;
@@ -446,16 +422,6 @@ exports.dischargePatient = async (req, res, next) => {
 
     const dischargeDate = new Date();
 
-    // If nurse/head nurse, ensure they are assigned to the patient
-    if (['nurse', 'head_nurse'].includes(req.user.role)) {
-      const patient = await Patient.findById(admission.patient).select('assignedNurses primaryNurse');
-      const assigned = (patient?.assignedNurses || []).some((id) => id.toString() === req.user._id.toString()) ||
-        (patient?.primaryNurse && patient.primaryNurse.toString() === req.user._id.toString());
-      if (!assigned) {
-        throw new AppError('You are not assigned to this patient', 403);
-      }
-    }
-
     // Get current bed
     const currentBed = await Bed.findById(admission.bed);
     if (!currentBed) {
@@ -490,11 +456,8 @@ exports.dischargePatient = async (req, res, next) => {
     // Update admission status
     admission.status = 'DISCHARGED';
     admission.actualDischargeDate = dischargeDate;
-    if (dischargingDoctorId) {
-      admission.dischargingDoctor = dischargingDoctorId;
-    }
+    admission.dischargingDoctor = dischargingDoctorId;
     admission.dischargeNotes = notes;
-    admission.dischargedBy = req.user._id;
 
     await admission.save();
 
@@ -511,7 +474,8 @@ exports.dischargePatient = async (req, res, next) => {
       {
         assignedBed: null,
         currentAdmission: null,
-        admissionStatus: 'DISCHARGED'
+        admissionStatus: 'DISCHARGED',
+        status: 'discharged'
       },
       { new: true }
     );
@@ -547,8 +511,6 @@ exports.dischargePatient = async (req, res, next) => {
           amount: finalBedCharges
         });
       }
-
-      await attachLedgerEntriesToInvoice(invoice, admissionId);
 
       // Recalculate totals
       invoice.subtotal = invoice.items.reduce((sum, item) => sum + item.amount, 0);

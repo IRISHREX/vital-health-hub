@@ -35,6 +35,7 @@ const mainNavItems = [
   { title: "Admissions", url: "/admissions", icon: Hospital, module: "admissions" },
   { title: "Patients", url: "/patients", icon: Users, module: "patients" },
   { title: "Doctors", url: "/doctors", icon: Stethoscope, module: "doctors" },
+  { title: "Nurses", url: "/nurses", icon: Users, module: "nurses" },
   { title: "Appointments", url: "/appointments", icon: Calendar, module: "appointments" },
   { title: "Nurse", url: "/nurse", icon: Users, module: "patients" },
 ];

@@ -36,6 +36,31 @@ exports.getDashboard = async (req, res, next) => {
 
     // Nurse view
     if (roleQuery === 'nurse' && (req.user.role === 'nurse' || ['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role))) {
+      // For Admins and Doctors: Show Nurse Availability Overview
+      if (['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role)) {
+        const nurses = await User.find({ role: 'nurse' })
+          .select('firstName lastName email phone status department isActive avatar');
+
+        const availableNurses = nurses.filter(n => n.status === 'active');
+        const unavailableNurses = nurses.filter(n => n.status !== 'active');
+
+        return res.json({
+          success: true,
+          data: {
+            viewType: 'overview',
+            stats: {
+              total: nurses.length,
+              available: availableNurses.length,
+              unavailable: unavailableNurses.length
+            },
+            nurses: {
+              available: availableNurses,
+              unavailable: unavailableNurses
+            }
+          }
+        });
+      }
+
       const nurseId = req.user._id;
       const assignedPatients = await Patient.countDocuments({ assignedNurses: nurseId });
       const todaysAppointments = await Appointment.countDocuments({ assignedNurse: nurseId, appointmentDate: { $gte: new Date(new Date().setHours(0,0,0,0)), $lt: new Date(new Date().setHours(23,59,59,999)) } });
