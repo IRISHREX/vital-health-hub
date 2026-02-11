@@ -3,8 +3,7 @@ import {
   Users,
   Stethoscope,
   Receipt,
-  TrendingUp,
-  TrendingDown,
+  Clock,
   Calendar,
   LogOut,
   Plus,
@@ -13,6 +12,7 @@ import {
   Pencil,
   Trash2,
   ClipboardPlus,
+  MoreVertical,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -29,6 +29,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -54,7 +61,9 @@ export default function OpdDashboard() {
   const [doctors, setDoctors] = useState([]);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [doctorFilter, setDoctorFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [patients, setPatients] = useState([]);
 
   const openCreateDialog = () => {
@@ -114,8 +123,24 @@ export default function OpdDashboard() {
       `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (patient.contactNumber && patient.contactNumber.includes(searchQuery)) ||
       (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = typeFilter === "all" || patient.registrationType === typeFilter;
-    return matchesSearch && matchesType;
+
+    let matchesDate = true;
+    if (dateFilter !== "all") {
+      const patientDate = new Date(patient.createdAt || patient.registrationDate || new Date());
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const pDate = new Date(patientDate);
+      pDate.setHours(0, 0, 0, 0);
+
+      if (dateFilter === "today") matchesDate = pDate.getTime() === today.getTime();
+      else if (dateFilter === "old") matchesDate = pDate.getTime() < today.getTime();
+      else if (dateFilter === "upcoming") matchesDate = pDate.getTime() > today.getTime();
+    }
+
+    const matchesDoctor = doctorFilter === "all" || patient.assignedDoctor === doctorFilter;
+    const matchesStatus = statusFilter === "all" || patient.status === statusFilter;
+
+    return matchesSearch && matchesDate && matchesDoctor && matchesStatus;
   }) : [];
 
   const stats = {
@@ -130,19 +155,26 @@ export default function OpdDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-white to-blue-100 rounded-lg">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            OPD Dashboard Overview
+            Hello {user?.fullName ? user.fullName.split(" ")[0] : "there"}👋
           </h1>
           <p className="text-muted-foreground">
-            Hello 👋{user?.fullName ? user.fullName.split(" ")[0] : "there"}, here’s a summary of today’s outpatient activities.
+            Here’s a summary of today’s outpatient activities.
           </p>
         </div>
-          <Button >
-            <Plus className="mr-2 h-4 w-4" />
-            Book Appointment
-          </Button>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center mt-auto mb-4">
+            <Button >
+              <Plus className="h-4 w-4" />
+              Book Appointment
+            </Button>
+            <Button >
+              <Clock className="h-4 w-4" />
+              Schedule
+            </Button>
+          </div>
+        <div className="w-40 h-40"><img src="opdF.svg" alt="OPD" className="w-full h-full" /></div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -188,34 +220,36 @@ export default function OpdDashboard() {
             className="pl-10"
           />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={dateFilter} onValueChange={setDateFilter}>
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Patient Type" />
+            <SelectValue placeholder="Filter by Date" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Date</SelectItem>
-            <SelectItem value="ipd">IPD (Admitted)</SelectItem>
-            <SelectItem value="opd">OPD (Outpatient)</SelectItem>
+            <SelectItem value="all">All Dates</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="old">Old</SelectItem>
+            <SelectItem value="upcoming">Upcoming</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={doctorFilter} onValueChange={setDoctorFilter}>
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Patient Type" />
+            <SelectValue placeholder="Filter by Doctor" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Doctors</SelectItem>
-            <SelectItem value="ipd">IPD (Admitted)</SelectItem>
-            <SelectItem value="opd">OPD (Outpatient)</SelectItem>
+            <SelectItem value="all">All Doctors</SelectItem>
+            {doctors.map((doctor) => (
+              <SelectItem key={doctor._id} value={doctor._id}>{doctor.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Patient Type" />
+            <SelectValue placeholder="Filter by Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Statuses</SelectItem>
-            <SelectItem value="ipd">IPD (Admitted)</SelectItem>
-            <SelectItem value="opd">OPD (Outpatient)</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -284,31 +318,40 @@ export default function OpdDashboard() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="View Details" onClick={() => openViewDialog(patient)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditDialog(patient)}>
-                            <Pencil className="h-4 w-4" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
                           </Button>
-                        )}
-                        {permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Prescription" className="text-primary hover:bg-primary " onClick={() => openEditDialog(patient)}>
-                            <ClipboardPlus className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {permissions.canDelete && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Delete"
-                            className="text-destructive hover:bg-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openViewDialog(patient)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          {permissions.canEdit && (
+                            <>
+                              <DropdownMenuItem onClick={() => openEditDialog(patient)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(patient)}>
+                                <ClipboardPlus className="h-4 w-4 mr-2" />
+                                Prescription
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {permissions.canDelete && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

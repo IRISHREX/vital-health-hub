@@ -22,9 +22,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2, MoreVertical } from "lucide-react";
 import PatientDialog from "@/components/dashboard/PatientDialog";
 import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
 
@@ -273,26 +280,34 @@ export default function Patients() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="View Details" onClick={() => openViewDialog(patient)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditDialog(patient)}>
-                            <Pencil className="h-4 w-4" />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
                           </Button>
-                        )}
-                        {permissions.canDelete && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Delete"
-                            className="text-destructive hover:bg-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openViewDialog(patient)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          {permissions.canEdit && (
+                            <DropdownMenuItem onClick={() => openEditDialog(patient)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {permissions.canDelete && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
