@@ -86,17 +86,32 @@ export default function Billing() {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
+  const getPatientName = (invoice) => {
+    const patient = invoice?.patient;
+    if (!patient) return "Unknown Patient";
+    if (typeof patient.name === "string" && patient.name.trim()) return patient.name;
+
+    const firstName = typeof patient.firstName === "string" ? patient.firstName : "";
+    const lastName = typeof patient.lastName === "string" ? patient.lastName : "";
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || "Unknown Patient";
+  };
+
   const filteredInvoices = invoices.filter((invoice) => 
-    invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    invoice.patient.name.toLowerCase().includes(searchQuery.toLowerCase())
+    String(invoice?.invoiceNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    getPatientName(invoice).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalRevenue = invoices.reduce((sum, inv) => sum + Number(inv?.totalAmount || 0), 0);
+  const collectedAmount = invoices.reduce((sum, inv) => sum + Number(inv?.paidAmount || 0), 0);
+  const collectionRate = totalRevenue > 0 ? (collectedAmount / totalRevenue) * 100 : 0;
+
   const stats = {
-    totalRevenue: invoices.reduce((sum, inv) => sum + inv.totalAmount, 0),
-    collected: invoices.reduce((sum, inv) => sum + inv.paidAmount, 0),
+    totalRevenue,
+    collected: collectedAmount,
     pending: invoices
       .filter((i) => i.status !== "paid")
-      .reduce((sum, inv) => sum + inv.dueAmount, 0),
+      .reduce((sum, inv) => sum + Number(inv?.dueAmount || 0), 0),
     paidCount: invoices.filter((i) => i.status === "paid").length,
     pendingCount: invoices.filter((i) => i.status !== "paid").length,
   };
@@ -164,10 +179,10 @@ export default function Billing() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {((stats.collected / stats.totalRevenue) * 100).toFixed(0)}%
+                {collectionRate.toFixed(0)}%
               </div>
               <Progress
-                value={(stats.collected / stats.totalRevenue) * 100}
+                value={collectionRate}
                 className="mt-2 h-2"
               />
             </CardContent>
@@ -223,7 +238,7 @@ export default function Billing() {
                   return (
                     <TableRow key={invoice._id}>
                       <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                      <TableCell>{invoice.patient.name}</TableCell>
+                      <TableCell>{getPatientName(invoice)}</TableCell>
                       <TableCell>
                         ₹{invoice.totalAmount.toLocaleString()}
                       </TableCell>

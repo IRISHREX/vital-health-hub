@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { collectSample, receiveSample, rejectSample } from "@/lib/labTests";
+import { collectSample, receiveSample, rejectSample, startProcessing } from "@/lib/labTests";
 import { toast } from "sonner";
-import { TestTubes, CheckCircle, XCircle, Clock } from "lucide-react";
+import { TestTubes, CheckCircle, XCircle, Clock, Play } from "lucide-react";
 
 export default function SampleCollectionQueue({ tests, onRefresh, permissions }) {
   const pendingCollection = tests.filter(t => t.sampleStatus === 'pending_collection');
@@ -32,6 +32,14 @@ export default function SampleCollectionQueue({ tests, onRefresh, permissions })
     try {
       await rejectSample(id, "Sample quality issue");
       toast.success("Sample rejected - recollection needed");
+      onRefresh();
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const handleStartProcessing = async (id) => {
+    try {
+      await startProcessing(id);
+      toast.success("Test moved to processing");
       onRefresh();
     } catch (err) { toast.error(err.message); }
   };
@@ -121,6 +129,9 @@ export default function SampleCollectionQueue({ tests, onRefresh, permissions })
                       <div className="flex justify-end gap-1">
                         <Button size="sm" variant="outline" onClick={() => handleReceive(t._id)}>
                           <CheckCircle className="mr-2 h-4 w-4" />Receive
+                        </Button>
+                        <Button size="sm" onClick={() => handleStartProcessing(t._id)}>
+                          <Play className="mr-2 h-4 w-4" />Process
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleReject(t._id)}>
                           <XCircle className="mr-2 h-4 w-4" />Reject

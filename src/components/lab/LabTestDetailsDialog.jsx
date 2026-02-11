@@ -218,7 +218,7 @@ export default function LabTestDetailsDialog({ isOpen, onClose, test, permission
                   </Button>
                 </>
               )}
-              {test.sampleStatus === 'received' && (
+              {(test.sampleStatus === 'collected' || test.sampleStatus === 'received') && test.status !== 'processing' && (
                 <Button size="sm" onClick={() => handleAction('process')} disabled={submitting}>
                   <Play className="mr-2 h-4 w-4" />Start Processing
                 </Button>

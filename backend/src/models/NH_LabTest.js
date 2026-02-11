@@ -1,5 +1,45 @@
 const mongoose = require('mongoose');
 
+const generateUniqueTestIdForDoc = async (model) => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const now = new Date();
+    const yy = now.getFullYear().toString().slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const sec = String(now.getSeconds()).padStart(2, '0');
+    const ms = String(now.getMilliseconds()).padStart(3, '0');
+    const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+    const testId = `LAB${yy}${mm}${dd}${hh}${min}${sec}${ms}${rand}`;
+
+    const exists = await model.exists({ testId });
+    if (!exists) return testId;
+  }
+
+  throw new Error('Unable to generate unique test ID');
+};
+
+const generateUniqueSampleIdForDoc = async (model) => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const now = new Date();
+    const yy = now.getFullYear().toString().slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const sec = String(now.getSeconds()).padStart(2, '0');
+    const ms = String(now.getMilliseconds()).padStart(3, '0');
+    const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+    const sampleId = `SMP${yy}${mm}${dd}${hh}${min}${sec}${ms}${rand}`;
+
+    const exists = await model.exists({ sampleId });
+    if (!exists) return sampleId;
+  }
+
+  throw new Error('Unable to generate unique sample ID');
+};
+
 const parameterSchema = new mongoose.Schema({
   name: { type: String, required: true },
   unit: { type: String },
@@ -130,15 +170,10 @@ const labTestSchema = new mongoose.Schema({
 // Auto-generate test ID
 labTestSchema.pre('save', async function(next) {
   if (!this.testId) {
-    const count = await this.constructor.countDocuments();
-    this.testId = `LAB${String(count + 1).padStart(6, '0')}`;
+    this.testId = await generateUniqueTestIdForDoc(this.constructor);
   }
   if (!this.sampleId && this.sampleStatus !== 'pending_collection') {
-    const date = new Date();
-    const yr = date.getFullYear().toString().slice(-2);
-    const mo = String(date.getMonth() + 1).padStart(2, '0');
-    const count = await this.constructor.countDocuments();
-    this.sampleId = `SMP${yr}${mo}${String(count + 1).padStart(5, '0')}`;
+    this.sampleId = await generateUniqueSampleIdForDoc(this.constructor);
   }
   if (this.price !== undefined && this.totalAmount === undefined) {
     this.totalAmount = this.price - (this.discount || 0);

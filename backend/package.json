@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed": "node src/seeders/seed.js"
+    "seed": "node src/seeders/seed.js",
+    "seed:lab-catalog": "node src/seeders/seedLabTestCatalog.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
