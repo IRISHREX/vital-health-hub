@@ -28,6 +28,7 @@ import Login from "./pages/Login";
 import OpdDashboard from './pages/OpdDashboard';
 import LabDashboard from './pages/LabDashboard';
 import PharmacyDashboard from './pages/PharmacyDashboard';
+import PrescriptionPreview from "./pages/PrescriptionPreview";
 
 const queryClient = new QueryClient();
 
@@ -79,13 +80,13 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="notifications" />}>
                   <Route path="/notifications" element={<Notifications />} />
                 </Route>
-                <Route element={<AuthorizedRoute module="dashboard" />}>
+                <Route element={<AuthorizedRoute module="nurses" />}>
                   <Route path="/nurse" element={<NurseDashboard />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
                   <Route path="/nurse/patients" element={<NursePatients />} />
                 </Route>
-                <Route element={<AuthorizedRoute module="dashboard" />}>
+                <Route element={<AuthorizedRoute module="patients" />}>
                   <Route path="/opd" element={<OpdDashboard />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="lab" />}>
@@ -93,6 +94,9 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/pharmacy" element={<PharmacyDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="notifications" />}>
+                  <Route path="/prescriptions/:id/preview" element={<PrescriptionPreview />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<Settings />} />

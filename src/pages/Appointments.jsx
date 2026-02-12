@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getAppointments, updateAppointment } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
+import { useAuth } from "@/lib/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,14 +19,21 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AppointmentDialog from "@/components/dashboard/AppointmentDialog";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const statusConfig = {
-  scheduled: { label: "Scheduled", variant: "info" },
+  scheduled: { label: "Pending", variant: "info" },
+  confirmed: { label: "Pending", variant: "info" },
+  in_progress: { label: "Pending", variant: "info" },
   completed: { label: "Completed", variant: "success" },
   cancelled: { label: "Cancelled", variant: "destructive" },
+  no_show: { label: "No Show", variant: "destructive" },
 };
 
 export default function Appointments() {
+  const { user } = useAuth();
+  const { canCreate } = useVisualAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -73,9 +81,25 @@ export default function Appointments() {
         getPatients(),
         getDoctors(),
       ]);
-      setAppointments(appointmentsData.data.appointments || []);
+      const allAppointments = appointmentsData.data.appointments || [];
+      const allDoctors = doctorsData.data.doctors || [];
+      const loggedInDoctorIds = allDoctors
+        .filter(
+          (d) =>
+            d?.user?._id === user?._id ||
+            String(d?.user?.email || "").toLowerCase() === String(user?.email || "").toLowerCase()
+        )
+        .map((d) => d._id);
+      const scopedAppointments =
+        user?.role === "doctor"
+          ? allAppointments.filter((a) =>
+              loggedInDoctorIds.includes(a?.doctor?._id || a?.doctor || a?.doctorId)
+            )
+          : allAppointments;
+
+      setAppointments(scopedAppointments);
       setPatients(patientsData.data.patients || []);
-      setDoctors(doctorsData.data.doctors || []);
+      setDoctors(allDoctors);
     } catch (err) {
       setError(err);
     } finally {
@@ -85,7 +109,7 @@ export default function Appointments() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?._id, user?.email, user?.role]);
 
   const getPatientName = (patientRef) => {
     if (!patientRef) return "Unknown";
@@ -155,10 +179,14 @@ export default function Appointments() {
             Manage OPD appointments and schedules
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Book Appointment
-        </Button>
+        {canCreate("appointments") && (
+          <RestrictedAction module="appointments" feature="create">
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Book Appointment
+            </Button>
+          </RestrictedAction>
+        )}
       </div>
 
       <AppointmentDialog
