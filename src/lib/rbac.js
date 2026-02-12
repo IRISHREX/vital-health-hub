@@ -104,6 +104,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
     lab: viewAndCreate,
+    pharmacy: viewOnly,
   },
   billing_staff: {
     dashboard: viewOnly,
