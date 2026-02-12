@@ -220,6 +220,40 @@ exports.markAsRead = async (req, res, next) => {
   }
 };
 
+// @desc    Acknowledge notification (for items requiring acknowledgement)
+// @route   PATCH /api/notifications/:id/acknowledge
+// @access  Private
+exports.acknowledgeNotification = async (req, res, next) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      recipient: req.user._id
+    });
+
+    if (!notification) {
+      throw new AppError('Notification not found', 404);
+    }
+
+    if (!notification.requiresAcknowledgement) {
+      throw new AppError('This notification does not require acknowledgement', 400);
+    }
+
+    notification.acknowledgedAt = new Date();
+    notification.acknowledgedBy = req.user._id;
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    res.json({
+      success: true,
+      message: 'Notification acknowledged',
+      data: { notification }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Mark all notifications as read
 // @route   PATCH /api/notifications/read-all
 // @access  Private

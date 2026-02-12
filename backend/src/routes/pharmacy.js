@@ -24,12 +24,15 @@ router.route('/medicines/:id')
 // Stock
 router.post('/stock/adjust', authenticate, authorize(...pharmacyRoles), c.adjustStock);
 router.get('/stock/history', authenticate, authorize(...pharmacyRoles), c.getStockHistory);
+router.post('/medicine-requests', authenticate, authorize(...clinicalRoles), c.requestMedicineStock);
 
 // Prescriptions
 router.route('/prescriptions')
   .get(authenticate, authorize(...clinicalRoles), c.getPrescriptions)
-  .post(authenticate, authorize('doctor', ...adminRoles), c.createPrescription);
+  .post(authenticate, authorize(...clinicalRoles), c.createPrescription);
 
+router.get('/prescriptions/:id', authenticate, authorize(...clinicalRoles), c.getPrescription);
+router.post('/prescriptions/:id/share', authenticate, authorize(...clinicalRoles), c.sharePrescription);
 router.post('/prescriptions/:id/dispense', authenticate, authorize(...pharmacyRoles), c.dispensePrescription);
 router.patch('/prescriptions/:id/cancel', authenticate, authorize('doctor', ...adminRoles), c.cancelPrescription);
 router.get('/invoices', authenticate, authorize(...clinicalRoles), c.getPharmacyInvoices);

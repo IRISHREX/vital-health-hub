@@ -19,13 +19,26 @@ import {
   ClipboardList,
   Loader2,
   CalendarClock,
-  IndianRupee
+  IndianRupee,
+  Eye,
+  MoreVertical,
+  Download,
+  Printer
 } from "lucide-react";
 import AddMedicineDialog from "@/components/pharmacy/AddMedicineDialog";
 import StockAdjustDialog from "@/components/pharmacy/StockAdjustDialog";
 import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import DispenseDialog from "@/components/pharmacy/DispenseDialog";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
+import { useNavigate } from "react-router-dom";
+import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statusColors = {
   active: "warning",
@@ -51,6 +64,7 @@ const doctorName = (doctor) => {
 };
 
 export default function PharmacyDashboard() {
+  const navigate = useNavigate();
   const { getModulePermissions } = useVisualAuth();
   const permissions = getModulePermissions("pharmacy");
   const [tab, setTab] = useState("inventory");
@@ -106,14 +120,18 @@ export default function PharmacyDashboard() {
         </div>
         <div className="flex gap-2">
           {permissions.canCreate && (
-          <Button variant="outline" onClick={() => setRxOpen(true)}>
-            <ClipboardList className="mr-2 h-4 w-4" />New Prescription
-          </Button>
+          <RestrictedAction module="pharmacy" feature="create">
+            <Button variant="outline" onClick={() => setRxOpen(true)}>
+              <ClipboardList className="mr-2 h-4 w-4" />New Prescription
+            </Button>
+          </RestrictedAction>
           )}
           {permissions.canCreate && (
-          <Button onClick={() => { setEditMed(null); setAddOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />Add Medicine
-          </Button>
+          <RestrictedAction module="pharmacy" feature="create">
+            <Button onClick={() => { setEditMed(null); setAddOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" />Add Medicine
+            </Button>
+          </RestrictedAction>
           )}
         </div>
       </div>
@@ -263,9 +281,34 @@ export default function PharmacyDashboard() {
                           <TableCell><Badge variant={statusColors[rx.status] || "default"} className="capitalize">{rx.status?.replace(/_/g, " ")}</Badge></TableCell>
                           <TableCell>{new Date(rx.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell className="text-right">
-                            {permissions.canCreate && (rx.status === "active" || rx.status === "partially_dispensed") && (
-                              <Button size="sm" variant="outline" onClick={() => setDispenseRx(rx)}>Dispense</Button>
-                            )}
+                            <div className="flex justify-end gap-2">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button size="sm" variant="ghost">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => navigate(`/prescriptions/${rx._id}/preview`)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Prescription
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => downloadPrescriptionPdf(rx)}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download PDF
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => printPrescription(rx)}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Print
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              {permissions.canCreate && (rx.status === "active" || rx.status === "partially_dispensed") && (
+                                <RestrictedAction module="pharmacy" feature="create">
+                                  <Button size="sm" variant="outline" onClick={() => setDispenseRx(rx)}>Dispense</Button>
+                                </RestrictedAction>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

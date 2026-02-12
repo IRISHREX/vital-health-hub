@@ -23,6 +23,10 @@ import AdmissionForm from '@/components/dashboard/AdmissionForm';
 import AdmissionActionModal from '@/components/dashboard/AdmissionActionModal';
 import AdmissionTimeline from '@/components/dashboard/AdmissionTimeline';
 import AdmissionDetailsModal from '@/components/dashboard/AdmissionDetailsModal';
+import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
+import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 import {
   Plus,
   Search,
@@ -40,6 +44,7 @@ import {
   LogOut,
   Eye,
   MoreVertical,
+  ClipboardPlus,
 } from 'lucide-react';
 
 const statusColors = {
@@ -57,12 +62,16 @@ const statusIcons = {
 };
 
 export default function AdmissionsPage() {
+  const { canCreate } = useVisualAuth();
   const [admissions, setAdmissions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAdmissionForm, setShowAdmissionForm] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [prescriptionOpen, setPrescriptionOpen] = useState(false);
+  const [prescriptionHistoryOpen, setPrescriptionHistoryOpen] = useState(false);
+  const [prescriptionContext, setPrescriptionContext] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -134,10 +143,14 @@ export default function AdmissionsPage() {
           <h1 className="text-3xl font-bold">Patient Admissions</h1>
           <p className="text-gray-500 mt-1">Manage patient beds and admissions</p>
         </div>
-        <Button size="lg" onClick={() => setShowAdmissionForm(true)}>
-          <Plus className="mr-2 h-5 w-5" />
-          New Admission
-        </Button>
+        {canCreate("admissions") && (
+          <RestrictedAction module="admissions" feature="create">
+            <Button size="lg" onClick={() => setShowAdmissionForm(true)}>
+              <Plus className="mr-2 h-5 w-5" />
+              New Admission
+            </Button>
+          </RestrictedAction>
+        )}
       </div>
 
       {/* Statistics Cards */}
@@ -223,6 +236,10 @@ export default function AdmissionsPage() {
             selectedAdmission={selectedAdmission}
             setSelectedAdmission={setSelectedAdmission}
             setDetailsModalOpen={setDetailsModalOpen}
+            onOpenPrescription={(admission) => {
+              setPrescriptionContext(admission);
+              setPrescriptionHistoryOpen(true);
+            }}
             loading={loading}
           />
         </TabsContent>
@@ -235,6 +252,10 @@ export default function AdmissionsPage() {
             selectedAdmission={selectedAdmission}
             setSelectedAdmission={setSelectedAdmission}
             setDetailsModalOpen={setDetailsModalOpen}
+            onOpenPrescription={(admission) => {
+              setPrescriptionContext(admission);
+              setPrescriptionHistoryOpen(true);
+            }}
             loading={loading}
           />
         </TabsContent>
@@ -247,6 +268,10 @@ export default function AdmissionsPage() {
             selectedAdmission={selectedAdmission}
             setSelectedAdmission={setSelectedAdmission}
             setDetailsModalOpen={setDetailsModalOpen}
+            onOpenPrescription={(admission) => {
+              setPrescriptionContext(admission);
+              setPrescriptionHistoryOpen(true);
+            }}
             loading={loading}
           />
         </TabsContent>
@@ -276,6 +301,23 @@ export default function AdmissionsPage() {
         isOpen={detailsModalOpen}
         onClose={() => setDetailsModalOpen(false)}
       />
+      <PrescriptionDialog
+        open={prescriptionOpen}
+        onOpenChange={setPrescriptionOpen}
+        initialPatientId={prescriptionContext?.patient?._id || ""}
+        initialDoctorId={prescriptionContext?.doctor?._id || ""}
+        initialAdmissionId={prescriptionContext?._id || ""}
+        initialEncounterType={prescriptionContext?.patient?.registrationType || "ipd"}
+      />
+      <PrescriptionHistoryDialog
+        open={prescriptionHistoryOpen}
+        onOpenChange={setPrescriptionHistoryOpen}
+        patient={prescriptionContext?.patient}
+        onCreateNew={() => {
+          setPrescriptionHistoryOpen(false);
+          setPrescriptionOpen(true);
+        }}
+      />
     </div>
   );
 }
@@ -287,6 +329,7 @@ function AdmissionsList({
   selectedAdmission,
   setSelectedAdmission,
   setDetailsModalOpen,
+  onOpenPrescription,
   loading,
 }) {
   return (
@@ -336,6 +379,7 @@ function AdmissionsList({
               }}
               onTransfer={() => setSelectedAdmission(admission)}
               onDischarge={() => setSelectedAdmission(admission)}
+              onPrescription={() => onOpenPrescription(admission)}
             />
           ))}
         </div>
@@ -344,7 +388,7 @@ function AdmissionsList({
   );
 }
 
-function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTransfer, onDischarge }) {
+function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTransfer, onDischarge, onPrescription }) {
   const formattedData = formatAdmissionData(admission);
   const statusColor = statusColors[admission.status];
   const statusIcon = statusIcons[admission.status];
@@ -362,6 +406,10 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
   const handleDischarge = (e) => {
     e.stopPropagation();
     onDischarge();
+  };
+  const handlePrescription = (e) => {
+    e.stopPropagation();
+    onPrescription();
   };
 
   return (
@@ -458,6 +506,13 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
             </button>
             {admission.status === 'ADMITTED' && (
               <>
+                <button
+                  onClick={handlePrescription}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                  title="Create Prescription"
+                >
+                  <ClipboardPlus className="h-4 w-4 text-blue-600" />
+                </button>
                 <button
                   onClick={handleTransfer}
                   className="p-2 hover:bg-gray-100 rounded-lg transition"

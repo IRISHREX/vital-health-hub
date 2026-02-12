@@ -1,7 +1,7 @@
 const Medicine = require('../models/NH_Medicine');
 const Prescription = require('../models/NH_Prescription');
 const StockAdjustment = require('../models/NH_StockAdjustment');
-const { BillingLedger, Invoice } = require('../models');
+const { BillingLedger, Invoice, User, Notification } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 
 const getComputedInvoiceStatus = (invoice) => {
@@ -205,6 +205,20 @@ exports.getPrescriptions = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.getPrescription = async (req, res, next) => {
+  try {
+    const rx = await Prescription.findById(req.params.id)
+      .populate('patient', 'firstName lastName patientId gender dateOfBirth')
+      .populate('doctor', 'firstName lastName specialization name user')
+      .populate({ path: 'doctor', populate: { path: 'user', select: 'firstName lastName email' } })
+      .populate('items.medicine', 'name sellingPrice stock');
+
+    if (!rx) throw new AppError('Prescription not found', 404);
+
+    res.json({ success: true, data: rx });
+  } catch (err) { next(err); }
+};
+
 exports.getPharmacyInvoices = async (req, res, next) => {
   try {
     const { patientId, status, page = 1, limit = 30 } = req.query;
@@ -258,6 +272,10 @@ exports.dispensePrescription = async (req, res, next) => {
     for (const dispenseItem of items) {
       const rxItem = rx.items.id(dispenseItem.itemId);
       if (!rxItem) continue;
+      if (!rxItem.medicine) {
+        allDispensed = false;
+        continue;
+      }
 
       const med = await Medicine.findById(rxItem.medicine?._id || rxItem.medicine);
       if (!med) continue;
@@ -336,5 +354,99 @@ exports.cancelPrescription = async (req, res, next) => {
     const rx = await Prescription.findByIdAndUpdate(req.params.id, { status: 'cancelled' }, { new: true });
     if (!rx) throw new AppError('Prescription not found', 404);
     res.json({ success: true, data: rx });
+  } catch (err) { next(err); }
+};
+
+exports.sharePrescription = async (req, res, next) => {
+  try {
+    const prescriptionId = req.params.id;
+    const recipientIds = Array.isArray(req.body?.recipientIds) ? req.body.recipientIds : [];
+    const note = String(req.body?.note || '').trim();
+
+    if (!recipientIds.length) throw new AppError('recipientIds is required', 400);
+
+    const rx = await Prescription.findById(prescriptionId).populate('patient', 'firstName lastName patientId');
+    if (!rx) throw new AppError('Prescription not found', 404);
+
+    const privilegedRoles = ['super_admin', 'hospital_admin', 'doctor'];
+    if (!privilegedRoles.includes(req.user?.role)) {
+      const acknowledgedShare = await Notification.findOne({
+        recipient: req.user._id,
+        type: 'prescription_shared',
+        'data.entityId': rx._id,
+        acknowledgedBy: req.user._id
+      });
+      if (!acknowledgedShare) {
+        throw new AppError('You must acknowledge this prescription before forwarding it', 403);
+      }
+    }
+
+    const uniqueRecipientIds = Array.from(new Set(recipientIds.map((id) => String(id))));
+    const patientName = `${rx.patient?.firstName || ''} ${rx.patient?.lastName || ''}`.trim() || 'Patient';
+    const senderName = req.user?.fullName || req.user?.email || 'Clinical User';
+
+    const notifications = uniqueRecipientIds.map((recipientId) => ({
+      recipient: recipientId,
+      type: 'prescription_shared',
+      title: 'Prescription Shared',
+      message: `${senderName} shared prescription for ${patientName}${note ? ` - ${note}` : ''}`,
+      priority: 'high',
+      requiresAcknowledgement: true,
+      data: {
+        entityType: 'prescription',
+        entityId: rx._id,
+        patientId: rx.patient?._id,
+        link: `/prescriptions/${rx._id}/preview`,
+        sharedBy: req.user._id
+      }
+    }));
+
+    const created = await Notification.insertMany(notifications);
+    res.status(201).json({
+      success: true,
+      message: 'Prescription shared successfully',
+      data: { count: created.length }
+    });
+  } catch (err) { next(err); }
+};
+
+exports.requestMedicineStock = async (req, res, next) => {
+  try {
+    const medicineName = String(req.body?.medicineName || '').trim();
+    const patientId = req.body?.patientId || null;
+    const encounterType = String(req.body?.encounterType || 'opd').trim().toLowerCase();
+    const reason = String(req.body?.reason || '').trim();
+
+    if (!medicineName) throw new AppError('medicineName is required', 400);
+
+    const recipients = await User.find({
+      role: { $in: ['super_admin', 'hospital_admin', 'billing_staff'] },
+      isActive: true
+    }).select('_id');
+
+    if (recipients.length > 0) {
+      const notifications = recipients.map((recipient) => ({
+        recipient: recipient._id,
+        type: 'alert',
+        title: 'Medicine Stock Request',
+        message: `${req.user?.email || 'A clinical user'} requested stock for "${medicineName}" (${encounterType.toUpperCase()}).`,
+        priority: 'high',
+        data: {
+          entityType: 'medicine_request',
+          entityId: patientId || undefined,
+          medicineName,
+          encounterType,
+          requestedBy: req.user?._id,
+          reason
+        }
+      }));
+      await Notification.insertMany(notifications);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Stock request sent to pharmacy/admin team',
+      data: { medicineName, requested: recipients.length }
+    });
   } catch (err) { next(err); }
 };

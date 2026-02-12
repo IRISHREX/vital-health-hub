@@ -20,10 +20,13 @@ export const deleteMedicine = (id) => apiClient.delete(`/pharmacy/medicines/${id
 // Stock
 export const adjustStock = (data) => apiClient.post('/pharmacy/stock/adjust', data);
 export const getStockHistory = (params) => apiClient.get(`/pharmacy/stock/history${qs(params)}`);
+export const requestMedicineStock = (data) => apiClient.post('/pharmacy/medicine-requests', data);
 
 // Prescriptions
 export const getPrescriptions = (params) => apiClient.get(`/pharmacy/prescriptions${qs(params)}`);
+export const getPrescription = (id) => apiClient.get(`/pharmacy/prescriptions/${id}`);
 export const createPrescription = (data) => apiClient.post('/pharmacy/prescriptions', data);
 export const dispensePrescription = (id, items) => apiClient.post(`/pharmacy/prescriptions/${id}/dispense`, { items });
 export const cancelPrescription = (id) => apiClient.patch(`/pharmacy/prescriptions/${id}/cancel`);
+export const sharePrescription = (id, data) => apiClient.post(`/pharmacy/prescriptions/${id}/share`, data);
 export const getPharmacyInvoices = (params) => apiClient.get(`/pharmacy/invoices${qs(params)}`);
