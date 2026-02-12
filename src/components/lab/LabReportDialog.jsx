@@ -18,6 +18,21 @@ export default function LabReportDialog({ isOpen, onClose, test, tests = [] }) {
   const primaryTest = reportTests[0];
   const isCombined = reportTests.length > 1;
 
+  const getReferredByName = (reportTest) => {
+    if (reportTest?.doctor?.name) return reportTest.doctor.name;
+    const docFirst = reportTest?.doctor?.firstName || "";
+    const docLast = reportTest?.doctor?.lastName || "";
+    const doctorFull = `${docFirst} ${docLast}`.trim();
+    if (doctorFull) return doctorFull;
+
+    const orderedFirst = reportTest?.orderedBy?.firstName || "";
+    const orderedLast = reportTest?.orderedBy?.lastName || "";
+    const orderedByFull = `${orderedFirst} ${orderedLast}`.trim();
+    if (orderedByFull) return orderedByFull;
+
+    return "N/A";
+  };
+
   const titleText = isCombined
     ? `Combined Report - ${primaryTest.patient?.patientId || "Patient"}`
     : `Lab Report - ${primaryTest.testId || "Test"}`;
@@ -133,30 +148,26 @@ export default function LabReportDialog({ isOpen, onClose, test, tests = [] }) {
             <div key={currentTest._id || `${currentTest.testId}-${index}`} className="space-y-3 report-block">
               {index > 0 && <Separator />}
 
-              <div className="report-title">
-                {currentTest.testName} ({currentTest.testCode}){" "}
-                <span className="text-muted-foreground">| {currentTest.testId}</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="space-y-1">
                 <div>
-                  <span className="text-muted-foreground">Sample ID: </span>
-                  <span className="font-mono font-semibold">{currentTest.sampleId || "-"}</span>
+                  <span className="font-bold">Category: </span>
+                  <span className="font-bold capitalize">{currentTest.category}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Category: </span>
-                  <span className="font-semibold capitalize">{currentTest.category}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Referred By: </span>
-                  <span className="font-semibold">{currentTest.doctor?.name}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Report Date: </span>
                   <span className="font-semibold">
-                    {currentTest.reportGeneratedAt
-                      ? new Date(currentTest.reportGeneratedAt).toLocaleDateString()
-                      : "-"}
+                    {currentTest.testName} ({currentTest.testCode}) | {currentTest.testId}
+                  </span>
+                </div>
+                <div className="text-sm flex flex-wrap gap-4">
+                  <span><span className="text-muted-foreground">Sample ID:</span> <span className="font-mono font-semibold">{currentTest.sampleId || "-"}</span></span>
+                  <span><span className="text-muted-foreground">Referred By:</span> <span className="font-semibold">{getReferredByName(currentTest)}</span></span>
+                  <span>
+                    <span className="text-muted-foreground">Report Date:</span>{" "}
+                    <span className="font-semibold">
+                      {currentTest.reportGeneratedAt
+                        ? new Date(currentTest.reportGeneratedAt).toLocaleDateString()
+                        : "-"}
+                    </span>
                   </span>
                 </div>
               </div>
