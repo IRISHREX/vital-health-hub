@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import OpdDashboard from './pages/OpdDashboard';
 import LabDashboard from './pages/LabDashboard';
+import PharmacyDashboard from './pages/PharmacyDashboard';
 
 const queryClient = new QueryClient();
 
