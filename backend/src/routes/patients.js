@@ -17,6 +17,7 @@ router.post('/', [
 ], patientController.createPatient);
 
 router.get('/', authenticate, patientController.getPatients);
+router.get('/:id/history', authenticate, patientController.getPatientHistory);
 router.get('/:id', authenticate, patientController.getPatient);
 router.put('/:id', authenticate, authorize('doctor', 'hospital_admin', 'super_admin', 'nurse'), patientController.updatePatient);
 router.delete('/:id', authenticate, authorize('hospital_admin', 'super_admin'), patientController.deletePatient);
