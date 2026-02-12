@@ -18,6 +18,7 @@ const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreference
 const Medicine = require('./NH_Medicine');
 const Prescription = require('./NH_Prescription');
 const StockAdjustment = require('./NH_StockAdjustment');
+const AccessRequest = require('./NH_AccessRequest');
 
 module.exports = {
   User,
@@ -43,5 +44,6 @@ module.exports = {
   VisualAccessSettings,
   Medicine,
   Prescription,
-  StockAdjustment
+  StockAdjustment,
+  AccessRequest
 };

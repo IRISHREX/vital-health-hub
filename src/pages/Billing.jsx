@@ -45,6 +45,7 @@ import {
   Clock
 } from "lucide-react";
 import AddInvoiceDialog from "@/components/dashboard/AddInvoiceDialog";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const statusConfig = {
   paid: { label: "Paid", variant: "success", icon: CheckCircle2 },
@@ -677,7 +678,11 @@ export default function Billing() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Billing Center</h1>
             <p className="text-muted-foreground">Unified patient billing with OPD, IPD, Lab, Pharmacy and all invoice actions</p>
           </div>
-          {permissions.canCreate && <Button onClick={openCreateDialog}><Plus className="mr-2 h-4 w-4" />Create Invoice</Button>}
+          {permissions.canCreate && (
+            <RestrictedAction module="billing" feature="create">
+              <Button onClick={openCreateDialog}><Plus className="mr-2 h-4 w-4" />Create Invoice</Button>
+            </RestrictedAction>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -758,7 +763,11 @@ export default function Billing() {
             <Button variant="outline" onClick={() => selectedPatientRow && downloadPatientInvoices(selectedPatientRow.patientName, selectedPatientRow.invoices)}><Download className="mr-2 h-4 w-4" />Download All CSV</Button>
             <Button variant="outline" onClick={() => selectedPatientRow && downloadInvoicesPdfBundle(selectedPatientRow.patientName, selectedPatientRow.invoices, "All Invoices")}><Download className="mr-2 h-4 w-4" />Download All PDF</Button>
             {(permissions.canCreate || permissions.canEdit) && Number(selectedPatientRow?.due || 0) > 0 && <Button variant="outline" onClick={() => openPayment({ mode: "bulk", row: selectedPatientRow })}>Pay All Dues</Button>}
-            {permissions.canCreate && <Button onClick={openCreateDialog}><Plus className="mr-2 h-4 w-4" />Create Separate Invoice</Button>}
+            {permissions.canCreate && (
+              <RestrictedAction module="billing" feature="create">
+                <Button onClick={openCreateDialog}><Plus className="mr-2 h-4 w-4" />Create Separate Invoice</Button>
+              </RestrictedAction>
+            )}
           </div>
 
           {Object.entries(invoicesByType).map(([type, typeInvoices]) => (
@@ -822,31 +831,37 @@ export default function Billing() {
             </Card>
           ))}
 
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Add/Adjust Bills (key/value + discount)</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {adjustmentRows.map((row, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2">
-                  <Input className="col-span-7" placeholder="Charge key (e.g. Procedure, Service, Consumable)" value={row.key} onChange={(e) => updateAdjustmentRow(index, "key", e.target.value)} />
-                  <Input className="col-span-3" type="number" min="0" placeholder="Amount" value={row.value} onChange={(e) => updateAdjustmentRow(index, "value", e.target.value)} />
-                  <Button className="col-span-2" variant="outline" onClick={() => removeAdjustmentRow(index)}>Remove</Button>
+          {permissions.canCreate && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-base">Add/Adjust Bills (key/value + discount)</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {adjustmentRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2">
+                    <Input className="col-span-7" placeholder="Charge key (e.g. Procedure, Service, Consumable)" value={row.key} onChange={(e) => updateAdjustmentRow(index, "key", e.target.value)} />
+                    <Input className="col-span-3" type="number" min="0" placeholder="Amount" value={row.value} onChange={(e) => updateAdjustmentRow(index, "value", e.target.value)} />
+                    <Button className="col-span-2" variant="outline" onClick={() => removeAdjustmentRow(index)}>Remove</Button>
+                  </div>
+                ))}
+                <div className="flex flex-wrap items-center gap-2">
+                  <RestrictedAction module="billing" feature="create">
+                    <Button variant="outline" onClick={addAdjustmentRow}>Add Row</Button>
+                  </RestrictedAction>
+                  <Label>Discount</Label>
+                  <Input className="w-44" type="number" min="0" value={adjustmentDiscount} onChange={(e) => setAdjustmentDiscount(e.target.value)} />
                 </div>
-              ))}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" onClick={addAdjustmentRow}>Add Row</Button>
-                <Label>Discount</Label>
-                <Input className="w-44" type="number" min="0" value={adjustmentDiscount} onChange={(e) => setAdjustmentDiscount(e.target.value)} />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Rows Subtotal</p><p className="font-semibold">Rs {adjustmentSubtotal.toLocaleString()}</p></CardContent></Card>
-                <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Discount</p><p className="font-semibold">Rs {discountAmount.toLocaleString()}</p></CardContent></Card>
-                <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Net New Bill</p><p className="font-bold">Rs {adjustmentTotal.toLocaleString()}</p></CardContent></Card>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={createAdjustmentInvoice} disabled={!permissions.canCreate || creatingAdjustment}>{creatingAdjustment ? "Creating..." : "Create Adjustment Bill"}</Button>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="grid grid-cols-3 gap-3">
+                  <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Rows Subtotal</p><p className="font-semibold">Rs {adjustmentSubtotal.toLocaleString()}</p></CardContent></Card>
+                  <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Discount</p><p className="font-semibold">Rs {discountAmount.toLocaleString()}</p></CardContent></Card>
+                  <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Net New Bill</p><p className="font-bold">Rs {adjustmentTotal.toLocaleString()}</p></CardContent></Card>
+                </div>
+                <div className="flex justify-end">
+                  <RestrictedAction module="billing" feature="create">
+                    <Button onClick={createAdjustmentInvoice} disabled={creatingAdjustment}>{creatingAdjustment ? "Creating..." : "Create Adjustment Bill"}</Button>
+                  </RestrictedAction>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </DialogContent>
       </Dialog>
 

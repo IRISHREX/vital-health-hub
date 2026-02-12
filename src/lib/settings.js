@@ -25,3 +25,6 @@ export const getUserStats = () => apiClient.get('/settings/users/stats');
 // Visual access overrides (email-based)
 export const getVisualAccessSettings = () => apiClient.get('/settings/visual-access');
 export const updateVisualAccessSettings = (data) => apiClient.put('/settings/visual-access', data);
+export const createAccessRequest = (data) => apiClient.post('/settings/access-requests', data);
+export const getPendingAccessRequests = () => apiClient.get('/settings/access-requests/pending');
+export const respondToAccessRequest = (id, data) => apiClient.patch(`/settings/access-requests/${id}/respond`, data);

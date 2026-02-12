@@ -31,6 +31,8 @@ import ViewDoctorDialog from "@/components/dashboard/ViewDoctorDialog";
 import { updateAvailability } from "@/lib/doctors";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const departments = [
   "Cardiac Care",
@@ -47,6 +49,7 @@ const departments = [
 
 export default function Doctors() {
   const { toast } = useToast();
+  const { canCreate } = useVisualAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
@@ -151,10 +154,14 @@ export default function Doctors() {
             Manage doctor profiles and availability
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Doctor
-        </Button>
+        {canCreate("doctors") && (
+          <RestrictedAction module="doctors" feature="create">
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Doctor
+            </Button>
+          </RestrictedAction>
+        )}
       </div>
 
       <DoctorDialog

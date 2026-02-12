@@ -25,6 +25,7 @@ import LabTestDetailsDialog from "@/components/lab/LabTestDetailsDialog";
 import LabReportDialog from "@/components/lab/LabReportDialog";
 import LabCatalogManager from "@/components/lab/LabCatalogManager";
 import SampleCollectionQueue from "@/components/lab/SampleCollectionQueue";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const statusColors = {
   ordered: "bg-muted text-muted-foreground",
@@ -244,10 +245,12 @@ export default function LabDashboard() {
           <p className="text-muted-foreground">Lab test management, sample tracking & reports</p>
         </div>
         {permissions.canCreate && (
-          <Button onClick={() => setOrderDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Order Lab Test
-          </Button>
+          <RestrictedAction module="lab" feature="create">
+            <Button onClick={() => setOrderDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Order Lab Test
+            </Button>
+          </RestrictedAction>
         )}
       </div>
 

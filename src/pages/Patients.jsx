@@ -26,6 +26,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "lucide-react";
 import PatientDialog from "@/components/dashboard/PatientDialog";
 import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 export default function Patients() {
   const { getModulePermissions } = useVisualAuth();
@@ -133,10 +134,12 @@ export default function Patients() {
           </p>
         </div>
         {permissions.canCreate && (
-          <Button onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Register Patient
-          </Button>
+          <RestrictedAction module="patients" feature="create">
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Register Patient
+            </Button>
+          </RestrictedAction>
         )}
       </div>
 

@@ -25,19 +25,19 @@ import { Link } from "react-router-dom";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 
 const actions = [
-  { key: "new_patient", label: "New Patient", icon: UserPlus, href: "/patients", module: "patients", variant: "default" },
+  { key: "new_patient", label: "New Patient", icon: UserPlus, href: "/patients", module: "patients", variant: "default", requiresCreate: true },
   { key: "patients_list", label: "Patients", icon: Users, href: "/patients", module: "patients", variant: "outline" },
-  { key: "assign_bed", label: "Assign Bed", icon: Bed, href: "/beds", module: "beds", variant: "outline" },
+  { key: "assign_bed", label: "Assign Bed", icon: Bed, href: "/beds", module: "beds", variant: "outline", requiresCreate: true },
   { key: "bed_management", label: "Bed Management", icon: Bed, href: "/beds", module: "beds", variant: "outline" },
-  { key: "admissions", label: "Admissions", icon: Hospital, href: "/admissions", module: "admissions", variant: "outline" },
-  { key: "book_appointment", label: "Book Appointment", icon: Calendar, href: "/appointments", module: "appointments", variant: "outline" },
+  { key: "admissions", label: "Admissions", icon: Hospital, href: "/admissions", module: "admissions", variant: "outline", requiresCreate: true },
+  { key: "book_appointment", label: "Book Appointment", icon: Calendar, href: "/appointments", module: "appointments", variant: "outline", requiresCreate: true },
   { key: "appointments_list", label: "Appointments", icon: Calendar, href: "/appointments", module: "appointments", variant: "outline" },
-  { key: "opd", label: "OPD Dashboard", icon: Users, href: "/opd", module: "dashboard", variant: "outline" },
+  { key: "opd", label: "OPD Dashboard", icon: Users, href: "/opd", module: "patients", variant: "outline" },
   { key: "doctors", label: "Doctors", icon: Stethoscope, href: "/doctors", module: "doctors", variant: "outline" },
   { key: "nurses", label: "Nurses", icon: Users, href: "/nurses", module: "nurses", variant: "outline" },
   { key: "lab", label: "Pathology Lab", icon: FlaskConical, href: "/lab", module: "lab", variant: "outline" },
   { key: "pharmacy", label: "Pharmacy", icon: Pill, href: "/pharmacy", module: "pharmacy", variant: "outline" },
-  { key: "create_invoice", label: "Create Invoice", icon: Receipt, href: "/billing", module: "billing", variant: "outline" },
+  { key: "create_invoice", label: "Create Invoice", icon: Receipt, href: "/billing", module: "billing", variant: "outline", requiresCreate: true },
   { key: "billing", label: "Billing", icon: Receipt, href: "/billing", module: "billing", variant: "outline" },
   { key: "generate_report", label: "Generate Report", icon: FileText, href: "/reports", module: "reports", variant: "outline" },
   { key: "facilities", label: "Facilities", icon: Building2, href: "/facilities", module: "facilities", variant: "outline" },
@@ -59,7 +59,7 @@ const defaultActionKeys = [
 ];
 
 export function QuickActions() {
-  const { canView } = useVisualAuth();
+  const { canView, canCreate } = useVisualAuth();
   const [isManaging, setIsManaging] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState(() => {
     try {
@@ -71,8 +71,13 @@ export function QuickActions() {
   const [addActionKey, setAddActionKey] = useState("");
 
   const allowedActions = useMemo(
-    () => actions.filter((action) => canView(action.module)),
-    [canView]
+    () =>
+      actions.filter((action) => {
+        if (!canView(action.module)) return false;
+        if (action.requiresCreate && !canCreate(action.module)) return false;
+        return true;
+      }),
+    [canView, canCreate]
   );
 
   useEffect(() => {

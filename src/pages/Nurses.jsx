@@ -12,8 +12,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 import AddNurseDialog from "@/components/dashboard/AddNurseDialog";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 export default function Nurses() {
+  const { canCreate } = useVisualAuth();
   const [nurses, setNurses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -49,10 +52,14 @@ export default function Nurses() {
             View and manage nurse accounts.
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Nurse
-        </Button>
+        {canCreate("nurses") && (
+          <RestrictedAction module="nurses" feature="create">
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Nurse
+            </Button>
+          </RestrictedAction>
+        )}
       </div>
 
       <AddNurseDialog

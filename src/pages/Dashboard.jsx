@@ -11,6 +11,7 @@ import {
 import { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getDashboard } from '@/lib/dashboard';
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { BedOccupancyChart } from "@/components/dashboard/BedOccupancyChart";
@@ -21,6 +22,7 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { canView } = useVisualAuth();
 
   const [stats, setStats] = useState({
     totalPatients: 0,
@@ -42,6 +44,12 @@ export default function Dashboard() {
     if (key === 'nurse') return '/nurse';
     if (key === 'doctor') return '/appointments';
     return '/';
+  };
+
+  const canSeeViewCard = (key) => {
+    if (key === 'nurse') return canView('nurses');
+    if (key === 'doctor') return canView('appointments');
+    return canView('dashboard');
   };
 
   useEffect(() => {
@@ -99,7 +107,7 @@ export default function Dashboard() {
 
       {user?.availableViews && user.availableViews.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {cards?.map((card) => (
+          {cards?.filter((card) => canSeeViewCard(card.key)).map((card) => (
             <div
               key={card.key}
               className="rounded-xl bg-card p-5 shadow-card cursor-pointer hover:shadow-lg"

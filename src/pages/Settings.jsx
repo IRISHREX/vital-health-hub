@@ -47,10 +47,11 @@ import UserDialog from "@/components/dashboard/UserDialog";
 import { getUsers } from "@/lib/users";
 import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
+import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
 
 export default function Settings() {
   const { user, logout } = useAuth();
-  const { canManageVisualPermissions } = useVisualAuth();
+  const { canManageVisualPermissions, canCreate } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
   const [loading, setLoading] = useState(true);
@@ -297,6 +298,7 @@ export default function Settings() {
         canCreate: !!entry?.canCreate,
         canEdit: !!entry?.canEdit,
         canDelete: !!entry?.canDelete,
+        restrictedFeatures: (entry?.restrictedFeatures || []).map((feature) => String(feature || "").toLowerCase()),
       };
     });
   }, [selectedPermissionOverride]);
@@ -329,6 +331,7 @@ export default function Settings() {
           canCreate: found?.canCreate || false,
           canEdit: found?.canEdit || false,
           canDelete: found?.canDelete || false,
+          restrictedFeatures: (found?.restrictedFeatures || []).map((feature) => String(feature || "").toLowerCase()),
           [key]: checked,
         };
         if (key !== "canView" && checked) updatedModule.canView = true;
@@ -337,6 +340,36 @@ export default function Settings() {
           updatedModule.canEdit = false;
           updatedModule.canDelete = false;
         }
+        const nextModules = found
+          ? existing.map((m) => (m.module === module ? updatedModule : m))
+          : [...existing, updatedModule];
+        return { ...entry, modules: nextModules };
+      })
+    );
+  };
+
+  const handleRestrictedFeatureToggle = (module, feature, checked) => {
+    const normalizedEmail = ensureEmailOverride(permissionEmail);
+    if (!normalizedEmail) return;
+
+    setPermissionOverrides((prev) =>
+      prev.map((entry) => {
+        if (entry.email !== normalizedEmail) return entry;
+        const existing = entry.modules || [];
+        const found = existing.find((m) => m.module === module);
+        const currentRestricted = new Set((found?.restrictedFeatures || []).map((f) => String(f || "").toLowerCase()));
+        if (checked) currentRestricted.add(feature);
+        else currentRestricted.delete(feature);
+
+        const updatedModule = {
+          module,
+          canView: found?.canView || false,
+          canCreate: found?.canCreate || false,
+          canEdit: found?.canEdit || false,
+          canDelete: found?.canDelete || false,
+          restrictedFeatures: Array.from(currentRestricted)
+        };
+
         const nextModules = found
           ? existing.map((m) => (m.module === module ? updatedModule : m))
           : [...existing, updatedModule];
@@ -808,8 +841,8 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline">Add Role</Button>
-                    <Button onClick={() => setIsUserDialogOpen(true)}>Add User</Button>
+                    {canCreate("settings") && <Button variant="outline">Add Role</Button>}
+                    {canCreate("settings") && <Button onClick={() => setIsUserDialogOpen(true)}>Add User</Button>}
                   </div>
                 </CardContent>
               </Card>
@@ -1174,6 +1207,31 @@ export default function Settings() {
                           disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
                           onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canDelete", checked)}
                         />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border">
+                  <div className="border-b p-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Advanced Restrictions (Per Module)
+                  </div>
+                  <div className="space-y-2 p-2">
+                    {selectedPermissionModules.map((mod) => (
+                      <div key={`${mod.module}-advanced`} className="rounded-md border p-3">
+                        <div className="mb-2 text-sm font-medium">{moduleLabels[mod.module] || mod.module}</div>
+                        <div className="grid gap-2 sm:grid-cols-4">
+                          {(moduleFeatureCatalog[mod.module] || []).map((feature) => (
+                            <label key={`${mod.module}-${feature}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                              <span>Restrict {featureLabels[feature] || feature}</span>
+                              <Switch
+                                checked={mod.restrictedFeatures.includes(feature)}
+                                disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
+                                onCheckedChange={(checked) => handleRestrictedFeatureToggle(mod.module, feature, checked)}
+                              />
+                            </label>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>

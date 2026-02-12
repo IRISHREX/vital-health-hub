@@ -186,7 +186,11 @@ const visualAccessSettingsSchema = new mongoose.Schema({
       canView: { type: Boolean, default: false },
       canCreate: { type: Boolean, default: false },
       canEdit: { type: Boolean, default: false },
-      canDelete: { type: Boolean, default: false }
+      canDelete: { type: Boolean, default: false },
+      restrictedFeatures: [{
+        type: String,
+        enum: ['view', 'create', 'edit', 'delete']
+      }]
     }]
   }],
   permissionManagers: [{

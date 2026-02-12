@@ -25,6 +25,8 @@ import BedDialog from "@/components/dashboard/BedDialog";
 import BedGrid from "@/components/dashboard/BedGrid";
 import RoomAssignDialog from "@/components/dashboard/RoomAssignDialog";
 import { useAuth } from "@/lib/AuthContext";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const bedTypes = [
   "icu",
@@ -65,6 +67,7 @@ const getRooms = (beds) => {
 
 export default function Beds() {
   const { user } = useAuth();
+  const { canCreate } = useVisualAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -190,10 +193,14 @@ export default function Beds() {
               Assign Room
             </Button>
           )}
-          <Button onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Bed
-          </Button>
+          {canCreate("beds") && (
+            <RestrictedAction module="beds" feature="create">
+              <Button onClick={openCreateDialog}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Bed
+              </Button>
+            </RestrictedAction>
+          )}
         </div>
       </div>
 

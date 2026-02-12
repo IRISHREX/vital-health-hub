@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import AddFacilityDialog from "@/components/dashboard/AddFacilityDialog";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const facilityIcons = {
   icu: Syringe,
@@ -30,6 +32,7 @@ const facilityIcons = {
 };
 
 export default function Facilities() {
+  const { canCreate } = useVisualAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { data: facilities, isLoading, isError } = useQuery({
     queryKey: ['facilities'],
@@ -75,10 +78,14 @@ export default function Facilities() {
               Manage hospital facilities and their availability
             </p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Facility
-          </Button>
+          {canCreate("facilities") && (
+            <RestrictedAction module="facilities" feature="create">
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Facility
+              </Button>
+            </RestrictedAction>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">

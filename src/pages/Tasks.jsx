@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTasks, getMyTasks, completeTask } from '@/lib/tasks';
 import { useAuth } from '@/lib/AuthContext';
+import { useVisualAuth } from '@/hooks/useVisualAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +11,13 @@ import AssignTaskDialog from '@/components/tasks/AssignTaskDialog';
 import { Button } from '@/components/ui/button';
 import { ClipboardList, Pill, Activity, FileText, CheckCircle2, Clock } from 'lucide-react';
 import StatsCard from '@/components/dashboard/StatsCard';
+import RestrictedAction from '@/components/permissions/RestrictedAction';
 
 export default function Tasks() {
   const { user } = useAuth();
-  const isNurse = user?.role === 'nurse';
+  const { canCreate } = useVisualAuth();
+  const canListAllTasks = ['hospital_admin', 'super_admin', 'doctor'].includes(user?.role);
+  const canCreateTask = canCreate('tasks');
   const [filterType, setFilterType] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -21,11 +25,11 @@ export default function Tasks() {
   const queryClient = useQueryClient();
 
   const { data: tasksData } = useQuery({
-    queryKey: isNurse ? ['tasks','my'] : ['tasks'],
-    queryFn: () => (isNurse ? getMyTasks() : getTasks()),
+    queryKey: canListAllTasks ? ['tasks'] : ['tasks','my'],
+    queryFn: () => (canListAllTasks ? getTasks() : getMyTasks()),
   });
 
-  const tasks = isNurse ? (tasksData?.data || []) : (tasksData?.data?.tasks || []);
+  const tasks = canListAllTasks ? (tasksData?.data?.tasks || []) : (tasksData?.data || []);
 
   const completeMutation = useMutation({
     mutationFn: ({ id, notes }) => completeTask(id, notes),
@@ -110,7 +114,11 @@ export default function Tasks() {
           <p className="text-sm text-muted-foreground">Manage tasks and assignments</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setIsAssignOpen(true)}>New Task</Button>
+          {canCreateTask && (
+            <RestrictedAction module="tasks" feature="create">
+              <Button onClick={() => setIsAssignOpen(true)}>New Task</Button>
+            </RestrictedAction>
+          )}
         </div>
       </div>
       {/* Stats */}
@@ -183,7 +191,7 @@ export default function Tasks() {
         </TabsContent>
       </Tabs>
 
-      <AssignTaskDialog open={isAssignOpen} onOpenChange={setIsAssignOpen} />
+      {canCreateTask && <AssignTaskDialog open={isAssignOpen} onOpenChange={setIsAssignOpen} />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings } = require('../models/NH_Settings');
 const { AppError } = require('../middleware/errorHandler');
+const { User, Notification, AccessRequest } = require('../models');
 
 // ============ HOSPITAL SETTINGS ============
 
@@ -372,7 +373,10 @@ exports.updateVisualAccessSettings = async (req, res, next) => {
             canView: !!mod.canView,
             canCreate: !!mod.canCreate,
             canEdit: !!mod.canEdit,
-            canDelete: !!mod.canDelete
+            canDelete: !!mod.canDelete,
+            restrictedFeatures: (Array.isArray(mod.restrictedFeatures) ? mod.restrictedFeatures : [])
+              .map((feature) => String(feature || "").trim().toLowerCase())
+              .filter((feature) => ['view', 'create', 'edit', 'delete'].includes(feature))
           }))
       }));
 
@@ -397,6 +401,172 @@ exports.updateVisualAccessSettings = async (req, res, next) => {
       success: true,
       message: 'Visual access settings updated successfully',
       data: settings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Create advanced access request for a restricted feature
+// @route   POST /api/settings/access-requests
+// @access  Private
+exports.createAccessRequest = async (req, res, next) => {
+  try {
+    const moduleName = String(req.body?.module || "").trim().toLowerCase();
+    const feature = String(req.body?.feature || "").trim().toLowerCase();
+    const reason = String(req.body?.reason || "").trim();
+
+    if (!moduleName || !feature) {
+      throw new AppError('module and feature are required', 400);
+    }
+
+    if (!['view', 'create', 'edit', 'delete'].includes(feature)) {
+      throw new AppError('Invalid feature', 400);
+    }
+
+    const existingPending = await AccessRequest.findOne({
+      requester: req.user._id,
+      module: moduleName,
+      feature,
+      status: 'pending'
+    });
+
+    if (existingPending) {
+      throw new AppError('A pending request already exists for this feature', 409);
+    }
+
+    const request = await AccessRequest.create({
+      requester: req.user._id,
+      requesterEmail: req.user.email,
+      module: moduleName,
+      feature,
+      reason,
+      status: 'pending'
+    });
+
+    const superAdmins = await User.find({ role: 'super_admin', isActive: true }).select('_id');
+    const notifications = superAdmins.map((admin) => ({
+      recipient: admin._id,
+      type: 'access_request',
+      title: 'Access Request Pending',
+      message: `${req.user.email} requested ${feature} access for ${moduleName}.`,
+      priority: 'high',
+      data: {
+        entityType: 'access_request',
+        entityId: request._id,
+        module: moduleName,
+        feature,
+        requesterId: req.user._id,
+        requesterEmail: req.user.email,
+        actionType: 'access_request'
+      }
+    }));
+
+    if (notifications.length > 0) {
+      await Notification.insertMany(notifications);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Access request submitted to Super Admin',
+      data: request
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get pending access requests
+// @route   GET /api/settings/access-requests/pending
+// @access  Private (Super Admin)
+exports.getPendingAccessRequests = async (req, res, next) => {
+  try {
+    if (req.user?.role !== 'super_admin') {
+      throw new AppError('Only Super Admin can view pending access requests', 403);
+    }
+
+    const requests = await AccessRequest.find({ status: 'pending' })
+      .populate('requester', 'firstName lastName email role')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: requests
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Respond to an access request
+// @route   PATCH /api/settings/access-requests/:id/respond
+// @access  Private (Super Admin)
+exports.respondToAccessRequest = async (req, res, next) => {
+  try {
+    if (req.user?.role !== 'super_admin') {
+      throw new AppError('Only Super Admin can respond to access requests', 403);
+    }
+
+    const decision = String(req.body?.decision || "").trim().toLowerCase();
+    const reviewComment = String(req.body?.reviewComment || "").trim();
+    if (!['approved', 'rejected'].includes(decision)) {
+      throw new AppError('decision must be approved or rejected', 400);
+    }
+
+    const request = await AccessRequest.findById(req.params.id);
+    if (!request) {
+      throw new AppError('Access request not found', 404);
+    }
+    if (request.status !== 'pending') {
+      throw new AppError('This request has already been processed', 409);
+    }
+
+    request.status = decision;
+    request.reviewedBy = req.user._id;
+    request.reviewedAt = new Date();
+    request.reviewComment = reviewComment;
+    await request.save();
+
+    if (decision === 'approved') {
+      let settings = await VisualAccessSettings.findOne();
+      if (!settings) {
+        settings = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
+      }
+
+      const requesterEmail = String(request.requesterEmail || '').toLowerCase();
+      const overrides = Array.isArray(settings.overrides) ? settings.overrides : [];
+      const targetOverride = overrides.find((entry) => String(entry?.email || '').toLowerCase() === requesterEmail);
+      if (targetOverride) {
+        const moduleEntry = (targetOverride.modules || []).find((m) => m.module === request.module);
+        if (moduleEntry) {
+          moduleEntry.restrictedFeatures = (moduleEntry.restrictedFeatures || []).filter(
+            (feature) => String(feature || '').toLowerCase() !== request.feature
+          );
+        }
+      }
+      settings.updatedBy = req.user._id;
+      await settings.save();
+    }
+
+    await Notification.create({
+      recipient: request.requester,
+      type: 'access_request_resolved',
+      title: `Access Request ${decision === 'approved' ? 'Approved' : 'Rejected'}`,
+      message: `Your ${request.feature} access request for ${request.module} was ${decision}.`,
+      priority: decision === 'approved' ? 'medium' : 'high',
+      data: {
+        entityType: 'access_request',
+        entityId: request._id,
+        module: request.module,
+        feature: request.feature,
+        decision
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Access request ${decision}`,
+      data: request
     });
   } catch (error) {
     next(error);

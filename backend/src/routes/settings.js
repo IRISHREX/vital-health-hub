@@ -31,5 +31,8 @@ router.get('/users/stats', authorize('super_admin', 'hospital_admin'), settingsC
 // Visual access settings (GET for all authenticated users so UI can resolve effective permissions)
 router.get('/visual-access', settingsController.getVisualAccessSettings);
 router.put('/visual-access', settingsController.updateVisualAccessSettings);
+router.post('/access-requests', settingsController.createAccessRequest);
+router.get('/access-requests/pending', settingsController.getPendingAccessRequests);
+router.patch('/access-requests/:id/respond', settingsController.respondToAccessRequest);
 
 module.exports = router;
