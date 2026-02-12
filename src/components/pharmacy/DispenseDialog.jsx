@@ -28,6 +28,7 @@ export default function DispenseDialog({ open, onOpenChange, prescription }) {
       qc.invalidateQueries({ queryKey: ['prescriptions'] });
       qc.invalidateQueries({ queryKey: ['medicines'] });
       qc.invalidateQueries({ queryKey: ['pharmacy-stats'] });
+      qc.invalidateQueries({ queryKey: ['pharmacy-invoices'] });
       onOpenChange(false);
     } catch (e) { toast.error(e.message); }
     setLoading(false);

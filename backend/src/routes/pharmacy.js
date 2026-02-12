@@ -32,5 +32,6 @@ router.route('/prescriptions')
 
 router.post('/prescriptions/:id/dispense', authenticate, authorize(...pharmacyRoles), c.dispensePrescription);
 router.patch('/prescriptions/:id/cancel', authenticate, authorize('doctor', ...adminRoles), c.cancelPrescription);
+router.get('/invoices', authenticate, authorize(...clinicalRoles), c.getPharmacyInvoices);
 
 module.exports = router;

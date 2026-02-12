@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/AuthContext";
-import { getPermissions } from "@/lib/rbac";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getLabTests, getLabStats, collectSample, startProcessing, deleteLabTest, generateLabInvoice } from "@/lib/labTests";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
@@ -44,8 +43,8 @@ const priorityColors = {
 };
 
 export default function LabDashboard() {
-  const { user } = useAuth();
-  const permissions = getPermissions(user?.role, "lab");
+  const { getModulePermissions } = useVisualAuth();
+  const permissions = getModulePermissions("lab");
 
   const [tests, setTests] = useState([]);
   const [stats, setStats] = useState({});

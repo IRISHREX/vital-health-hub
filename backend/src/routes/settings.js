@@ -28,4 +28,8 @@ router.put('/preferences', settingsController.updateUserPreferences);
 // User stats for admin dashboard
 router.get('/users/stats', authorize('super_admin', 'hospital_admin'), settingsController.getUserStats);
 
+// Visual access settings (GET for all authenticated users so UI can resolve effective permissions)
+router.get('/visual-access', settingsController.getVisualAccessSettings);
+router.put('/visual-access', settingsController.updateVisualAccessSettings);
+
 module.exports = router;

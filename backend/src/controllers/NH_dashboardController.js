@@ -1,4 +1,4 @@
-const { Appointment, Patient, Vital, User } = require('../models');
+const { Appointment, Patient, Vital, User, Doctor, Bed, Admission, Invoice } = require('../models');
 
 // Return role-specific dashboard summaries
 exports.getDashboard = async (req, res, next) => {
@@ -10,16 +10,83 @@ exports.getDashboard = async (req, res, next) => {
       const totalPatients = await Patient.countDocuments();
       const totalAppointments = await Appointment.countDocuments();
       const totalVitals = await Vital.countDocuments();
+      const totalBeds = await Bed.countDocuments({ isActive: true });
+      const availableBeds = await Bed.countDocuments({ isActive: true, status: 'available' });
+      const admittedPatients = await Admission.countDocuments({ status: 'ADMITTED' });
+      const availableDoctors = await Doctor.countDocuments({ availabilityStatus: 'available' });
+
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date();
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const todayAppointments = await Appointment.countDocuments({
+        appointmentDate: { $gte: dayStart, $lte: dayEnd }
+      });
+      const todayDischarges = await Admission.countDocuments({
+        actualDischargeDate: { $gte: dayStart, $lte: dayEnd }
+      });
+
+      const pendingBills = await Invoice.countDocuments({
+        status: { $nin: ['cancelled', 'refunded'] },
+        $expr: { $gt: ['$totalAmount', '$paidAmount'] }
+      });
+
+      const pendingRevenueResult = await Invoice.aggregate([
+        {
+          $match: {
+            status: { $nin: ['cancelled', 'refunded'] }
+          }
+        },
+        {
+          $project: {
+            due: {
+              $max: [
+                0,
+                { $subtract: ['$totalAmount', '$paidAmount'] }
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalDue: { $sum: '$due' }
+          }
+        }
+      ]);
+      const pendingRevenue = pendingRevenueResult[0]?.totalDue || 0;
+      const bedUtilizationRate = totalBeds > 0 ? Math.round(((totalBeds - availableBeds) / totalBeds) * 100) : 0;
+
+      const doctorUpcomingAppointments = await Appointment.countDocuments({
+        status: { $in: ['scheduled', 'confirmed'] },
+        appointmentDate: { $gte: dayStart, $lte: dayEnd }
+      });
+
+      const totalNurses = await User.countDocuments({ role: 'nurse' });
 
       return res.json({
         success: true,
         data: {
           cards: [
-            { key: 'admin', label: 'Admin View' },
-            { key: 'doctor', label: 'Doctor View' },
-            { key: 'nurse', label: 'Nurse View' }
+            { key: 'admin', label: 'Admin View', value: totalPatients },
+            { key: 'doctor', label: 'Doctor View', value: doctorUpcomingAppointments },
+            { key: 'nurse', label: 'Nurse View', value: totalNurses }
           ],
-          stats: { totalPatients, totalAppointments, totalVitals }
+          stats: {
+            totalPatients,
+            totalAppointments,
+            totalVitals,
+            totalBeds,
+            availableBeds,
+            admittedPatients,
+            availableDoctors,
+            pendingBills,
+            todayAppointments,
+            todayDischarges,
+            bedUtilizationRate,
+            pendingRevenue
+          }
         }
       });
     }

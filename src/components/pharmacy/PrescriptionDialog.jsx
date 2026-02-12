@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ export default function PrescriptionDialog({ open, onOpenChange }) {
   const [loading, setLoading] = useState(false);
   const [patientId, setPatientId] = useState('');
   const [doctorId, setDoctorId] = useState('');
+  const [doctorSearch, setDoctorSearch] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState([{ ...emptyItem }]);
 
@@ -26,9 +27,32 @@ export default function PrescriptionDialog({ open, onOpenChange }) {
   const { data: doctorsData } = useQuery({ queryKey: ['doctors'], queryFn: () => getDoctors(), enabled: open });
   const { data: medsData } = useQuery({ queryKey: ['medicines-all'], queryFn: () => getMedicines({ limit: 500 }), enabled: open });
 
-  const patients = Array.isArray(patientsData) ? patientsData : patientsData?.data || [];
-  const doctors = Array.isArray(doctorsData) ? doctorsData : doctorsData?.data || [];
-  const medicines = Array.isArray(medsData) ? medsData : medsData?.data || [];
+  const patients = Array.isArray(patientsData)
+    ? patientsData
+    : patientsData?.data?.patients || [];
+  const doctors = Array.isArray(doctorsData)
+    ? doctorsData
+    : doctorsData?.data?.doctors || [];
+  const medicines = Array.isArray(medsData)
+    ? medsData
+    : medsData?.data || [];
+
+  const getPatientLabel = (patient) => {
+    const fullName = `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+    return patient?.patientId ? `${fullName} (${patient.patientId})` : fullName || 'Unknown';
+  };
+
+  const getDoctorName = (doctor) => {
+    if (doctor?.name) return doctor.name;
+    const fromRoot = `${doctor?.firstName || ''} ${doctor?.lastName || ''}`.trim();
+    if (fromRoot) return fromRoot;
+    const fromUser = `${doctor?.user?.firstName || ''} ${doctor?.user?.lastName || ''}`.trim();
+    return fromUser || 'Unknown';
+  };
+
+  const filteredDoctors = doctors.filter((doctor) =>
+    getDoctorName(doctor).toLowerCase().includes(doctorSearch.toLowerCase())
+  );
 
   const addItem = () => setItems(p => [...p, { ...emptyItem }]);
   const removeItem = (i) => setItems(p => p.filter((_, idx) => idx !== i));
@@ -51,7 +75,7 @@ export default function PrescriptionDialog({ open, onOpenChange }) {
       qc.invalidateQueries({ queryKey: ['prescriptions'] });
       qc.invalidateQueries({ queryKey: ['pharmacy-stats'] });
       onOpenChange(false);
-      setPatientId(''); setDoctorId(''); setNotes(''); setItems([{ ...emptyItem }]);
+      setPatientId(''); setDoctorId(''); setDoctorSearch(''); setNotes(''); setItems([{ ...emptyItem }]);
     } catch (e) { toast.error(e.message); }
     setLoading(false);
   };
@@ -65,14 +89,31 @@ export default function PrescriptionDialog({ open, onOpenChange }) {
             <Label>Patient *</Label>
             <Select value={patientId} onValueChange={setPatientId}>
               <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-              <SelectContent>{patients.map(p => <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</SelectItem>)}</SelectContent>
+              <SelectContent>{patients.map(p => <SelectItem key={p._id} value={p._id}>{getPatientLabel(p)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
             <Label>Doctor *</Label>
+            <Input
+              className="mb-2"
+              placeholder="Type doctor name to search"
+              value={doctorSearch}
+              onChange={(e) => {
+                const value = e.target.value;
+                setDoctorSearch(value);
+                const exact = doctors.find(
+                  (doctor) => getDoctorName(doctor).toLowerCase() === value.trim().toLowerCase()
+                );
+                if (exact?._id) setDoctorId(exact._id);
+              }}
+            />
             <Select value={doctorId} onValueChange={setDoctorId}>
               <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
-              <SelectContent>{doctors.map(d => <SelectItem key={d._id} value={d._id}>Dr. {d.firstName} {d.lastName}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {filteredDoctors.map(d => (
+                  <SelectItem key={d._id} value={d._id}>Dr. {getDoctorName(d)}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,16 +36,23 @@ import {
   updateSecuritySettings,
   updateNotificationSettings,
   getUserStats,
+  getVisualAccessSettings,
+  updateVisualAccessSettings,
 } from "@/lib/settings";
 import { updateProfile } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { setUser as setStoredUser } from "@/lib/api-client";
 import UserDialog from "@/components/dashboard/UserDialog";
+import { getUsers } from "@/lib/users";
+import { moduleLabels, rbacModules } from "@/lib/rbac";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 
 export default function Settings() {
   const { user, logout } = useAuth();
+  const { canManageVisualPermissions } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -96,11 +103,17 @@ export default function Settings() {
   });
 
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [userEmails, setUserEmails] = useState([]);
+  const [permissionOverrides, setPermissionOverrides] = useState([]);
+  const [permissionEmail, setPermissionEmail] = useState("");
+  const [permissionManagers, setPermissionManagers] = useState([]);
+  const [managerEmailInput, setManagerEmailInput] = useState("");
 
   // Fetch user stats using react-query (v5 object syntax)
   useQuery({
     queryKey: ["user-stats"],
     queryFn: getUserStats,
+    enabled: isAdmin,
     onSuccess: (res) => {
       if (res && res.success && res.data) {
         setUserStats(res.data);
@@ -113,6 +126,7 @@ export default function Settings() {
     const loadSettings = async () => {
       try {
         setLoading(true);
+        const adminUser = isAdmin;
         
         // Set profile from user context
         if (user) {
@@ -125,12 +139,14 @@ export default function Settings() {
           setAvatarPreview(user.avatar || "");
         }
         
-        const [settingsRes, statsRes] = await Promise.all([
-          getAllSettings(),
-          getUserStats(),
+        const [settingsRes, statsRes, visualAccessRes, usersRes] = await Promise.all([
+          adminUser ? getAllSettings() : Promise.resolve(null),
+          adminUser ? getUserStats() : Promise.resolve(null),
+          getVisualAccessSettings(),
+          (adminUser || canManageVisualPermissions) ? getUsers() : Promise.resolve(null),
         ]);
 
-        if (settingsRes.success && settingsRes.data) {
+        if (settingsRes?.success && settingsRes?.data) {
           const { hospital, security, notifications } = settingsRes.data;
           
           setHospitalSettings({
@@ -157,8 +173,24 @@ export default function Settings() {
           });
         }
 
-        if (statsRes.success && statsRes.data) {
+        if (statsRes?.success && statsRes?.data) {
           setUserStats(statsRes.data);
+        }
+
+        if (visualAccessRes?.success && visualAccessRes?.data) {
+          setPermissionOverrides(visualAccessRes.data.overrides || []);
+          setPermissionManagers(visualAccessRes.data.permissionManagers || []);
+          if (!permissionEmail && visualAccessRes.data.overrides?.length) {
+            setPermissionEmail(visualAccessRes.data.overrides[0].email);
+          }
+        }
+
+        if (usersRes?.success && usersRes?.data?.users) {
+          const emails = usersRes.data.users
+            .map((u) => u.email)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+          setUserEmails(emails);
         }
       } catch (error) {
         console.error("Failed to load settings:", error);
@@ -169,7 +201,7 @@ export default function Settings() {
     };
 
     loadSettings();
-  }, [user]);
+  }, [user, isAdmin, canManageVisualPermissions]);
 
   // Handle avatar file selection
   const handleAvatarChange = (e) => {
@@ -250,6 +282,112 @@ export default function Settings() {
     }
   };
 
+  const selectedPermissionOverride = useMemo(
+    () => permissionOverrides.find((item) => item.email === permissionEmail) || null,
+    [permissionOverrides, permissionEmail]
+  );
+
+  const selectedPermissionModules = useMemo(() => {
+    const byModule = new Map((selectedPermissionOverride?.modules || []).map((item) => [item.module, item]));
+    return rbacModules.map((module) => {
+      const entry = byModule.get(module);
+      return {
+        module,
+        canView: !!entry?.canView,
+        canCreate: !!entry?.canCreate,
+        canEdit: !!entry?.canEdit,
+        canDelete: !!entry?.canDelete,
+      };
+    });
+  }, [selectedPermissionOverride]);
+
+  const ensureEmailOverride = (email) => {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
+    if (permissionOverrides.some((item) => item.email === normalizedEmail)) {
+      return normalizedEmail;
+    }
+
+    const newEntry = { email: normalizedEmail, modules: [] };
+    setPermissionOverrides((prev) => [...prev, newEntry]);
+    return normalizedEmail;
+  };
+
+  const handlePermissionToggle = (module, key, checked) => {
+    const normalizedEmail = ensureEmailOverride(permissionEmail);
+    if (!normalizedEmail) return;
+
+    setPermissionOverrides((prev) =>
+      prev.map((entry) => {
+        if (entry.email !== normalizedEmail) return entry;
+        const existing = entry.modules || [];
+        const found = existing.find((m) => m.module === module);
+        const updatedModule = {
+          module,
+          canView: found?.canView || false,
+          canCreate: found?.canCreate || false,
+          canEdit: found?.canEdit || false,
+          canDelete: found?.canDelete || false,
+          [key]: checked,
+        };
+        if (key !== "canView" && checked) updatedModule.canView = true;
+        if (key === "canView" && !checked) {
+          updatedModule.canCreate = false;
+          updatedModule.canEdit = false;
+          updatedModule.canDelete = false;
+        }
+        const nextModules = found
+          ? existing.map((m) => (m.module === module ? updatedModule : m))
+          : [...existing, updatedModule];
+        return { ...entry, modules: nextModules };
+      })
+    );
+  };
+
+  const handleSaveVisualPermissions = async () => {
+    try {
+      setSaving(true);
+      const payload = {
+        permissionManagers: user?.role === "super_admin" ? permissionManagers : undefined,
+        overrides: permissionOverrides
+          .filter((entry) => entry.email)
+          .map((entry) => ({
+            email: entry.email,
+            modules: (entry.modules || []).filter((m) => m.module),
+          })),
+      };
+      await updateVisualAccessSettings(payload);
+      toast.success("Visual permissions updated");
+    } catch (error) {
+      toast.error(error.message || "Failed to update visual permissions");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveOverride = () => {
+    if (!permissionEmail) return;
+    const next = permissionOverrides.filter((entry) => entry.email !== permissionEmail);
+    setPermissionOverrides(next);
+    setPermissionEmail(next[0]?.email || "");
+  };
+
+  const handleAddPermissionManager = () => {
+    if (user?.role !== "super_admin") return;
+    const email = String(managerEmailInput || "").trim().toLowerCase();
+    if (!email) return;
+    if (!permissionManagers.includes(email)) {
+      setPermissionManagers((prev) => [...prev, email]);
+    }
+    setManagerEmailInput("");
+  };
+
+  const handleRemovePermissionManager = (email) => {
+    if (user?.role !== "super_admin") return;
+    setPermissionManagers((prev) => prev.filter((item) => item !== email));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -270,8 +408,9 @@ export default function Settings() {
   const userInitials = user?.fullName
     ? user.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
-
-  const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
+  const canSeeVisualPermissionsTab = true;
+  const canEditVisualPermissions = user?.role === "super_admin" || canManageVisualPermissions;
+  const canEditDelegation = user?.role === "super_admin";
 
   return (
     <div className="space-y-6">
@@ -285,7 +424,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-7">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profile
@@ -313,6 +452,12 @@ export default function Settings() {
                 Data
               </TabsTrigger>
             </>
+          )}
+          {canSeeVisualPermissionsTab && (
+            <TabsTrigger value="permissions" className="gap-2">
+              <Shield className="h-4 w-4" />
+              Permissions
+            </TabsTrigger>
           )}
         </TabsList>
 
@@ -911,6 +1056,141 @@ export default function Settings() {
               </Card>
             </TabsContent>
           </>
+        )}
+
+        {canSeeVisualPermissionsTab && (
+          <TabsContent value="permissions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Visual Access Permissions</CardTitle>
+                <CardDescription>
+                  Role permissions are still enforced. These overrides only adjust visible modules/actions for selected emails.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="rounded-md border p-3 text-sm">
+                  <p>
+                    Edit mode:{" "}
+                    <span className="font-semibold">
+                      {canEditVisualPermissions ? "Enabled" : "Read-only"}
+                    </span>
+                  </p>
+                  {!canEditVisualPermissions && (
+                    <p className="mt-1 text-muted-foreground">
+                      Only Super Admin or delegated permission managers can update this section.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Delegated Permission Managers (by email)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="manager@hospital.com"
+                      value={managerEmailInput}
+                      disabled={!canEditDelegation}
+                      onChange={(e) => setManagerEmailInput(e.target.value)}
+                    />
+                    <Button type="button" variant="outline" disabled={!canEditDelegation} onClick={handleAddPermissionManager}>
+                      Add
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {permissionManagers.length === 0 && (
+                      <span className="text-sm text-muted-foreground">No delegated managers. Super Admin only.</span>
+                    )}
+                    {permissionManagers.map((email) => (
+                      <Badge key={email} variant="secondary" className="gap-2">
+                        {email}
+                        {canEditDelegation && (
+                          <button type="button" onClick={() => handleRemovePermissionManager(email)} className="text-xs">
+                            x
+                          </button>
+                        )}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Select User Email</Label>
+                    <Select
+                      value={permissionEmail || "__none__"}
+                      onValueChange={(value) => setPermissionEmail(value === "__none__" ? "" : value)}
+                      disabled={!canEditVisualPermissions}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose user email" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Select email</SelectItem>
+                        {userEmails.map((email) => (
+                          <SelectItem key={email} value={email}>{email}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Or Enter Email</Label>
+                    <Input
+                      placeholder="user@hospital.com"
+                      value={permissionEmail}
+                      disabled={!canEditVisualPermissions}
+                      onChange={(e) => setPermissionEmail(e.target.value.trim().toLowerCase())}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border">
+                  <div className="grid grid-cols-5 gap-2 border-b p-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span>Module</span>
+                    <span>View</span>
+                    <span>Create</span>
+                    <span>Edit</span>
+                    <span>Delete</span>
+                  </div>
+                  <div className="space-y-1 p-2">
+                    {selectedPermissionModules.map((mod) => (
+                      <div key={mod.module} className="grid grid-cols-5 items-center gap-2 rounded-md p-2 hover:bg-muted/40">
+                        <span className="text-sm font-medium">{moduleLabels[mod.module] || mod.module}</span>
+                        <Switch
+                          checked={mod.canView}
+                          disabled={!canEditVisualPermissions || !permissionEmail}
+                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canView", checked)}
+                        />
+                        <Switch
+                          checked={mod.canCreate}
+                          disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
+                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canCreate", checked)}
+                        />
+                        <Switch
+                          checked={mod.canEdit}
+                          disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
+                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canEdit", checked)}
+                        />
+                        <Switch
+                          checked={mod.canDelete}
+                          disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
+                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canDelete", checked)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={handleRemoveOverride} disabled={!canEditVisualPermissions || !permissionEmail}>
+                    Remove Override
+                  </Button>
+                  <Button onClick={handleSaveVisualPermissions} disabled={saving || !permissionEmail || !canEditVisualPermissions}>
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save Permissions
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         )}
       </Tabs>
     </div>

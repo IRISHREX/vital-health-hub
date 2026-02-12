@@ -29,7 +29,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/AuthContext";
-import { canAccessModule, getRoleLabel } from "@/lib/rbac";
+import { getRoleLabel } from "@/lib/rbac";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
@@ -60,6 +61,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const { user } = useAuth();
+  const { canView } = useVisualAuth();
   const isCollapsed = state === "collapsed";
 
   const isActive = (path) => {
@@ -68,7 +70,7 @@ export function AppSidebar() {
   };
 
   const filterByRole = (items) => 
-    items.filter(item => canAccessModule(user?.role, item.module));
+    items.filter(item => canView(item.module));
 
   return (
     <Sidebar className="border-r-0 bg-gradient-sidebar">

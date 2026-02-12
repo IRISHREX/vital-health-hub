@@ -127,7 +127,7 @@ invoiceSchema.pre('save', async function(next) {
 
 // Update status based on payment
 invoiceSchema.pre('save', function(next) {
-  this.dueAmount = this.totalAmount - this.paidAmount;
+  this.dueAmount = Math.max(0, this.totalAmount - this.paidAmount);
   
   if (this.status !== 'cancelled' && this.status !== 'refunded') {
     if (this.paidAmount >= this.totalAmount) {
@@ -136,6 +136,8 @@ invoiceSchema.pre('save', function(next) {
       this.status = 'partial';
     } else if (new Date() > this.dueDate) {
       this.status = 'overdue';
+    } else {
+      this.status = 'pending';
     }
   }
   next();

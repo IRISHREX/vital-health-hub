@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/AuthContext";
-import { getPermissions } from "@/lib/rbac";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
@@ -29,8 +28,8 @@ import PatientDialog from "@/components/dashboard/PatientDialog";
 import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
 
 export default function Patients() {
-  const { user } = useAuth();
-  const permissions = getPermissions(user?.role, "patients");
+  const { getModulePermissions } = useVisualAuth();
+  const permissions = getModulePermissions("patients");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");

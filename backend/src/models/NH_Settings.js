@@ -165,14 +165,53 @@ const userPreferencesSchema = new mongoose.Schema({
   timestamps: true
 });
 
+const visualAccessSettingsSchema = new mongoose.Schema({
+  overrides: [{
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true
+    },
+    modules: [{
+      module: {
+        type: String,
+        enum: [
+          'dashboard', 'beds', 'admissions', 'patients', 'doctors',
+          'nurses', 'appointments', 'facilities', 'billing', 'reports',
+          'notifications', 'settings', 'tasks', 'lab', 'pharmacy'
+        ],
+        required: true
+      },
+      canView: { type: Boolean, default: false },
+      canCreate: { type: Boolean, default: false },
+      canEdit: { type: Boolean, default: false },
+      canDelete: { type: Boolean, default: false }
+    }]
+  }],
+  permissionManagers: [{
+    type: String,
+    lowercase: true,
+    trim: true
+  }],
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }
+}, {
+  timestamps: true
+});
+
 const HospitalSettings = mongoose.model('HospitalSettings', hospitalSettingsSchema);
 const SecuritySettings = mongoose.model('SecuritySettings', securitySettingsSchema);
 const NotificationSettings = mongoose.model('NotificationSettings', notificationSettingsSchema);
 const UserPreferences = mongoose.model('UserPreferences', userPreferencesSchema);
+const VisualAccessSettings = mongoose.model('VisualAccessSettings', visualAccessSettingsSchema);
 
 module.exports = {
   HospitalSettings,
   SecuritySettings,
   NotificationSettings,
-  UserPreferences
+  UserPreferences,
+  VisualAccessSettings
 };

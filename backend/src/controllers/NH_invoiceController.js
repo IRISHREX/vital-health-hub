@@ -3,21 +3,38 @@ const Patient = require('../models/NH_Patient');
 const Admission = require('../models/NH_Admission');
 const asyncHandler = require('express-async-handler');
 
+const getComputedInvoiceStatus = (invoice) => {
+  if (!invoice) return 'pending';
+  if (invoice.status === 'cancelled' || invoice.status === 'refunded') return invoice.status;
+
+  const totalAmount = Number(invoice.totalAmount || 0);
+  const paidAmount = Number(invoice.paidAmount || 0);
+  const dueAmount = Math.max(0, totalAmount - paidAmount);
+  const dueDate = invoice.dueDate ? new Date(invoice.dueDate) : null;
+  const isOverdue = dueAmount > 0 && dueDate && new Date() > dueDate;
+
+  if (dueAmount <= 0) return 'paid';
+  if (paidAmount > 0) return 'partial';
+  if (isOverdue) return 'overdue';
+  return 'pending';
+};
+
 // @desc    Get all invoices
 // @route   GET /api/invoices
 // @access  Private
 const getInvoices = asyncHandler(async (req, res) => {
-  const { patientId, status, startDate, endDate } = req.query;
+  const { patientId, status, startDate, endDate, type } = req.query;
   const query = {};
 
   if (patientId) query.patient = patientId;
-  if (status) query.status = status;
+  if (type) query.type = type;
   if (startDate && endDate) {
     query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
 
   const invoices = await Invoice.find(query)
-    .populate('patient', 'firstName lastName patientId phone')
+    .populate('patient', 'firstName lastName patientId phone registrationType status')
+    .populate('admission', 'admissionId status admissionType')
     .populate('generatedBy', 'firstName lastName email')
     .sort({ createdAt: -1 });
   
@@ -27,10 +44,16 @@ const getInvoices = asyncHandler(async (req, res) => {
     if (invoiceObj.patient) {
       invoiceObj.patient.name = `${invoiceObj.patient.firstName} ${invoiceObj.patient.lastName}`;
     }
+    invoiceObj.dueAmount = Math.max(0, Number(invoiceObj.totalAmount || 0) - Number(invoiceObj.paidAmount || 0));
+    invoiceObj.status = getComputedInvoiceStatus(invoiceObj);
     return invoiceObj;
   });
-    
-  res.json(formattedInvoices);
+
+  const response = status
+    ? formattedInvoices.filter((invoice) => invoice.status === status)
+    : formattedInvoices;
+
+  res.json(response);
 });
 
 // @desc    Get single invoice
@@ -248,8 +271,12 @@ const addPayment = asyncHandler(async (req, res) => {
       throw new Error('Invoice not found');
     }
 
-    // Prevent payment if invoice is already paid or cancelled/refunded
-    if (invoice.status === 'paid') {
+    // Always validate against computed due to avoid stale status issues
+    const currentDueAmount = Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0));
+    invoice.dueAmount = currentDueAmount;
+
+    // Prevent payment if invoice is already fully paid or cancelled/refunded
+    if (currentDueAmount <= 0) {
       res.status(400);
       throw new Error('Invoice is already fully paid');
     }
@@ -260,9 +287,9 @@ const addPayment = asyncHandler(async (req, res) => {
     }
 
     // Check if payment amount exceeds remaining due amount
-    if (amount > invoice.dueAmount) {
+    if (amount > currentDueAmount) {
       res.status(400);
-      throw new Error(`Payment amount (${amount}) exceeds due amount (${invoice.dueAmount})`);
+      throw new Error(`Payment amount (${amount}) exceeds due amount (${currentDueAmount})`);
     }
 
     const payment = {

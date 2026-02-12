@@ -26,3 +26,4 @@ export const getPrescriptions = (params) => apiClient.get(`/pharmacy/prescriptio
 export const createPrescription = (data) => apiClient.post('/pharmacy/prescriptions', data);
 export const dispensePrescription = (id, items) => apiClient.post(`/pharmacy/prescriptions/${id}/dispense`, { items });
 export const cancelPrescription = (id) => apiClient.patch(`/pharmacy/prescriptions/${id}/cancel`);
+export const getPharmacyInvoices = (params) => apiClient.get(`/pharmacy/invoices${qs(params)}`);

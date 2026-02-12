@@ -1,4 +1,4 @@
-const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences } = require('../models/NH_Settings');
+const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings } = require('../models/NH_Settings');
 const { AppError } = require('../middleware/errorHandler');
 
 // ============ HOSPITAL SETTINGS ============
@@ -320,6 +320,89 @@ exports.getUserStats = async (req, res, next) => {
   }
 };
 
+// ============ VISUAL ACCESS SETTINGS ============
+
+// @desc    Get visual access settings
+// @route   GET /api/settings/visual-access
+// @access  Private
+exports.getVisualAccessSettings = async (req, res, next) => {
+  try {
+    let settings = await VisualAccessSettings.findOne();
+    if (!settings) {
+      settings = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
+    }
+
+    res.json({
+      success: true,
+      data: settings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update visual access settings
+// @route   PUT /api/settings/visual-access
+// @access  Private (Super Admin, Hospital Admin)
+exports.updateVisualAccessSettings = async (req, res, next) => {
+  try {
+    const { overrides = [], permissionManagers = [] } = req.body;
+    let settings = await VisualAccessSettings.findOne();
+    if (!settings) {
+      settings = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
+    }
+
+    const userEmail = String(req.user?.email || "").trim().toLowerCase();
+    const isSuperAdmin = req.user?.role === "super_admin";
+    const delegatedManagers = (settings.permissionManagers || []).map((email) => String(email || "").trim().toLowerCase());
+    const isDelegatedManager = delegatedManagers.includes(userEmail);
+
+    if (!isSuperAdmin && !isDelegatedManager) {
+      throw new AppError('Not authorized to update visual access settings', 403);
+    }
+
+    const sanitizedOverrides = (Array.isArray(overrides) ? overrides : [])
+      .filter((entry) => entry?.email)
+      .map((entry) => ({
+        email: String(entry.email).trim().toLowerCase(),
+        modules: (Array.isArray(entry.modules) ? entry.modules : [])
+          .filter((mod) => mod?.module)
+          .map((mod) => ({
+            module: mod.module,
+            canView: !!mod.canView,
+            canCreate: !!mod.canCreate,
+            canEdit: !!mod.canEdit,
+            canDelete: !!mod.canDelete
+          }))
+      }));
+
+    const nextPayload = {
+      overrides: sanitizedOverrides,
+      updatedBy: req.user?._id
+    };
+
+    if (isSuperAdmin) {
+      nextPayload.permissionManagers = (Array.isArray(permissionManagers) ? permissionManagers : [])
+        .map((email) => String(email || "").trim().toLowerCase())
+        .filter(Boolean);
+    }
+
+    settings = await VisualAccessSettings.findOneAndUpdate(
+      {},
+      nextPayload,
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Visual access settings updated successfully',
+      data: settings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ============ ALL SETTINGS ============
 
 // @desc    Get all settings
@@ -331,12 +414,14 @@ exports.getAllSettings = async (req, res, next) => {
     let security = await SecuritySettings.findOne();
     let notifications = await NotificationSettings.findOne();
     let preferences = await UserPreferences.findOne({ userId: req.user._id });
+    let visualAccess = await VisualAccessSettings.findOne();
     
     // Create defaults if needed
     if (!hospital) hospital = await HospitalSettings.create({});
     if (!security) security = await SecuritySettings.create({});
     if (!notifications) notifications = await NotificationSettings.create({});
     if (!preferences) preferences = await UserPreferences.create({ userId: req.user._id });
+    if (!visualAccess) visualAccess = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
 
     res.json({
       success: true,
@@ -344,7 +429,8 @@ exports.getAllSettings = async (req, res, next) => {
         hospital,
         security,
         notifications,
-        preferences
+        preferences,
+        visualAccess
       }
     });
   } catch (error) {

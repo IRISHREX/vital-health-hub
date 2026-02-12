@@ -17,6 +17,7 @@ import {
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
@@ -34,7 +35,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getPermissions } from "@/lib/rbac";
 import {
   Select,
   SelectContent,
@@ -46,7 +46,8 @@ import {
 export default function OpdDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const permissions = getPermissions(user?.role, "patients");
+  const { getModulePermissions } = useVisualAuth();
+  const permissions = getModulePermissions("patients");
 
   const [cards, setCards] = useState([]);
   const [selectedView, setSelectedView] = useState(null);

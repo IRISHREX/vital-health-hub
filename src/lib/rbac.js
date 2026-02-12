@@ -5,6 +5,41 @@ const viewOnly = { canView: true, canCreate: false, canEdit: false, canDelete: f
 const viewAndCreate = { canView: true, canCreate: true, canEdit: false, canDelete: false };
 const viewAndEdit = { canView: true, canCreate: true, canEdit: true, canDelete: false };
 const noAccess = { canView: false, canCreate: false, canEdit: false, canDelete: false };
+export const permissionFlags = ["canView", "canCreate", "canEdit", "canDelete"];
+export const rbacModules = [
+  "dashboard",
+  "beds",
+  "admissions",
+  "patients",
+  "doctors",
+  "nurses",
+  "appointments",
+  "facilities",
+  "billing",
+  "reports",
+  "notifications",
+  "settings",
+  "tasks",
+  "lab",
+  "pharmacy",
+];
+export const moduleLabels = {
+  dashboard: "Dashboard",
+  beds: "Bed Management",
+  admissions: "Admissions",
+  patients: "Patients",
+  doctors: "Doctors",
+  nurses: "Nurses",
+  appointments: "Appointments",
+  facilities: "Facilities",
+  billing: "Billing",
+  reports: "Reports",
+  notifications: "Notifications",
+  settings: "Settings",
+  tasks: "Tasks",
+  lab: "Pathology Lab",
+  pharmacy: "Pharmacy",
+};
 
 export const rolePermissions = {
   super_admin: {
@@ -126,6 +161,16 @@ export const rolePermissions = {
 export const getPermissions = (role, module) => {
   const userRole = role || 'receptionist';
   return rolePermissions[userRole]?.[module] || noAccess;
+};
+
+export const mergePermissions = (basePermissions, overridePermissions) => {
+  if (!overridePermissions) return basePermissions;
+  return {
+    canView: overridePermissions.canView ?? basePermissions.canView,
+    canCreate: overridePermissions.canCreate ?? basePermissions.canCreate,
+    canEdit: overridePermissions.canEdit ?? basePermissions.canEdit,
+    canDelete: overridePermissions.canDelete ?? basePermissions.canDelete,
+  };
 };
 
 export const canAccessModule = (role, module) => {

@@ -21,3 +21,7 @@ export const updateUserPreferences = (data) => apiClient.put('/settings/preferen
 
 // User stats for admin
 export const getUserStats = () => apiClient.get('/settings/users/stats');
+
+// Visual access overrides (email-based)
+export const getVisualAccessSettings = () => apiClient.get('/settings/visual-access');
+export const updateVisualAccessSettings = (data) => apiClient.put('/settings/visual-access', data);
