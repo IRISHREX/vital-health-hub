@@ -226,6 +226,13 @@ export default function LabDashboard() {
     .sort((a, b) => new Date(b.latestOrderAt || 0) - new Date(a.latestOrderAt || 0));
 
   const selectedPatientGroup = groupedTests.find((group) => group.patientKey === selectedPatientKey) || null;
+  const selectedPatientAllTests = selectedPatientKey
+    ? tests.filter((t) => (t.patient?._id || `unknown-${t._id}`) === selectedPatientKey)
+    : [];
+
+  const selectedPatientDisplayTests = selectedPatientAllTests.length > 0
+    ? [...selectedPatientAllTests].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    : (selectedPatientGroup?.tests || []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><Clock className="animate-spin h-8 w-8 text-primary" /></div>;
 
@@ -437,23 +444,43 @@ export default function LabDashboard() {
 
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
-              Total tests: {selectedPatientGroup?.tests?.length || 0}
+              Total tests: {selectedPatientDisplayTests.length}
             </p>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => openCombinedReportDialog(selectedPatientGroup?.tests || [])}
-                disabled={!selectedPatientGroup?.tests?.some((t) => ["completed", "verified", "delivered"].includes(t.status))}
+                onClick={() => openCombinedReportDialog(selectedPatientDisplayTests)}
+                disabled={!selectedPatientDisplayTests.some((t) => ["completed", "verified", "delivered"].includes(t.status))}
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Combined Reports
               </Button>
+              {permissions.canCreate && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const unbilledIds = selectedPatientDisplayTests
+                      .filter((t) => !t.billed && t.status !== "cancelled")
+                      .map((t) => t._id);
+                    if (unbilledIds.length === 0) {
+                      toast.info("No unbilled tests available for combined invoice");
+                      return;
+                    }
+                    handleGenerateInvoice(unbilledIds);
+                  }}
+                  disabled={!selectedPatientDisplayTests.some((t) => !t.billed && t.status !== "cancelled")}
+                >
+                  <Receipt className="mr-2 h-4 w-4" />
+                  Combined Invoice
+                </Button>
+              )}
               {permissions.canEdit && (
                 <Button
                   size="sm"
-                  onClick={() => handleCollectAllSamples(selectedPatientGroup?.tests || [])}
-                  disabled={!selectedPatientGroup?.tests?.some((t) => t.sampleStatus === "pending_collection")}
+                  onClick={() => handleCollectAllSamples(selectedPatientDisplayTests)}
+                  disabled={!selectedPatientDisplayTests.some((t) => t.sampleStatus === "pending_collection")}
                 >
                   <TestTubes className="mr-2 h-4 w-4" />
                   Collect All Pending Samples
@@ -475,7 +502,7 @@ export default function LabDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(selectedPatientGroup?.tests || []).map((test) => (
+              {selectedPatientDisplayTests.map((test) => (
                 <TableRow key={test._id}>
                   <TableCell>
                     <div>
