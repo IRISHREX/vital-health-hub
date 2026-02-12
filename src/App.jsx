@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import OpdDashboard from './pages/OpdDashboard';
 import LabDashboard from './pages/LabDashboard';
+import PharmacyDashboard from './pages/PharmacyDashboard';
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,9 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="lab" />}>
                   <Route path="/lab" element={<LabDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="pharmacy" />}>
+                  <Route path="/pharmacy" element={<PharmacyDashboard />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<Settings />} />

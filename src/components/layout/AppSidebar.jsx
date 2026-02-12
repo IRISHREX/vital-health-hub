@@ -13,6 +13,7 @@ import {
   Settings,
   Hospital,
   FlaskConical,
+  Pill,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,6 +45,7 @@ const mainNavItems = [
 
 const managementItems = [
   { title: "Pathology Lab", url: "/lab", icon: FlaskConical, module: "lab" },
+  { title: "Pharmacy", url: "/pharmacy", icon: Pill, module: "pharmacy" },
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },

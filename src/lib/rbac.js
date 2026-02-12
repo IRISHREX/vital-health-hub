@@ -22,6 +22,7 @@ export const rolePermissions = {
     settings: fullAccess,
     tasks: fullAccess,
     lab: fullAccess,
+    pharmacy: fullAccess,
   },
   hospital_admin: {
     dashboard: fullAccess,
@@ -38,6 +39,7 @@ export const rolePermissions = {
     settings: viewAndEdit,
     tasks: fullAccess,
     lab: fullAccess,
+    pharmacy: fullAccess,
   },
   head_nurse: {
     dashboard: viewOnly,
@@ -54,6 +56,7 @@ export const rolePermissions = {
     settings: viewOnly,
     tasks: viewAndEdit,
     lab: viewAndEdit,
+    pharmacy: viewOnly,
   },
   doctor: {
     dashboard: viewOnly,
@@ -70,6 +73,7 @@ export const rolePermissions = {
     settings: viewOnly,
     tasks: viewAndEdit,
     lab: viewAndEdit,
+    pharmacy: viewAndCreate,
   },
   nurse: {
     dashboard: viewOnly,
@@ -85,6 +89,7 @@ export const rolePermissions = {
     settings: viewOnly,
     tasks: viewAndEdit,
     lab: viewAndEdit,
+    pharmacy: viewOnly,
   },
   receptionist: {
     dashboard: viewOnly,
@@ -99,6 +104,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
     lab: viewAndCreate,
+    pharmacy: viewOnly,
   },
   billing_staff: {
     dashboard: viewOnly,
@@ -113,6 +119,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
     lab: viewOnly,
+    pharmacy: viewOnly,
   },
 };
 
