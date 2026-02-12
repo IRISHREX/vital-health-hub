@@ -119,6 +119,7 @@ export const rolePermissions = {
     notifications: viewOnly,
     settings: viewOnly,
     lab: viewOnly,
+    pharmacy: viewOnly,
   },
 };
 

@@ -39,5 +39,8 @@ module.exports = {
   HospitalSettings,
   SecuritySettings,
   NotificationSettings,
-  UserPreferences
+  UserPreferences,
+  Medicine,
+  Prescription,
+  StockAdjustment
 };

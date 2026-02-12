@@ -91,6 +91,9 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="lab" />}>
                   <Route path="/lab" element={<LabDashboard />} />
                 </Route>
+                <Route element={<AuthorizedRoute module="pharmacy" />}>
+                  <Route path="/pharmacy" element={<PharmacyDashboard />} />
+                </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<Settings />} />
                 </Route>

@@ -13,6 +13,7 @@ import {
   Settings,
   Hospital,
   FlaskConical,
+  Pill,
 } from "lucide-react";
 import {
   Sidebar,
