@@ -73,6 +73,7 @@ export const rolePermissions = {
     settings: viewOnly,
     tasks: viewAndEdit,
     lab: viewAndEdit,
+    pharmacy: viewAndCreate,
   },
   nurse: {
     dashboard: viewOnly,
