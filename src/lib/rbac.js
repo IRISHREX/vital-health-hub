@@ -22,6 +22,7 @@ export const rolePermissions = {
     settings: fullAccess,
     tasks: fullAccess,
     lab: fullAccess,
+    pharmacy: fullAccess,
   },
   hospital_admin: {
     dashboard: fullAccess,
