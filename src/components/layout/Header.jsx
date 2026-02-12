@@ -89,7 +89,7 @@ export function Header() {
     : "SA";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-6 shadow-sm">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-3 sm:px-4 lg:px-6 shadow-sm">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         <div className="relative hidden md:block">
@@ -102,7 +102,7 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         {/* Live indicator */}
         <div className="hidden items-center gap-2 rounded-full bg-status-available/10 px-3 py-1.5 sm:flex">
           <span className="relative flex h-2 w-2">
@@ -143,7 +143,7 @@ export function Header() {
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuContent align="end" className="w-[calc(100vw-1rem)] max-w-80">
               <DropdownMenuLabel className="flex items-center justify-between">
                 <span>Notifications</span>
                 <Button
@@ -196,7 +196,7 @@ export function Header() {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-2">
+            <Button variant="ghost" className="flex items-center gap-2 px-1 sm:px-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.avatar || ""} />
                 <AvatarFallback className="bg-primary text-primary-foreground">

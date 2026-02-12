@@ -252,7 +252,7 @@ export default function Appointments() {
               {todayAppointments.map((apt) => (
                 <div
                   key={apt._id}
-                  className="flex items-center gap-4 rounded-lg border bg-background/50 p-4"
+                  className="flex items-center gap-3 rounded-lg border bg-background/50 p-3 sm:p-4"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                     <span className="text-sm font-bold text-primary">
@@ -262,15 +262,15 @@ export default function Appointments() {
                       })}
                     </span>
                   </div>
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium">{getPatientName(apt.patient || apt.patientId)}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="truncate text-sm text-muted-foreground">
                       {getDoctorName(apt.doctor || apt.doctorId)}
                     </p>
                   </div>
                   {statusConfig[apt.status] && (
-                    <Badge variant={statusConfig[apt.status].variant}>
-                      {apt.reason}
+                    <Badge variant={statusConfig[apt.status].variant} className="max-w-[120px] truncate">
+                      {statusConfig[apt.status].label}
                     </Badge>
                   )}
                 </div>

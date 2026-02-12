@@ -18,6 +18,7 @@ import { getPrescriptionTemplates, removePrescriptionTemplate, savePrescriptionT
 import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
 import { toast } from "sonner";
 import { Plus, Trash2, Download, Printer, Eye, Send } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const emptyItem = {
   medicine: "",
@@ -81,6 +82,7 @@ export default function PrescriptionDialog({
   initialAppointmentId = "",
   initialEncounterType = "opd",
 }) {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -373,23 +375,27 @@ export default function PrescriptionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[96vw] xl:max-w-[92vw] h-[90vh] overflow-hidden">
+      <DialogContent className="w-[98vw] sm:max-w-[96vw] xl:max-w-[92vw] h-[92vh] sm:h-[90vh] overflow-hidden p-3 sm:p-6">
         <DialogHeader>
           <DialogTitle>Create Clinical Prescription</DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center gap-3">
-          <Label className="text-xs">Editor/Preview Size</Label>
-          <Input
-            type="range"
-            min="40"
-            max="70"
-            step="1"
-            value={formWidth}
-            onChange={(e) => setFormWidth(Number(e.target.value))}
-            className="w-56"
-          />
-          <div className="ml-auto flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {!isMobile && (
+            <>
+              <Label className="text-xs">Editor/Preview Size</Label>
+              <Input
+                type="range"
+                min="40"
+                max="70"
+                step="1"
+                value={formWidth}
+                onChange={(e) => setFormWidth(Number(e.target.value))}
+                className="w-56"
+              />
+            </>
+          )}
+          <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
             <Button onClick={handleSavePrescription} disabled={loading}>
               {loading ? "Saving..." : "Save"}
             </Button>
@@ -408,8 +414,11 @@ export default function PrescriptionDialog({
           </div>
         </div>
 
-        <div className="flex gap-4 h-full overflow-hidden">
-          <div style={{ width: `${formWidth}%` }} className="h-full overflow-y-auto pr-2 space-y-4">
+        <div className="flex h-full flex-col gap-4 overflow-hidden lg:flex-row">
+          <div
+            style={{ width: isMobile ? "100%" : `${formWidth}%` }}
+            className="h-full overflow-y-auto pr-0 lg:pr-2 space-y-4"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Patient *</Label>
@@ -567,7 +576,10 @@ export default function PrescriptionDialog({
             </div>
           </div>
 
-          <div style={{ width: `${100 - formWidth}%` }} className="h-full overflow-y-auto border rounded-lg p-4 bg-background">
+          <div
+            style={{ width: isMobile ? "100%" : `${100 - formWidth}%` }}
+            className="h-full overflow-y-auto border rounded-lg p-3 sm:p-4 bg-background"
+          >
             <h3 className="font-semibold text-lg mb-3">Live Preview</h3>
             <div className="space-y-2 text-sm">
               <p><strong>Patient:</strong> {selectedPatient ? getPatientLabel(selectedPatient) : "-"}</p>

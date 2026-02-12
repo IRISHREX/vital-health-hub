@@ -118,7 +118,7 @@ export default function PharmacyDashboard() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Pharmacy</h1>
           <p className="text-muted-foreground">Medicine inventory, prescriptions, dispensing and invoices</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {permissions.canCreate && (
           <RestrictedAction module="pharmacy" feature="create">
             <Button variant="outline" onClick={() => setRxOpen(true)}>
@@ -174,7 +174,7 @@ export default function PharmacyDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
@@ -193,7 +193,7 @@ export default function PharmacyDashboard() {
               />
             </div>
             <Select value={catFilter} onValueChange={setCatFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {["tablet", "capsule", "syrup", "injection", "ointment", "drops", "inhaler", "powder", "other"].map((c) => (

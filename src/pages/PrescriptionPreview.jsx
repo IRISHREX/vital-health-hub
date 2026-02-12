@@ -131,7 +131,7 @@ export default function PrescriptionPreview() {
   };
 
   if (isLoading || !prescription) {
-    return <div className="p-6">Loading prescription preview...</div>;
+    return <div className="p-3 sm:p-6">Loading prescription preview...</div>;
   }
 
   const patientName = `${prescription.patient?.firstName || ""} ${prescription.patient?.lastName || ""}`.trim();
@@ -153,7 +153,7 @@ export default function PrescriptionPreview() {
         <Card>
           <CardHeader><CardTitle>Customization & Share</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex items-center gap-2"><Checkbox checked={showVitals} onCheckedChange={(v) => setShowVitals(!!v)} /><Label>Show Vitals</Label></div>
               <div className="flex items-center gap-2"><Checkbox checked={showFemaleSection} onCheckedChange={(v) => setShowFemaleSection(!!v)} /><Label>Show Female Section</Label></div>
               <div className="flex items-center gap-2"><Checkbox checked={showTests} onCheckedChange={(v) => setShowTests(!!v)} /><Label>Show Test Advice</Label></div>
@@ -206,13 +206,13 @@ export default function PrescriptionPreview() {
         <Card>
           <CardHeader><CardTitle>Real-time Preview</CardTitle></CardHeader>
           <CardContent>
-            <div ref={previewRef} className="bg-white rounded border p-6" style={{ fontSize: `${fontScale}rem` }}>
+            <div ref={previewRef} className="bg-white rounded border p-3 sm:p-6" style={{ fontSize: `${fontScale}rem` }}>
               <div className="border-b pb-3 mb-4" style={{ borderColor: accentColor }}>
                 <h2 className="text-xl font-bold" style={{ color: accentColor }}>Clinical Prescription</h2>
                 <p className="text-sm">Generated: {createdAt}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
                 <p><strong>Patient:</strong> {patientName || "-"}</p>
                 <p><strong>Patient ID:</strong> {prescription.patient?.patientId || "-"}</p>
                 <p><strong>Doctor:</strong> {formatDoctor(prescription.doctor)}</p>
@@ -229,7 +229,7 @@ export default function PrescriptionPreview() {
               {showVitals && (
                 <div className="mb-4">
                   <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Vitals</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <p>BP: {prescription.vitals?.bloodPressure || "-"}</p>
                     <p>PR: {prescription.vitals?.pulseRate || "-"}</p>
                     <p>SpO2: {prescription.vitals?.spo2 || "-"}</p>
@@ -244,7 +244,7 @@ export default function PrescriptionPreview() {
               {showFemaleSection && female && prescription.femaleHealth && (
                 <div className="mb-4">
                   <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Female Clinical Details</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <p>Gravida: {prescription.femaleHealth?.gravida || "-"}</p>
                     <p>Parity: {`${prescription.femaleHealth?.parityA || "-"}+${prescription.femaleHealth?.parityB || "-"}`}</p>
                     <p>LMP: {prescription.femaleHealth?.lmp ? new Date(prescription.femaleHealth.lmp).toLocaleDateString() : "-"}</p>
