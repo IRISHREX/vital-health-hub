@@ -57,6 +57,10 @@ const userSchema = new mongoose.Schema({
     zipCode: String,
     country: { type: String, default: 'India' }
   },
+  personalPermissions: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
   isActive: {
     type: Boolean,
     default: true
