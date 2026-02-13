@@ -12,7 +12,7 @@ router.get('/schedule/:doctorId', authenticate, appointmentController.getDoctorS
 
 router.post('/', [
   authenticate,
-  authorize('receptionist', 'hospital_admin', 'super_admin'),
+  authorize('receptionist', 'hospital_admin', 'super_admin', 'doctor'),
   body('patientId').isMongoId().withMessage('Valid patient ID is required'),
   body('doctorId').isMongoId().withMessage('Valid doctor ID is required'),
   body('appointmentDate').isISO8601().withMessage('Valid appointment date is required'),

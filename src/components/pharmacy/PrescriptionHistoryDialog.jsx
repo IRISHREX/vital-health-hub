@@ -14,13 +14,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export default function PrescriptionHistoryDialog({ open, onOpenChange, patient, onCreateNew }) {
+export default function PrescriptionHistoryDialog({
+  open,
+  onOpenChange,
+  patient,
+  onCreateNew,
+  showCreate = true,
+  fetchPrescriptions,
+}) {
   const navigate = useNavigate();
   const patientId = patient?._id;
 
   const { data: rxRes, isLoading } = useQuery({
     queryKey: ["prescriptions", "patient", patientId],
-    queryFn: () => getPrescriptions({ patientId, limit: 200 }),
+    queryFn: () => (fetchPrescriptions
+      ? fetchPrescriptions(patientId)
+      : getPrescriptions({ patientId, limit: 200 })),
     enabled: open && !!patientId,
   });
 
@@ -38,12 +47,14 @@ export default function PrescriptionHistoryDialog({ open, onOpenChange, patient,
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex justify-end">
-          <Button onClick={onCreateNew}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Prescription
-          </Button>
-        </div>
+        {showCreate && (
+          <div className="flex justify-end">
+            <Button onClick={onCreateNew}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Prescription
+            </Button>
+          </div>
+        )}
 
         <div className="space-y-2 mt-2">
           {isLoading ? (

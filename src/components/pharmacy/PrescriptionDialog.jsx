@@ -13,12 +13,14 @@ import { getLabCatalog } from "@/lib/labTests";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getUsers } from "@/lib/users";
+import { getHospitalSettings } from "@/lib/settings";
 import { updateAppointment } from "@/lib/appointments";
 import { getPrescriptionTemplates, removePrescriptionTemplate, savePrescriptionTemplate } from "@/lib/prescription-templates";
 import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
 import { toast } from "sonner";
-import { Plus, Trash2, Download, Printer, Eye, Send } from "lucide-react";
+import { Plus, Trash2, Download, Printer, Eye, Send, Sparkles, LayoutTemplate } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/lib/AuthContext";
 
 const emptyItem = {
   medicine: "",
@@ -85,6 +87,7 @@ export default function PrescriptionDialog({
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [savedPrescription, setSavedPrescription] = useState(null);
@@ -118,12 +121,14 @@ export default function PrescriptionDialog({
   const { data: medsData } = useQuery({ queryKey: ["medicines-all"], queryFn: () => getMedicines({ limit: 1000 }), enabled: open });
   const { data: labCatalogData } = useQuery({ queryKey: ["lab-catalog-all"], queryFn: () => getLabCatalog({ active: "true", limit: 1000 }), enabled: open });
   const { data: usersData } = useQuery({ queryKey: ["users"], queryFn: () => getUsers(), enabled: open });
+  const { data: hospitalRes } = useQuery({ queryKey: ["hospital-settings"], queryFn: () => getHospitalSettings(), enabled: open });
 
   const patients = Array.isArray(patientsData) ? patientsData : patientsData?.data?.patients || [];
   const doctors = Array.isArray(doctorsData) ? doctorsData : doctorsData?.data?.doctors || [];
   const medicines = Array.isArray(medsData) ? medsData : medsData?.data || [];
   const labCatalog = labCatalogData?.data?.tests || [];
   const users = usersData?.data?.users || usersData?.users || [];
+  const hospitalSettings = hospitalRes?.data || {};
   const selectedPatient = patients.find((p) => p?._id === patientId);
   const selectedDoctor = doctors.find((d) => d?._id === doctorId);
   const isFemale = selectedPatient?.gender?.toLowerCase() === "female";
@@ -152,6 +157,16 @@ export default function PrescriptionDialog({
   const filteredDoctors = doctors.filter((doctor) =>
     doctorName(doctor).toLowerCase().includes(doctorSearch.toLowerCase())
   );
+  const loggedInDoctor = useMemo(
+    () =>
+      doctors.find(
+        (d) =>
+          d?.user?._id === user?._id ||
+          String(d?.user?.email || "").toLowerCase() === String(user?.email || "").toLowerCase()
+      ) || null,
+    [doctors, user?._id, user?.email]
+  );
+  const isDoctorUser = user?.role === "doctor";
 
   const complaintSuggestions = useMemo(() => unique(templates.flatMap((t) => t?.complaints || [])), [templates]);
   const medicalHistorySuggestions = useMemo(() => unique(templates.flatMap((t) => t?.medicalHistory || [])), [templates]);
@@ -169,7 +184,18 @@ export default function PrescriptionDialog({
     setSavedPrescription(null);
     setSelectedRecipients([]);
     setShareNote("");
+    setVitals({ ...emptyVitals });
+    setFemaleHealth({ ...emptyFemaleHealth });
   }, [open, initialAdmissionId, initialAppointmentId, initialDoctorId, initialEncounterType, initialPatientId]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!isDoctorUser) return;
+    if (initialDoctorId) return;
+    if (!doctorId && loggedInDoctor?._id) {
+      setDoctorId(loggedInDoctor._id);
+    }
+  }, [open, isDoctorUser, initialDoctorId, doctorId, loggedInDoctor?._id]);
 
   useEffect(() => {
     const heightM = Number(vitals.heightCm) / 100;
@@ -209,6 +235,7 @@ export default function PrescriptionDialog({
         if (idx !== index) return item;
         const updated = { ...item, [field]: value };
         if (field === "medicineName") {
+          const normalized = String(value || "").trim().toLowerCase();
           const exact = medicines.find(
             (m) => String(m?.name || "").trim().toLowerCase() === String(value || "").trim().toLowerCase()
           );
@@ -216,7 +243,15 @@ export default function PrescriptionDialog({
             updated.medicine = exact._id;
             updated.medicineName = exact.name;
           } else {
-            updated.medicine = "";
+            const prefixMatches = medicines.filter((m) =>
+              String(m?.name || "").trim().toLowerCase().startsWith(normalized)
+            );
+            if (normalized && prefixMatches.length === 1) {
+              updated.medicine = prefixMatches[0]._id;
+              updated.medicineName = prefixMatches[0].name;
+            } else {
+              updated.medicine = "";
+            }
           }
         }
         return updated;
@@ -225,6 +260,10 @@ export default function PrescriptionDialog({
 
   const updateTest = (index, field, value) =>
     setTestAdvice((prev) => prev.map((row, idx) => (idx === index ? { ...row, [field]: value } : row)));
+  const updateVitals = (field, value) =>
+    setVitals((prev) => ({ ...prev, [field]: value }));
+  const updateFemaleHealth = (field, value) =>
+    setFemaleHealth((prev) => ({ ...prev, [field]: value }));
 
   const applyTemplate = () => {
     const template = templates.find((t) => t.id === selectedTemplateId);
@@ -294,6 +333,10 @@ export default function PrescriptionDialog({
         ...it,
         medicine: it.medicine || undefined,
         medicineName: (it.medicineName || "").trim(),
+        dosage: String(it.dosage || "").trim() || "As directed",
+        frequency: String(it.frequency || "").trim() || "TID",
+        duration: String(it.duration || "").trim() || "5 days",
+        route: String(it.route || "").trim() || "oral",
         quantity: Number(it.quantity || 1),
         stockRequestRaised: !it.medicine,
       }));
@@ -346,7 +389,7 @@ export default function PrescriptionDialog({
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
       qc.invalidateQueries({ queryKey: ["pharmacy-stats"] });
 
-      toast.success("Prescription saved. Appointment marked completed.");
+      toast.success(appointmentId ? "Prescription saved. Appointment marked completed." : "Prescription saved.");
     } catch (error) {
       toast.error(error?.message || "Failed to save prescription");
     } finally {
@@ -399,13 +442,21 @@ export default function PrescriptionDialog({
             <Button onClick={handleSavePrescription} disabled={loading}>
               {loading ? "Saving..." : "Save"}
             </Button>
-            <Button variant="outline" onClick={() => savedPrescription?._id && navigate(`/prescriptions/${savedPrescription._id}/preview`)} disabled={!savedPrescription?._id}>
+            <Button
+              variant="outline"
+              onClick={() =>
+                navigate(
+                  `/prescriptions/${savedPrescription?._id || "draft"}/preview`,
+                  { state: { draftPrescription: draftPreviewRx } }
+                )
+              }
+            >
               <Eye className="mr-2 h-4 w-4" />Preview
             </Button>
-            <Button variant="outline" onClick={() => printPrescription(draftPreviewRx)}>
+            <Button variant="outline" onClick={() => printPrescription(draftPreviewRx, { hospitalSettings })}>
               <Printer className="mr-2 h-4 w-4" />Print
             </Button>
-            <Button variant="outline" onClick={() => downloadPrescriptionPdf(draftPreviewRx)}>
+            <Button variant="outline" onClick={() => downloadPrescriptionPdf(draftPreviewRx, { hospitalSettings })}>
               <Download className="mr-2 h-4 w-4" />Download
             </Button>
             <Button variant="outline" onClick={handleSend} disabled={!savedPrescription?._id || sharing}>
@@ -419,6 +470,28 @@ export default function PrescriptionDialog({
             style={{ width: isMobile ? "100%" : `${formWidth}%` }}
             className="h-full overflow-y-auto pr-0 lg:pr-2 space-y-4"
           >
+            <div className="border rounded-lg p-3 space-y-3 bg-accent/5 border-accent/30">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-accent" />
+                <Label className="text-base font-semibold">Medical Advice Template</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">Save and apply structured clinical templates quickly.</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger><SelectValue placeholder="Select saved template" /></SelectTrigger>
+                  <SelectContent>{templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button variant="outline" onClick={applyTemplate} disabled={!selectedTemplateId}>
+                  <LayoutTemplate className="mr-2 h-4 w-4" />Apply Template
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteTemplate} disabled={!selectedTemplateId}>Delete Template</Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <Input placeholder="New template name" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} />
+                <Button onClick={handleSaveTemplate}>Save Current As Template</Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Patient *</Label>
@@ -430,7 +503,7 @@ export default function PrescriptionDialog({
               <div>
                 <Label>Doctor *</Label>
                 <Input className="mb-2" placeholder="Type doctor name to search" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} />
-                <Select value={doctorId} onValueChange={setDoctorId}>
+                <Select value={doctorId} onValueChange={setDoctorId} disabled={isDoctorUser && !!loggedInDoctor?._id}>
                   <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
                   <SelectContent>{filteredDoctors.map((d) => <SelectItem key={d._id} value={d._id}>Dr. {doctorName(d)}</SelectItem>)}</SelectContent>
                 </Select>
@@ -449,22 +522,6 @@ export default function PrescriptionDialog({
               <div>
                 <Label>Follow-up Date</Label>
                 <Input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="border rounded-lg p-3 space-y-3">
-              <Label className="text-base font-semibold">Medical Advice Template</Label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger><SelectValue placeholder="Select saved template" /></SelectTrigger>
-                  <SelectContent>{templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Button variant="outline" onClick={applyTemplate} disabled={!selectedTemplateId}>Apply Template</Button>
-                <Button variant="destructive" onClick={handleDeleteTemplate} disabled={!selectedTemplateId}>Delete Template</Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <Input placeholder="New template name" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} />
-                <Button onClick={handleSaveTemplate}>Save Current As Template</Button>
               </div>
             </div>
 
@@ -489,6 +546,117 @@ export default function PrescriptionDialog({
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
               </div>
             </div>
+
+            <div className="border rounded-lg p-3 space-y-3">
+              <Label className="text-base font-semibold">Vitals</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-xs">BP (mmHg)</Label>
+                  <Input
+                    placeholder="120/80"
+                    value={vitals.bloodPressure}
+                    onChange={(e) => updateVitals("bloodPressure", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Pulse Rate</Label>
+                  <Input
+                    placeholder="72"
+                    value={vitals.pulseRate}
+                    onChange={(e) => updateVitals("pulseRate", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">SpO2 (%)</Label>
+                  <Input
+                    placeholder="98"
+                    value={vitals.spo2}
+                    onChange={(e) => updateVitals("spo2", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Temperature</Label>
+                  <Input
+                    placeholder="98.6 F"
+                    value={vitals.temperature}
+                    onChange={(e) => updateVitals("temperature", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Height (cm)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="170"
+                    value={vitals.heightCm}
+                    onChange={(e) => updateVitals("heightCm", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Weight (kg)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="65"
+                    value={vitals.weightKg}
+                    onChange={(e) => updateVitals("weightKg", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">BMI (auto)</Label>
+                  <Input value={vitals.bmi} readOnly />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Other Vitals/Findings</Label>
+                <Textarea
+                  rows={2}
+                  value={vitals.others}
+                  onChange={(e) => updateVitals("others", e.target.value)}
+                  placeholder="Any additional observations"
+                />
+              </div>
+            </div>
+
+            {isFemale && (
+              <div className="border rounded-lg p-3 space-y-3">
+                <Label className="text-base font-semibold">Female Clinical Details</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Gravida</Label>
+                    <Input value={femaleHealth.gravida} onChange={(e) => updateFemaleHealth("gravida", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Parity A</Label>
+                    <Input value={femaleHealth.parityA} onChange={(e) => updateFemaleHealth("parityA", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Parity B</Label>
+                    <Input value={femaleHealth.parityB} onChange={(e) => updateFemaleHealth("parityB", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">LMP</Label>
+                    <Input type="date" value={femaleHealth.lmp} onChange={(e) => updateFemaleHealth("lmp", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">EDD (auto)</Label>
+                    <Input type="date" value={femaleHealth.edd} readOnly />
+                  </div>
+                  <div>
+                    <Label className="text-xs">POG (auto)</Label>
+                    <Input value={femaleHealth.pog} readOnly />
+                  </div>
+                  <div>
+                    <Label className="text-xs">LCB</Label>
+                    <Input value={femaleHealth.lcb} onChange={(e) => updateFemaleHealth("lcb", e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Mode of Delivery</Label>
+                    <Input value={femaleHealth.mod} onChange={(e) => updateFemaleHealth("mod", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -591,6 +759,13 @@ export default function PrescriptionDialog({
               <p><strong>Medical History:</strong> {parseList(medicalHistory).join(", ") || "-"}</p>
               <p><strong>Diagnosis:</strong> {diagnosis || "-"}</p>
               <p><strong>Follow-up:</strong> {followUpDate || "-"}</p>
+              <p><strong>Vitals:</strong> {[
+                vitals.bloodPressure ? `BP ${vitals.bloodPressure}` : "",
+                vitals.pulseRate ? `PR ${vitals.pulseRate}` : "",
+                vitals.spo2 ? `SpO2 ${vitals.spo2}` : "",
+                vitals.temperature ? `Temp ${vitals.temperature}` : "",
+                vitals.bmi ? `BMI ${vitals.bmi}` : ""
+              ].filter(Boolean).join(" | ") || "-"}</p>
             </div>
             <div className="mt-3">
               <h4 className="font-semibold mb-2">Medicines</h4>

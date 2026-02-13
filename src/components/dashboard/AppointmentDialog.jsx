@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1, "Patient is required"),
@@ -49,6 +50,7 @@ const appointmentSchema = z.object({
 export default function AppointmentDialog({ isOpen, onClose, appointment, mode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: patientsData } = useQuery({
     queryKey: ["patients"],
@@ -61,7 +63,20 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   });
 
   const patients = patientsData?.data?.patients || [];
-  const doctors = (doctorsData?.data?.doctors || []).filter((d) => d.availabilityStatus === "available");
+  const allDoctors = doctorsData?.data?.doctors || [];
+  const isDoctorUser = user?.role === "doctor";
+  const loggedInDoctor = useMemo(
+    () =>
+      allDoctors.find(
+        (d) =>
+          d?.user?._id === user?._id ||
+          String(d?.user?.email || "").toLowerCase() === String(user?.email || "").toLowerCase()
+      ) || null,
+    [allDoctors, user?._id, user?.email]
+  );
+  const doctors = isDoctorUser
+    ? (loggedInDoctor ? [loggedInDoctor] : [])
+    : allDoctors.filter((d) => d.availabilityStatus === "available");
 
   const form = useForm({
     resolver: zodResolver(appointmentSchema),
@@ -80,9 +95,10 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   useEffect(() => {
     if (appointment && mode === "edit") {
       const dateTime = appointment.appointmentDate ? new Date(appointment.appointmentDate) : null;
+      const editDoctorId = isDoctorUser ? (loggedInDoctor?._id || "") : (appointment.doctor?._id || appointment.doctorId || "");
       form.reset({
         patientId: appointment.patient?._id || appointment.patientId || "",
-        doctorId: appointment.doctor?._id || appointment.doctorId || "",
+        doctorId: editDoctorId,
         appointmentDate: dateTime ? dateTime.toISOString().split("T")[0] : "",
         appointmentTime: dateTime ? dateTime.toTimeString().slice(0, 5) : "",
         reason: appointment.reason || "",
@@ -93,7 +109,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     } else {
       form.reset({
         patientId: "",
-        doctorId: "",
+        doctorId: isDoctorUser ? (loggedInDoctor?._id || "") : "",
         appointmentDate: "",
         appointmentTime: "",
         reason: "",
@@ -102,14 +118,15 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
         status: "scheduled",
       });
     }
-  }, [appointment, mode, form]);
+  }, [appointment, mode, form, isDoctorUser, loggedInDoctor?._id]);
 
   const createMutation = useMutation({
     mutationFn: (data) => {
       const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
+      const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
       return createAppointment({
         patientId: data.patientId,
-        doctorId: data.doctorId,
+        doctorId: selectedDoctorId,
         appointmentDate: combinedDateTime,
         reason: data.reason,
         notes: data.notes,
@@ -130,9 +147,10 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   const updateMutation = useMutation({
     mutationFn: (data) => {
       const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
+      const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
       return updateAppointment(appointment._id, {
         patientId: data.patientId,
-        doctorId: data.doctorId,
+        doctorId: selectedDoctorId,
         appointmentDate: combinedDateTime,
         reason: data.reason,
         notes: data.notes,
@@ -151,6 +169,10 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   });
 
   const onSubmit = (values) => {
+    if (isDoctorUser && !loggedInDoctor?._id) {
+      toast({ variant: "destructive", title: "Error", description: "Doctor profile is not linked to your account." });
+      return;
+    }
     if (mode === "create") {
       createMutation.mutate(values);
     } else {
@@ -213,7 +235,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Doctor</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isDoctorUser}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select doctor" />

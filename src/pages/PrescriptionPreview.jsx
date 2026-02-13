@@ -1,8 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { getPrescription, sharePrescription } from "@/lib/pharmacy";
 import { getUsers } from "@/lib/users";
+import { getHospitalSettings } from "@/lib/settings";
+import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
 import { Download, Printer, Send } from "lucide-react";
 
 const formatDoctor = (doctor) => {
@@ -27,13 +27,19 @@ const formatDoctor = (doctor) => {
 export default function PrescriptionPreview() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const previewRef = useRef(null);
+  const draftPrescription = location.state?.draftPrescription || null;
+  const isDraftMode = id === "draft";
 
   const [showVitals, setShowVitals] = useState(true);
   const [showFemaleSection, setShowFemaleSection] = useState(true);
   const [showTests, setShowTests] = useState(true);
   const [showAdvice, setShowAdvice] = useState(true);
+  const [showHeader, setShowHeader] = useState(true);
+  const [showFooter, setShowFooter] = useState(true);
+  const [showDoctorDetails, setShowDoctorDetails] = useState(true);
   const [fontScale, setFontScale] = useState(1);
   const [accentColor, setAccentColor] = useState("#0f766e");
 
@@ -45,16 +51,21 @@ export default function PrescriptionPreview() {
   const { data: rxRes, isLoading } = useQuery({
     queryKey: ["prescription", id],
     queryFn: () => getPrescription(id),
-    enabled: !!id,
+    enabled: !!id && !isDraftMode,
   });
 
   const { data: usersRes } = useQuery({
     queryKey: ["share-users"],
     queryFn: () => getUsers(),
   });
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
 
-  const prescription = rxRes?.data || null;
+  const prescription = isDraftMode ? draftPrescription : (rxRes?.data || null);
   const users = usersRes?.data?.users || [];
+  const hospitalSettings = hospitalRes?.data || {};
   const shareableRoles = ["doctor", "nurse", "head_nurse", "billing_staff", "hospital_admin", "super_admin"];
 
   const filteredUsers = useMemo(() => {
@@ -92,45 +103,38 @@ export default function PrescriptionPreview() {
   };
 
   const handlePrint = () => {
-    if (!previewRef.current) return;
-    const html = previewRef.current.innerHTML;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Prescription</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-            th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; font-size: 12px; }
-            h1, h2, h3 { margin: 0 0 8px; }
-          </style>
-        </head>
-        <body>${html}</body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+    if (!prescription) return;
+    printPrescription(prescription, {
+      hospitalSettings,
+      showVitals,
+      showFemaleSection,
+      showTests,
+      showAdvice,
+      showHeader,
+      showFooter,
+      showDoctorDetails,
+    });
   };
 
-  const handleDownloadPdf = async () => {
-    if (!previewRef.current || !prescription) return;
-    const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
-    const width = canvas.width * ratio;
-    const height = canvas.height * ratio;
-    const x = (pageWidth - width) / 2;
-    const y = 10;
-    pdf.addImage(imgData, "PNG", x, y, width, height);
-    pdf.save(`prescription-${prescription._id}.pdf`);
+  const handleDownloadPdf = () => {
+    if (!prescription) return;
+    downloadPrescriptionPdf(prescription, {
+      hospitalSettings,
+      showVitals,
+      showFemaleSection,
+      showTests,
+      showAdvice,
+      showHeader,
+      showFooter,
+      showDoctorDetails,
+    });
   };
 
-  if (isLoading || !prescription) {
+  if (isDraftMode && !draftPrescription) {
+    return <div className="p-3 sm:p-6">No draft data found. Save prescription first and open preview again.</div>;
+  }
+
+  if ((isLoading && !isDraftMode) || !prescription) {
     return <div className="p-3 sm:p-6">Loading prescription preview...</div>;
   }
 
@@ -154,6 +158,9 @@ export default function PrescriptionPreview() {
           <CardHeader><CardTitle>Customization & Share</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center gap-2"><Checkbox checked={showHeader} onCheckedChange={(v) => setShowHeader(!!v)} /><Label>Show Header</Label></div>
+              <div className="flex items-center gap-2"><Checkbox checked={showFooter} onCheckedChange={(v) => setShowFooter(!!v)} /><Label>Show Footer</Label></div>
+              <div className="flex items-center gap-2"><Checkbox checked={showDoctorDetails} onCheckedChange={(v) => setShowDoctorDetails(!!v)} /><Label>Show Doctor Details</Label></div>
               <div className="flex items-center gap-2"><Checkbox checked={showVitals} onCheckedChange={(v) => setShowVitals(!!v)} /><Label>Show Vitals</Label></div>
               <div className="flex items-center gap-2"><Checkbox checked={showFemaleSection} onCheckedChange={(v) => setShowFemaleSection(!!v)} /><Label>Show Female Section</Label></div>
               <div className="flex items-center gap-2"><Checkbox checked={showTests} onCheckedChange={(v) => setShowTests(!!v)} /><Label>Show Test Advice</Label></div>
@@ -207,15 +214,17 @@ export default function PrescriptionPreview() {
           <CardHeader><CardTitle>Real-time Preview</CardTitle></CardHeader>
           <CardContent>
             <div ref={previewRef} className="bg-white rounded border p-3 sm:p-6" style={{ fontSize: `${fontScale}rem` }}>
-              <div className="border-b pb-3 mb-4" style={{ borderColor: accentColor }}>
-                <h2 className="text-xl font-bold" style={{ color: accentColor }}>Clinical Prescription</h2>
-                <p className="text-sm">Generated: {createdAt}</p>
-              </div>
+              {showHeader && (
+                <div className="border-b pb-3 mb-4" style={{ borderColor: accentColor }}>
+                  <h2 className="text-xl font-bold" style={{ color: accentColor }}>Clinical Prescription</h2>
+                  <p className="text-sm">Generated: {createdAt}</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
                 <p><strong>Patient:</strong> {patientName || "-"}</p>
                 <p><strong>Patient ID:</strong> {prescription.patient?.patientId || "-"}</p>
-                <p><strong>Doctor:</strong> {formatDoctor(prescription.doctor)}</p>
+                {showDoctorDetails && <p><strong>Doctor:</strong> {formatDoctor(prescription.doctor)}</p>}
                 <p><strong>Encounter:</strong> {(prescription.encounterType || "opd").toUpperCase()}</p>
               </div>
 
@@ -296,6 +305,12 @@ export default function PrescriptionPreview() {
                 <div>
                   <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Advice</h3>
                   <p className="text-sm whitespace-pre-wrap">{prescription.notes || "-"}</p>
+                </div>
+              )}
+
+              {showFooter && (
+                <div className="mt-5 border-t pt-3 text-xs text-muted-foreground">
+                  For queries, contact hospital front desk.
                 </div>
               )}
             </div>

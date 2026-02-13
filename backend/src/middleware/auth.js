@@ -63,7 +63,7 @@ const resolveModuleFromRequest = (req) => {
 
 const getUserOverrideContext = (settings, email, module) => {
   if (!settings || !email) {
-    return { hasUserOverride: false, moduleOverride: null };
+    return { hasUserOverride: false, hasModuleOverride: false, moduleOverride: null };
   }
 
   const normalizedEmail = String(email).trim().toLowerCase();
@@ -72,14 +72,14 @@ const getUserOverrideContext = (settings, email, module) => {
   );
 
   if (!userOverride) {
-    return { hasUserOverride: false, moduleOverride: null };
+    return { hasUserOverride: false, hasModuleOverride: false, moduleOverride: null };
   }
 
   const moduleOverride = module
     ? (userOverride.modules || []).find((m) => m?.module === module) || null
     : null;
 
-  return { hasUserOverride: true, moduleOverride };
+  return { hasUserOverride: true, hasModuleOverride: !!moduleOverride, moduleOverride };
 };
 
 // Role-based access control middleware
@@ -96,14 +96,14 @@ const authorizeRoles = (...allowedRoles) => {
       const module = resolveModuleFromRequest(req);
       const action = methodActionMap[req.method] || 'canView';
       const visualSettings = await getVisualAccessSettingsCached();
-      const { hasUserOverride, moduleOverride } = getUserOverrideContext(
+      const { hasModuleOverride, moduleOverride } = getUserOverrideContext(
         visualSettings,
         req.user.email,
         module
       );
 
-      // If an override exists for this user, treat it as strict allow-list.
-      if (hasUserOverride) {
+      // If a module-specific override exists for this user, treat it as strict allow-list.
+      if (hasModuleOverride) {
         const restrictedFeatures = (moduleOverride?.restrictedFeatures || []).map((feature) =>
           String(feature || '').trim().toLowerCase()
         );

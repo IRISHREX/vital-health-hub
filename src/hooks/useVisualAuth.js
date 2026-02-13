@@ -42,10 +42,9 @@ export function useVisualAuth() {
     const hasEmailOverride = !!emailOverride;
     const override = overrideMap[module];
 
-    // Strict mode for users with explicit email override:
-    // unspecified modules/actions should remain denied.
-    if (hasEmailOverride) {
-      if (!override) return emptyPermissions;
+    // Enforce strict mode only when this module has an explicit override.
+    // Unspecified modules should fall back to role-based permissions.
+    if (hasEmailOverride && override) {
       return mergePermissions(emptyPermissions, override);
     }
 

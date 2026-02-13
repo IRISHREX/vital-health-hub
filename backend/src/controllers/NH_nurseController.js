@@ -1,28 +1,54 @@
-const { Patient, Appointment, User, Bed } = require('../models');
+const { Patient, Appointment, User, Bed, Prescription } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 
 const canQueryOtherNurses = (role) => ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(role);
 
+const getNurseScope = (req) => {
+  const requestedNurseId = req.query.nurseId;
+  if (!requestedNurseId) return req.user._id;
+  if (!canQueryOtherNurses(req.user.role)) {
+    throw new AppError('Unauthorized', 403);
+  }
+  return requestedNurseId;
+};
+
+const getBedAssignedPatientIds = async (nurseId) => {
+  const beds = await Bed.find({
+    nurseInCharge: nurseId,
+    currentPatient: { $ne: null }
+  }).select('currentPatient _id');
+
+  const patientIds = beds.map((b) => b.currentPatient).filter(Boolean);
+  const bedIds = beds.map((b) => b._id);
+  return { patientIds, bedIds };
+};
+
+const isPatientAssignedToNurse = async (patient, nurseId) => {
+  const byPatient =
+    (patient.assignedNurses || []).some((id) => id.toString() === nurseId.toString()) ||
+    (patient.primaryNurse && patient.primaryNurse.toString() === nurseId.toString());
+
+  if (byPatient) return true;
+  if (!patient.assignedBed) return false;
+
+  const bed = await Bed.findById(patient.assignedBed).select('nurseInCharge');
+  return !!(bed?.nurseInCharge && bed.nurseInCharge.toString() === nurseId.toString());
+};
+
 // Get patients assigned to this nurse (supports admin/doctor requesting a specific nurse via ?nurseId=)
 exports.getAssignedPatients = async (req, res, next) => {
   try {
-    const requestedNurseId = req.query.nurseId;
-    let nurseIdToUse = req.user._id;
-
-    if (requestedNurseId) {
-      // Only admin/hospital_admin/doctor can query other nurses
-      if (!canQueryOtherNurses(req.user.role)) {
-        return res.status(403).json({ success: false, message: 'Unauthorized' });
-      }
-      nurseIdToUse = requestedNurseId;
-    }
+    const nurseIdToUse = getNurseScope(req);
+    const { patientIds, bedIds } = await getBedAssignedPatientIds(nurseIdToUse);
 
     const patients = await Patient.find({
       $or: [
         { assignedNurses: nurseIdToUse },
-        { primaryNurse: nurseIdToUse }
+        { primaryNurse: nurseIdToUse },
+        { _id: { $in: patientIds } },
+        { assignedBed: { $in: bedIds } }
       ]
-    });
+    }).sort('-updatedAt');
     res.json({ success: true, data: patients });
   } catch (error) {
     next(error);
@@ -32,21 +58,40 @@ exports.getAssignedPatients = async (req, res, next) => {
 // Get appointments assigned to this nurse (supports admin/doctor requesting a specific nurse via ?nurseId=)
 exports.getAssignedAppointments = async (req, res, next) => {
   try {
-    const requestedNurseId = req.query.nurseId;
-    let nurseIdToUse = req.user._id;
-
-    if (requestedNurseId) {
-      if (!canQueryOtherNurses(req.user.role)) {
-        return res.status(403).json({ success: false, message: 'Unauthorized' });
-      }
-      nurseIdToUse = requestedNurseId;
-    }
+    const nurseIdToUse = getNurseScope(req);
 
     const appointments = await Appointment.find({ assignedNurse: nurseIdToUse })
       .populate('patient', 'firstName lastName patientId')
       .populate({ path: 'doctor', populate: { path: 'user', select: 'firstName lastName' } });
 
     res.json({ success: true, data: appointments });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get prescriptions for a patient assigned to this nurse
+exports.getAssignedPatientPrescriptions = async (req, res, next) => {
+  try {
+    const patientId = req.params.id;
+    const patient = await Patient.findById(patientId).select('assignedNurses primaryNurse');
+    if (!patient) throw new AppError('Patient not found', 404);
+
+    const isPrivileged = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
+    const isAssigned = await isPatientAssignedToNurse(patient, req.user._id);
+
+    if (!isPrivileged && !isAssigned) {
+      throw new AppError('You are not assigned to this patient', 403);
+    }
+
+    const prescriptions = await Prescription.find({ patient: patientId })
+      .populate('patient', 'firstName lastName patientId gender')
+      .populate('doctor', 'firstName lastName specialization name user')
+      .populate({ path: 'doctor', populate: { path: 'user', select: 'firstName lastName email' } })
+      .populate('items.medicine', 'name sellingPrice stock')
+      .sort('-createdAt');
+
+    res.json({ success: true, data: prescriptions });
   } catch (error) {
     next(error);
   }

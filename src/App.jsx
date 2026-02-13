@@ -95,7 +95,7 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/pharmacy" element={<PharmacyDashboard />} />
                 </Route>
-                <Route element={<AuthorizedRoute module="notifications" />}>
+                <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/prescriptions/:id/preview" element={<PrescriptionPreview />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>

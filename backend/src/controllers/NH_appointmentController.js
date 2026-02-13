@@ -3,6 +3,16 @@ const { sendEmail } = require('../config/email');
 const { emitNotification } = require('../config/socket');
 const { AppError } = require('../middleware/errorHandler');
 
+const getLoggedInDoctorProfile = async (user) => {
+  if (!user) return null;
+  const normalizedEmail = String(user.email || '').trim().toLowerCase();
+  const orQuery = [{ user: user._id }];
+  if (normalizedEmail) {
+    orQuery.push({ email: normalizedEmail });
+  }
+  return Doctor.findOne({ $or: orQuery });
+};
+
 // @desc    Get all appointments
 // @route   GET /api/appointments
 // @access  Private
@@ -171,6 +181,20 @@ exports.createAppointment = async (req, res, next) => {
   try {
     const { patientId, doctorId, appointmentDate, appointmentTime, reason, notes, type, status, timeSlot } = req.body;
 
+    let effectiveDoctorId = doctorId;
+
+    if (req.user?.role === 'doctor') {
+      const loggedInDoctor = await getLoggedInDoctorProfile(req.user);
+      if (!loggedInDoctor) {
+        throw new AppError('Doctor profile not found for current user', 403);
+      }
+
+      if (String(doctorId) !== String(loggedInDoctor._id)) {
+        throw new AppError('Doctors can book appointments only under their own name', 403);
+      }
+      effectiveDoctorId = loggedInDoctor._id;
+    }
+
     // Validate patient
     const patient = await Patient.findById(patientId);
     if (!patient) {
@@ -178,7 +202,7 @@ exports.createAppointment = async (req, res, next) => {
     }
 
     // Validate doctor
-    const doctor = await Doctor.findById(doctorId);
+    const doctor = await Doctor.findById(effectiveDoctorId);
     if (!doctor) {
       throw new AppError('Doctor not found', 404);
     }
@@ -200,7 +224,7 @@ exports.createAppointment = async (req, res, next) => {
 
     // Check for conflicting appointments
     const conflicting = await Appointment.findOne({
-      doctor: doctorId,
+      doctor: effectiveDoctorId,
       appointmentDate: {
         $gte: new Date(parsedDate.toDateString()),
         $lt: new Date(parsedDate.toDateString() + ' 23:59:59')
@@ -214,7 +238,7 @@ exports.createAppointment = async (req, res, next) => {
 
     const appointment = await Appointment.create({
       patient: patientId,
-      doctor: doctorId,
+      doctor: effectiveDoctorId,
       appointmentDate: parsedDate,
       timeSlot: timeSlotObj || { start: '10:00', end: '10:30' },
       type: type || 'opd',
@@ -259,6 +283,28 @@ exports.createAppointment = async (req, res, next) => {
 // @access  Private
 exports.updateAppointment = async (req, res, next) => {
   try {
+    if (req.user?.role === 'doctor') {
+      const loggedInDoctor = await getLoggedInDoctorProfile(req.user);
+      if (!loggedInDoctor) {
+        throw new AppError('Doctor profile not found for current user', 403);
+      }
+
+      const existing = await Appointment.findById(req.params.id).select('doctor');
+      if (!existing) {
+        throw new AppError('Appointment not found', 404);
+      }
+      if (String(existing.doctor) !== String(loggedInDoctor._id)) {
+        throw new AppError('You can only update appointments assigned to you', 403);
+      }
+
+      if (req.body?.doctorId && String(req.body.doctorId) !== String(loggedInDoctor._id)) {
+        throw new AppError('Doctors can keep appointments only under their own name', 403);
+      }
+
+      req.body.doctorId = loggedInDoctor._id;
+      req.body.doctor = loggedInDoctor._id;
+    }
+
     const appointment = await Appointment.findByIdAndUpdate(
       req.params.id,
       req.body,
