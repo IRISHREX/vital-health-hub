@@ -4,6 +4,8 @@ const { Appointment, Patient, Vital, User, Doctor, Bed, Admission, Invoice } = r
 exports.getDashboard = async (req, res, next) => {
   try {
     const roleQuery = req.query.role || req.user.role;
+    const requestedNurseId = req.query.nurseId;
+    const canQueryOtherNurses = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
 
     // Admin view cards
     if (roleQuery === 'admin' && ['super_admin', 'hospital_admin'].includes(req.user.role)) {
@@ -102,10 +104,10 @@ exports.getDashboard = async (req, res, next) => {
     }
 
     // Nurse view
-    if (roleQuery === 'nurse' && (req.user.role === 'nurse' || ['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role))) {
+    if (roleQuery === 'nurse' && (['nurse', 'head_nurse'].includes(req.user.role) || ['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role))) {
       // For Admins and Doctors: Show Nurse Availability Overview
-      if (['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role)) {
-        const nurses = await User.find({ role: 'nurse' })
+      if (['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role) && !requestedNurseId) {
+        const nurses = await User.find({ role: { $in: ['nurse', 'head_nurse'] } })
           .select('firstName lastName email phone status department isActive avatar');
 
         const availableNurses = nurses.filter(n => n.status === 'active');
@@ -128,10 +130,66 @@ exports.getDashboard = async (req, res, next) => {
         });
       }
 
-      const nurseId = req.user._id;
-      const assignedPatients = await Patient.countDocuments({ assignedNurses: nurseId });
-      const todaysAppointments = await Appointment.countDocuments({ assignedNurse: nurseId, appointmentDate: { $gte: new Date(new Date().setHours(0,0,0,0)), $lt: new Date(new Date().setHours(23,59,59,999)) } });
-      const recentVitals = await Vital.countDocuments({ recordedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } });
+      const isAllNursesScope =
+        (requestedNurseId === 'all' && canQueryOtherNurses) ||
+        (!requestedNurseId && req.user.role === 'head_nurse');
+      const nurseId = (!isAllNursesScope && requestedNurseId && canQueryOtherNurses) ? requestedNurseId : req.user._id;
+
+      let assignedPatients = 0;
+      let todaysAppointments = 0;
+      let assignedPatientIds = [];
+
+      if (isAllNursesScope) {
+        assignedPatients = await Patient.countDocuments({
+          $or: [
+            { assignedNurses: { $exists: true, $ne: [] } },
+            { primaryNurse: { $ne: null } }
+          ]
+        });
+        todaysAppointments = await Appointment.countDocuments({
+          assignedNurse: { $ne: null },
+          appointmentDate: { $gte: new Date(new Date().setHours(0, 0, 0, 0)), $lt: new Date(new Date().setHours(23, 59, 59, 999)) }
+        });
+      } else {
+        assignedPatients = await Patient.countDocuments({
+          $or: [
+            { assignedNurses: nurseId },
+            { primaryNurse: nurseId }
+          ]
+        });
+        todaysAppointments = await Appointment.countDocuments({
+          assignedNurse: nurseId,
+          appointmentDate: { $gte: new Date(new Date().setHours(0, 0, 0, 0)), $lt: new Date(new Date().setHours(23, 59, 59, 999)) }
+        });
+        const assignedPatientDocs = await Patient.find({
+          $or: [
+            { assignedNurses: nurseId },
+            { primaryNurse: nurseId }
+          ]
+        }).select('_id');
+        assignedPatientIds = assignedPatientDocs.map((p) => p._id);
+      }
+
+      const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const recentVitals = await Vital.countDocuments({
+        $and: [
+          {
+            $or: [
+              { recordedAt: { $gte: last24h } },
+              { createdAt: { $gte: last24h } }
+            ]
+          },
+          (isAllNursesScope
+            ? { _id: { $exists: true } }
+            : {
+              $or: [
+                { recordedBy: nurseId },
+                ...(assignedPatientIds.length > 0 ? [{ patient: { $in: assignedPatientIds } }] : [])
+              ]
+            })
+        ]
+      });
 
       return res.json({ success: true, data: { assignedPatients, todaysAppointments, recentVitals } });
     }

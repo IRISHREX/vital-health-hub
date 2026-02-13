@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,8 +28,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { updateBed, deleteBed } from "@/lib/beds";
-import { dischargePatient } from "@/lib/admissions";
+import { updateBed, deleteBed, assignBed } from "@/lib/beds";
+import { dischargePatient, transferPatient, getAvailableBeds } from "@/lib/admissions";
+import { getPatients } from "@/lib/patients";
 import { AlertTriangle, Trash2, Loader2, LogOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -43,9 +44,13 @@ const statusOptions = [
 ];
 
 export default function BedActionModal({ bed, isOpen, onClose }) {
-  const [mode, setMode] = useState("view"); // view, status, assign, discharge, delete
+  const [mode, setMode] = useState("view"); // view, status, assign, transfer, discharge, delete
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPatient, setSelectedPatient] = useState("");
+  const [availablePatients, setAvailablePatients] = useState([]);
+  const [availableBeds, setAvailableBeds] = useState([]);
+  const [newBedId, setNewBedId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
   const [dischargeFormData, setDischargeFormData] = useState({
     dischargeReason: '',
     dischargingDoctorId: '',
@@ -54,9 +59,49 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
-  if (!bed) return null;
+  const currentStatus = statusOptions.find(s => s.value === bed?.status);
 
-  const currentStatus = statusOptions.find(s => s.value === bed.status);
+  useEffect(() => {
+    if (!isOpen || !bed) return;
+    if (mode === "assign") {
+      loadAvailablePatients();
+    }
+    if (mode === "transfer") {
+      loadTransferBeds();
+    }
+  }, [isOpen, mode, bed?._id]);
+
+  const loadAvailablePatients = async () => {
+    try {
+      const res = await getPatients();
+      const patients = res?.data?.patients || [];
+      setAvailablePatients(
+        (patients || []).filter((p) => {
+          const isAdmitted = String(p?.admissionStatus || '').toUpperCase() === 'ADMITTED' || String(p?.status || '').toLowerCase() === 'admitted';
+          return isAdmitted && !p.assignedBed;
+        })
+      );
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load patients",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadTransferBeds = async () => {
+    try {
+      const beds = await getAvailableBeds();
+      setAvailableBeds((beds || []).filter((b) => b._id !== bed._id));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load available beds",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleStatusChange = async () => {
     if (!selectedStatus) {
@@ -166,11 +211,81 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
     }
   };
 
+  const handleAssignPatient = async () => {
+    if (!selectedPatient) {
+      toast({
+        title: "Error",
+        description: "Please select a patient",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await assignBed(bed._id, selectedPatient, null);
+      toast({
+        title: "Success",
+        description: "Patient assigned to bed successfully",
+      });
+      setMode("view");
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign patient",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTransferPatient = async () => {
+    if (!bed.currentAdmission) {
+      toast({
+        title: "Error",
+        description: "No active admission found for this bed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newBedId) {
+      toast({
+        title: "Error",
+        description: "Please select destination bed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await transferPatient(bed.currentAdmission, { newBedId, transferReason });
+      toast({
+        title: "Success",
+        description: "Patient transferred successfully",
+      });
+      setMode("view");
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to transfer patient",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOpenChange = (nextOpen) => {
     if (!nextOpen) {
       onClose();
     }
   };
+
+  if (!bed) return null;
 
   return (
     <>
@@ -310,6 +425,15 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                 )}
                 {bed.status === "occupied" && bed.currentPatient && (
                   <Button
+                    variant="outline"
+                    onClick={() => setMode("transfer")}
+                    className="flex-1"
+                  >
+                    Transfer Patient
+                  </Button>
+                )}
+                {bed.status === "occupied" && bed.currentPatient && (
+                  <Button
                     variant="destructive"
                     onClick={() => setMode("discharge")}
                     className="flex-1 gap-2"
@@ -385,18 +509,106 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
               <DialogHeader>
                 <DialogTitle>Assign Patient to Bed</DialogTitle>
                 <DialogDescription>
-                  This feature will be available in the next update
+                  Select a patient to assign to bed {bed.bedNumber}
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-6 text-center text-muted-foreground">
-                Patient assignment will be implemented soon
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Patient</label>
+                  <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select patient" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePatients.length > 0 ? (
+                        availablePatients.map((p) => (
+                          <SelectItem key={p._id} value={p._id}>
+                            {p.firstName} {p.lastName} ({p.patientId})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          No admitted unassigned patients
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
               <DialogFooter>
                 <Button
                   variant="outline"
                   onClick={() => setMode("view")}
+                  disabled={loading}
                 >
                   Back
+                </Button>
+                <Button onClick={handleAssignPatient} disabled={loading || !selectedPatient}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirm Assign
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {mode === "transfer" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Transfer Patient</DialogTitle>
+                <DialogDescription>
+                  Move patient to another available bed
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="pt-6 space-y-1">
+                    <div className="text-sm text-muted-foreground">Current Bed</div>
+                    <div className="font-semibold">{bed.bedNumber}</div>
+                    <div className="text-xs text-muted-foreground">{bed.bedType} - {bed.ward}</div>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Destination Bed *</label>
+                  <Select value={newBedId} onValueChange={setNewBedId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select destination bed" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableBeds.length > 0 ? (
+                        availableBeds.map((b) => (
+                          <SelectItem key={b._id} value={b._id}>
+                            {b.bedNumber} ({String(b.bedType || "").toUpperCase()}, {b.ward}) - INR {b.pricePerDay}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-sm text-muted-foreground">No available beds</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Transfer Reason</label>
+                  <Textarea
+                    placeholder="Enter reason for transfer"
+                    value={transferReason}
+                    onChange={(e) => setTransferReason(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setMode("view")} disabled={loading}>
+                  Back
+                </Button>
+                <Button onClick={handleTransferPatient} disabled={loading || !newBedId || !bed.currentAdmission}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirm Transfer
                 </Button>
               </DialogFooter>
             </>

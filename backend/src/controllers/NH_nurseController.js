@@ -17,7 +17,12 @@ exports.getAssignedPatients = async (req, res, next) => {
       nurseIdToUse = requestedNurseId;
     }
 
-    const patients = await Patient.find({ assignedNurses: nurseIdToUse });
+    const patients = await Patient.find({
+      $or: [
+        { assignedNurses: nurseIdToUse },
+        { primaryNurse: nurseIdToUse }
+      ]
+    });
     res.json({ success: true, data: patients });
   } catch (error) {
     next(error);

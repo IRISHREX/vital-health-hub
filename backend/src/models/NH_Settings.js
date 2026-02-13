@@ -179,7 +179,7 @@ const visualAccessSettingsSchema = new mongoose.Schema({
         enum: [
           'dashboard', 'beds', 'admissions', 'patients', 'doctors',
           'nurses', 'appointments', 'facilities', 'billing', 'reports',
-          'notifications', 'settings', 'tasks', 'lab', 'pharmacy'
+          'notifications', 'settings', 'tasks', 'vitals', 'lab', 'pharmacy'
         ],
         required: true
       },

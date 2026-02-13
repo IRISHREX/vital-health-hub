@@ -19,6 +19,7 @@ const modulePathMap = {
   '/notifications': 'notifications',
   '/settings': 'settings',
   '/tasks': 'tasks',
+  '/vitals': 'vitals',
   '/lab-tests': 'lab',
   '/pharmacy': 'pharmacy',
 };

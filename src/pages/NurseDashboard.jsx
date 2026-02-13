@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getDashboard } from '@/lib/dashboard';
 import { getAssignedPatients, getAssignedAppointments, handoverPatient } from '@/lib/nurse';
 import { getMyTasks, getTasks, completeTask, updateTask } from '@/lib/tasks';
+import { getVitalsFeed, updateVital as updateVitalApi, deleteVital as deleteVitalApi } from '@/lib/vitals';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +24,7 @@ import {
   Thermometer, Stethoscope, Shield
 } from 'lucide-react';
 import PersonalPermissionsPanel from '@/components/permissions/PersonalPermissionsPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function NurseDashboard() {
   const navigate = useNavigate();
@@ -34,6 +36,15 @@ export default function NurseDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isQuickVitalOpen, setIsQuickVitalOpen] = useState(false);
+  const [isVitalsFeedOpen, setIsVitalsFeedOpen] = useState(false);
+  const [defaultVitalPatientId, setDefaultVitalPatientId] = useState('');
+  const [pendingVitalsTaskId, setPendingVitalsTaskId] = useState('');
+  const [vitalSearch, setVitalSearch] = useState('');
+  const [vitalPriority, setVitalPriority] = useState('all');
+  const [vitalSort, setVitalSort] = useState('desc');
+  const [vitalStartDate, setVitalStartDate] = useState('');
+  const [vitalEndDate, setVitalEndDate] = useState('');
+  const [editingVital, setEditingVital] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [handoverTarget, setHandoverTarget] = useState({});
@@ -48,10 +59,28 @@ export default function NurseDashboard() {
 
   const canSelectNurse = user && ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(user.role);
   const isHeadNurse = user?.role === 'head_nurse';
+  const nurseIdToQuery = canSelectNurse ? ((selectedNurse && selectedNurse !== 'all') ? selectedNurse : null) : null;
+  const dashboardNurseScope = canSelectNurse ? (selectedNurse || (isHeadNurse ? 'all' : null)) : null;
+
+  const vitalsFeedQuery = useQuery({
+    queryKey: ['vitals-feed', nurseIdToQuery || 'self', vitalSearch, vitalPriority, vitalSort, vitalStartDate, vitalEndDate],
+    queryFn: () => getVitalsFeed({
+      page: 1,
+      limit: 200,
+      search: vitalSearch,
+      priority: vitalPriority,
+      sort: vitalSort,
+      startDate: vitalStartDate || undefined,
+      endDate: vitalEndDate || undefined,
+      recordedBy: nurseIdToQuery || undefined
+    }),
+    enabled: isVitalsFeedOpen
+  });
 
   const completeMutation = useMutation({
     mutationFn: ({ id }) => completeTask(id),
-    onSuccess: () => { toast.success('Task completed'); refreshData(); }
+    onSuccess: () => { toast.success('Task completed'); refreshData(); },
+    onError: (err) => { toast.error(err?.message || 'Failed to complete task'); }
   });
 
   const statusMutation = useMutation({
@@ -59,20 +88,60 @@ export default function NurseDashboard() {
     onSuccess: () => { toast.success('Task updated'); refreshData(); }
   });
 
+  const updateVitalMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateVitalApi(id, payload),
+    onSuccess: () => {
+      toast.success('Vital updated');
+      setEditingVital(null);
+      refreshData();
+      if (isVitalsFeedOpen) vitalsFeedQuery.refetch();
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to update vital')
+  });
+
+  const deleteVitalMutation = useMutation({
+    mutationFn: (id) => deleteVitalApi(id),
+    onSuccess: () => {
+      toast.success('Vital deleted');
+      refreshData();
+      if (isVitalsFeedOpen) vitalsFeedQuery.refetch();
+    },
+    onError: (err) => toast.error(err?.message || 'Failed to delete vital')
+  });
+
+  const handleCompleteTask = (task) => {
+    if (task.type === 'vitals' && task.patient?._id) {
+      setPendingVitalsTaskId(task._id);
+      setDefaultVitalPatientId(task.patient._id);
+      setIsQuickVitalOpen(true);
+      return;
+    }
+
+    completeMutation.mutate({ id: task._id });
+  };
+
   const refreshData = async () => {
     try {
-      const nurseIdToQuery = canSelectNurse ? ((selectedNurse && selectedNurse !== 'all') ? selectedNurse : null) : null;
-      const [dashRes, patientsRes, appointmentsRes, tasksRes] = await Promise.all([
-        getDashboard('nurse'),
+      const [dashResult, patientsResult, appointmentsResult, tasksResult] = await Promise.allSettled([
+        getDashboard('nurse', { nurseId: dashboardNurseScope || undefined }),
         getAssignedPatients(nurseIdToQuery),
         getAssignedAppointments(nurseIdToQuery),
         (nurseIdToQuery && canSelectNurse) ? getTasks({ assignedTo: nurseIdToQuery }) : getMyTasks(),
       ]);
-      setStats(dashRes.data || {});
-      setPatients(patientsRes.data || []);
-      setAppointments(appointmentsRes.data || []);
-      const tasks = tasksRes?.data?.tasks || tasksRes?.data || [];
-      setNurseTasks(Array.isArray(tasks) ? tasks : []);
+
+      if (dashResult.status === 'fulfilled') {
+        setStats(dashResult.value?.data || {});
+      }
+      if (patientsResult.status === 'fulfilled') {
+        setPatients(patientsResult.value?.data || []);
+      }
+      if (appointmentsResult.status === 'fulfilled') {
+        setAppointments(appointmentsResult.value?.data || []);
+      }
+      if (tasksResult.status === 'fulfilled') {
+        const tasks = tasksResult.value?.data?.tasks || tasksResult.value?.data || [];
+        setNurseTasks(Array.isArray(tasks) ? tasks : []);
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -114,6 +183,7 @@ export default function NurseDashboard() {
   const pendingTasks = nurseTasks.filter(t => t.status === 'pending' || t.status === 'overdue');
   const inProgressTasks = nurseTasks.filter(t => t.status === 'in-progress');
   const completedTasks = nurseTasks.filter(t => t.status === 'completed');
+  const vitalsFeed = vitalsFeedQuery.data?.data?.vitals || [];
 
   const priorityColor = (p) => {
     const map = { urgent: 'bg-destructive/10 text-destructive border-destructive', high: 'bg-destructive/10 text-destructive border-destructive', medium: 'bg-[hsl(var(--status-cleaning))]/10 text-[hsl(var(--status-cleaning))] border-[hsl(var(--status-cleaning))]', low: 'bg-[hsl(var(--status-available))]/10 text-[hsl(var(--status-available))] border-[hsl(var(--status-available))]' };
@@ -169,11 +239,15 @@ export default function NurseDashboard() {
         {[
           { label: 'Assigned Patients', value: patients.length, icon: Users, color: 'text-primary' },
           { label: "Today's Appointments", value: appointments.length, icon: Calendar, color: 'text-accent' },
-          { label: 'Vitals (24h)', value: stats.recentVitals || 0, icon: Heart, color: 'text-destructive' },
+          { label: 'Vitals (24h)', value: stats.recentVitals || 0, icon: Heart, color: 'text-destructive', clickable: true },
           { label: 'Pending Tasks', value: pendingTasks.length, icon: AlertTriangle, color: 'text-[hsl(var(--status-cleaning))]' },
           { label: 'Rooms Assigned', value: assignedRooms.length, icon: BedIcon, color: 'text-[hsl(var(--status-reserved))]' },
         ].map(kpi => (
-          <Card key={kpi.label}>
+          <Card
+            key={kpi.label}
+            className={kpi.clickable ? 'cursor-pointer hover:border-primary/40' : ''}
+            onClick={kpi.clickable ? () => setIsVitalsFeedOpen(true) : undefined}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
@@ -314,7 +388,7 @@ export default function NurseDashboard() {
                             <Button size="sm" variant="outline" onClick={() => statusMutation.mutate({ id: task._id, status: 'in-progress' })}>Start</Button>
                           )}
                           {task.status === 'in-progress' && (
-                            <Button size="sm" onClick={() => completeMutation.mutate({ id: task._id })}><CheckCircle2 className="h-3 w-3 mr-1" />Done</Button>
+                            <Button size="sm" onClick={() => handleCompleteTask(task)}><CheckCircle2 className="h-3 w-3 mr-1" />Done</Button>
                           )}
                         </div>
                       </div>
@@ -442,7 +516,177 @@ export default function NurseDashboard() {
         </TabsContent>
       </Tabs>
 
-      <QuickVitalDialog isOpen={isQuickVitalOpen} onClose={() => setIsQuickVitalOpen(false)} patients={patients} />
+      <QuickVitalDialog
+        isOpen={isQuickVitalOpen}
+        onClose={() => {
+          setIsQuickVitalOpen(false);
+          setDefaultVitalPatientId('');
+          setPendingVitalsTaskId('');
+        }}
+        patients={patients}
+        defaultPatientId={defaultVitalPatientId}
+        onRecorded={() => {
+          refreshData();
+          if (isVitalsFeedOpen) vitalsFeedQuery.refetch();
+          if (pendingVitalsTaskId) {
+            completeMutation.mutate({ id: pendingVitalsTaskId });
+          }
+        }}
+      />
+
+      <Dialog open={isVitalsFeedOpen} onOpenChange={setIsVitalsFeedOpen}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>Vitals Feed</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+            <Input
+              placeholder="Search patient name or ID"
+              value={vitalSearch}
+              onChange={(e) => setVitalSearch(e.target.value)}
+            />
+            <Select value={vitalPriority} onValueChange={setVitalPriority}>
+              <SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priority</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input type="datetime-local" value={vitalStartDate} onChange={(e) => setVitalStartDate(e.target.value)} />
+            <Input type="datetime-local" value={vitalEndDate} onChange={(e) => setVitalEndDate(e.target.value)} />
+            <Select value={vitalSort} onValueChange={setVitalSort}>
+              <SelectTrigger><SelectValue placeholder="Sort" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">Newest First</SelectItem>
+                <SelectItem value="asc">Oldest First</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="text-sm text-muted-foreground">
+            Showing {vitalsFeed.length} entries
+          </div>
+
+          <div className="max-h-[55vh] overflow-auto border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>HR</TableHead>
+                  <TableHead>BP</TableHead>
+                  <TableHead>Temp</TableHead>
+                  <TableHead>SpO2</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Recorded By</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vitalsFeedQuery.isFetching && (
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Loading vitals...</TableCell></TableRow>
+                )}
+                {!vitalsFeedQuery.isFetching && vitalsFeed.length === 0 && (
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">No vitals found for selected filters</TableCell></TableRow>
+                )}
+                {!vitalsFeedQuery.isFetching && vitalsFeed.map((v) => (
+                  <TableRow key={v._id}>
+                    <TableCell>{new Date(v.recordedAt || v.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>{v.patientName || `${v?.patient?.firstName || ''} ${v?.patient?.lastName || ''}`.trim()} ({v?.patient?.patientId || '-'})</TableCell>
+                    <TableCell>{v?.heartRate?.value ?? '-'}</TableCell>
+                    <TableCell>{v?.bloodPressure?.systolic ?? '-'} / {v?.bloodPressure?.diastolic ?? '-'}</TableCell>
+                    <TableCell>{v?.temperature?.value ?? '-'}</TableCell>
+                    <TableCell>{v?.oxygenSaturation?.value ?? '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={v.priorityLabel === 'urgent' ? 'destructive' : v.priorityLabel === 'high' ? 'default' : 'secondary'}>
+                        {v.priorityLabel || 'normal'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{`${v?.recordedBy?.firstName || ''} ${v?.recordedBy?.lastName || ''}`.trim() || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingVital({
+                            _id: v._id,
+                            patientId: v?.patient?._id || '',
+                            heartRate: v?.heartRate?.value ?? '',
+                            systolic: v?.bloodPressure?.systolic ?? '',
+                            diastolic: v?.bloodPressure?.diastolic ?? '',
+                            temperature: v?.temperature?.value ?? '',
+                            oxygenSaturation: v?.oxygenSaturation?.value ?? '',
+                            respiratoryRate: v?.respiratoryRate?.value ?? '',
+                            notes: v?.notes || ''
+                          })}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            const ok = window.confirm('Delete this vital record?');
+                            if (ok) deleteVitalMutation.mutate(v._id);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingVital} onOpenChange={(o) => { if (!o) setEditingVital(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Vital</DialogTitle>
+          </DialogHeader>
+          {editingVital && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <Input type="number" placeholder="Heart Rate" value={editingVital.heartRate} onChange={(e) => setEditingVital((p) => ({ ...p, heartRate: e.target.value }))} />
+                <Input type="number" placeholder="Systolic" value={editingVital.systolic} onChange={(e) => setEditingVital((p) => ({ ...p, systolic: e.target.value }))} />
+                <Input type="number" placeholder="Diastolic" value={editingVital.diastolic} onChange={(e) => setEditingVital((p) => ({ ...p, diastolic: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <Input type="number" step="0.1" placeholder="Temperature" value={editingVital.temperature} onChange={(e) => setEditingVital((p) => ({ ...p, temperature: e.target.value }))} />
+                <Input type="number" placeholder="SpO2" value={editingVital.oxygenSaturation} onChange={(e) => setEditingVital((p) => ({ ...p, oxygenSaturation: e.target.value }))} />
+                <Input type="number" placeholder="Respiratory Rate" value={editingVital.respiratoryRate} onChange={(e) => setEditingVital((p) => ({ ...p, respiratoryRate: e.target.value }))} />
+              </div>
+              <Input placeholder="Notes" value={editingVital.notes} onChange={(e) => setEditingVital((p) => ({ ...p, notes: e.target.value }))} />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingVital(null)}>Cancel</Button>
+                <Button
+                  onClick={() => updateVitalMutation.mutate({
+                    id: editingVital._id,
+                    payload: {
+                      patientId: editingVital.patientId,
+                      heartRate: Number(editingVital.heartRate),
+                      bloodPressure: `${Number(editingVital.systolic)}/${Number(editingVital.diastolic)}`,
+                      temperature: Number(editingVital.temperature),
+                      oxygenSaturation: Number(editingVital.oxygenSaturation),
+                      respiratoryRate: Number(editingVital.respiratoryRate),
+                      notes: editingVital.notes
+                    }
+                  })}
+                  disabled={updateVitalMutation.isPending}
+                >
+                  {updateVitalMutation.isPending ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

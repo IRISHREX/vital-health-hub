@@ -19,6 +19,7 @@ export const moduleFeatureCatalog = {
   notifications: ["view"],
   settings: ["view", "create", "edit", "delete"],
   tasks: ["view", "create", "edit", "delete"],
+  vitals: ["view", "create", "edit", "delete"],
   lab: ["view", "create", "edit", "delete"],
   pharmacy: ["view", "create", "edit", "delete"],
 };

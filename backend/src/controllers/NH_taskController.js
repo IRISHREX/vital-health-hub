@@ -1,4 +1,4 @@
-const { Task, Patient, User, Notification } = require('../models');
+const { Task, Patient, User, Notification, Vital } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 
 // @desc Create task (Admin/Doctor)
@@ -21,6 +21,21 @@ exports.createTask = async (req, res, next) => {
       room: room || null,
       createdBy: req.user._id
     });
+
+    // Keep nurse assignment and patient assignment aligned when possible.
+    if (patient && assignedTo) {
+      const assignee = await User.findById(assignedTo).select('role');
+      if (assignee && ['nurse', 'head_nurse'].includes(assignee.role)) {
+        const patientDoc = await Patient.findById(patient).select('assignedNurses primaryNurse');
+        if (patientDoc) {
+          const updates = { $addToSet: { assignedNurses: assignedTo } };
+          if (!patientDoc.primaryNurse) {
+            updates.$set = { primaryNurse: assignedTo };
+          }
+          await Patient.findByIdAndUpdate(patient, updates);
+        }
+      }
+    }
 
     // Create notification for assigned user
     if (assignedTo) {
@@ -138,6 +153,19 @@ exports.completeTask = async (req, res, next) => {
     // Only assigned user or admin can complete
     if (task.assignedTo && task.assignedTo.toString() !== req.user._id.toString() && !['super_admin', 'hospital_admin'].includes(req.user.role)) {
       throw new AppError('Unauthorized', 403);
+    }
+
+    // Vitals tasks can be completed only after an actual vital entry exists.
+    if (task.type === 'vitals' && task.patient) {
+      const vitalExists = await Vital.exists({
+        patient: task.patient,
+        recordedBy: req.user._id,
+        recordedAt: { $gte: task.createdAt }
+      });
+
+      if (!vitalExists) {
+        throw new AppError('Record vitals for this patient before completing the task', 400);
+      }
     }
 
     task.status = 'completed';
