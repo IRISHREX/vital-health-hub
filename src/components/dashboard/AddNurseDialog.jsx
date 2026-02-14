@@ -63,7 +63,7 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess }) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.response?.data?.message || "Failed to create nurse.",
+        description: error?.message || "Failed to create nurse.",
       });
     } finally {
       setLoading(false);

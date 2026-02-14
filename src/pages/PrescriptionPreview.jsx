@@ -8,12 +8,35 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { getPrescription, sharePrescription } from "@/lib/pharmacy";
 import { getUsers } from "@/lib/users";
 import { getHospitalSettings } from "@/lib/settings";
 import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
-import { Download, Printer, Send } from "lucide-react";
+import {
+  Download,
+  Printer,
+  Send,
+  Bold,
+  Italic,
+  Underline,
+  Highlighter,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  SlidersHorizontal,
+} from "lucide-react";
+
+const defaultHospital = {
+  hospitalName: "Hospital",
+  registrationNumber: "",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
+};
 
 const formatDoctor = (doctor) => {
   if (!doctor) return "N/A";
@@ -40,13 +63,19 @@ export default function PrescriptionPreview() {
   const [showHeader, setShowHeader] = useState(true);
   const [showFooter, setShowFooter] = useState(true);
   const [showDoctorDetails, setShowDoctorDetails] = useState(true);
-  const [fontScale, setFontScale] = useState(1);
-  const [accentColor, setAccentColor] = useState("#0f766e");
+  const [fontSizePx, setFontSizePx] = useState("16");
+  const [textAlign, setTextAlign] = useState("left");
+  const [lineHeight, setLineHeight] = useState("1.6");
+  const [wordSpacing, setWordSpacing] = useState("normal");
+  const [letterSpacing, setLetterSpacing] = useState("normal");
+  const [textColor, setTextColor] = useState("#111827");
+  const [highlightColor, setHighlightColor] = useState("#ffffff");
 
   const [roleFilter, setRoleFilter] = useState("all");
   const [shareNote, setShareNote] = useState("");
   const [selectedRecipients, setSelectedRecipients] = useState([]);
   const [sharing, setSharing] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const { data: rxRes, isLoading } = useQuery({
     queryKey: ["prescription", id],
@@ -65,7 +94,17 @@ export default function PrescriptionPreview() {
 
   const prescription = isDraftMode ? draftPrescription : (rxRes?.data || null);
   const users = usersRes?.data?.users || [];
-  const hospitalSettings = hospitalRes?.data || {};
+  const hospitalSettings = useMemo(() => {
+    const raw = hospitalRes?.data || {};
+    return {
+      hospitalName: raw.hospitalName || defaultHospital.hospitalName,
+      registrationNumber: raw.registrationNumber || defaultHospital.registrationNumber,
+      address: raw.address || defaultHospital.address,
+      phone: raw.phone || defaultHospital.phone,
+      email: raw.email || defaultHospital.email,
+      website: raw.website || defaultHospital.website,
+    };
+  }, [hospitalRes?.data]);
   const shareableRoles = ["doctor", "nurse", "head_nurse", "billing_staff", "hospital_admin", "super_admin"];
 
   const filteredUsers = useMemo(() => {
@@ -73,6 +112,44 @@ export default function PrescriptionPreview() {
     if (roleFilter === "all") return byRole;
     return byRole.filter((u) => u.role === roleFilter);
   }, [users, roleFilter]);
+
+  const previewTypographyStyle = useMemo(() => ({
+    fontSize: `${fontSizePx}px`,
+    textAlign,
+    lineHeight,
+    wordSpacing: wordSpacing === "normal" ? "normal" : `${wordSpacing}px`,
+    letterSpacing: letterSpacing === "normal" ? "normal" : `${letterSpacing}px`,
+    color: textColor,
+    backgroundColor: highlightColor,
+  }), [
+    fontSizePx,
+    textAlign,
+    lineHeight,
+    wordSpacing,
+    letterSpacing,
+    textColor,
+    highlightColor,
+  ]);
+
+  const applyEditorCommand = (command, value = null) => {
+    const previewNode = previewRef.current;
+    if (!previewNode) return;
+    previewNode.focus();
+    try {
+      document.execCommand("styleWithCSS", false, true);
+      document.execCommand(command, false, value);
+    } catch {
+      // ignore command failures for unsupported browser commands
+    }
+  };
+
+  const applyAlignment = (align) => {
+    setTextAlign(align);
+    if (align === "left") applyEditorCommand("justifyLeft");
+    if (align === "center") applyEditorCommand("justifyCenter");
+    if (align === "right") applyEditorCommand("justifyRight");
+    if (align === "justify") applyEditorCommand("justifyFull");
+  };
 
   const toggleRecipient = (userId) => {
     setSelectedRecipients((prev) =>
@@ -147,76 +224,210 @@ export default function PrescriptionPreview() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Prescription Preview</h1>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setEditorOpen(true)}>
+            <SlidersHorizontal className="mr-2 h-4 w-4" />Editor
+          </Button>
           <Button variant="outline" onClick={() => navigate(-1)}>Back</Button>
           <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" />Print</Button>
           <Button variant="outline" onClick={handleDownloadPdf}><Download className="mr-2 h-4 w-4" />Download PDF</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><CardTitle>Customization & Share</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex items-center gap-2"><Checkbox checked={showHeader} onCheckedChange={(v) => setShowHeader(!!v)} /><Label>Show Header</Label></div>
-              <div className="flex items-center gap-2"><Checkbox checked={showFooter} onCheckedChange={(v) => setShowFooter(!!v)} /><Label>Show Footer</Label></div>
-              <div className="flex items-center gap-2"><Checkbox checked={showDoctorDetails} onCheckedChange={(v) => setShowDoctorDetails(!!v)} /><Label>Show Doctor Details</Label></div>
-              <div className="flex items-center gap-2"><Checkbox checked={showVitals} onCheckedChange={(v) => setShowVitals(!!v)} /><Label>Show Vitals</Label></div>
-              <div className="flex items-center gap-2"><Checkbox checked={showFemaleSection} onCheckedChange={(v) => setShowFemaleSection(!!v)} /><Label>Show Female Section</Label></div>
-              <div className="flex items-center gap-2"><Checkbox checked={showTests} onCheckedChange={(v) => setShowTests(!!v)} /><Label>Show Test Advice</Label></div>
-              <div className="flex items-center gap-2"><Checkbox checked={showAdvice} onCheckedChange={(v) => setShowAdvice(!!v)} /><Label>Show Advice</Label></div>
+      <Sheet open={editorOpen} onOpenChange={setEditorOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Advanced Editor</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-4">
+          <div className="rounded-xl border bg-muted/30 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Document Controls</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"><Checkbox checked={showHeader} onCheckedChange={(v) => setShowHeader(!!v)} /><Label>Header</Label></div>
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"><Checkbox checked={showFooter} onCheckedChange={(v) => setShowFooter(!!v)} /><Label>Footer</Label></div>
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"><Checkbox checked={showDoctorDetails} onCheckedChange={(v) => setShowDoctorDetails(!!v)} /><Label>Doctor Details</Label></div>
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"><Checkbox checked={showVitals} onCheckedChange={(v) => setShowVitals(!!v)} /><Label>Vitals</Label></div>
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"><Checkbox checked={showFemaleSection} onCheckedChange={(v) => setShowFemaleSection(!!v)} /><Label>Female Section</Label></div>
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"><Checkbox checked={showTests} onCheckedChange={(v) => setShowTests(!!v)} /><Label>Test Advice</Label></div>
+              <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"><Checkbox checked={showAdvice} onCheckedChange={(v) => setShowAdvice(!!v)} /><Label>Advice</Label></div>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label>Font Scale</Label>
-              <Input type="range" min="0.8" max="1.3" step="0.05" value={fontScale} onChange={(e) => setFontScale(Number(e.target.value))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Accent Color</Label>
-              <Input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="h-10" />
-            </div>
-
-            <div className="border-t pt-4 space-y-3">
-              <h3 className="font-semibold">Send With Acknowledgement</h3>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger><SelectValue placeholder="Filter by role" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All (Doctor/Nurse/Lab/Pharmacy/Admin)</SelectItem>
-                  <SelectItem value="doctor">Doctor</SelectItem>
-                  <SelectItem value="nurse">Nurse</SelectItem>
-                  <SelectItem value="head_nurse">Head Nurse</SelectItem>
-                  <SelectItem value="billing_staff">Lab/Pharmacy Staff</SelectItem>
-                  <SelectItem value="hospital_admin">Hospital Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="max-h-40 overflow-y-auto border rounded p-2 space-y-2">
-                {filteredUsers.map((u) => (
-                  <label key={u._id} className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={selectedRecipients.includes(u._id)} onCheckedChange={() => toggleRecipient(u._id)} />
-                    <span>{`${u.firstName || ""} ${u.lastName || ""}`.trim()} ({u.role})</span>
-                  </label>
-                ))}
+          <div className="rounded-xl border bg-muted/20 p-3 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Menu</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <Label>Edit Size</Label>
+                <Select value={fontSizePx} onValueChange={setFontSizePx}>
+                  <SelectTrigger><SelectValue placeholder="Font size" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12">12 px</SelectItem>
+                    <SelectItem value="14">14 px</SelectItem>
+                    <SelectItem value="16">16 px</SelectItem>
+                    <SelectItem value="18">18 px</SelectItem>
+                    <SelectItem value="20">20 px</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Textarea
-                value={shareNote}
-                onChange={(e) => setShareNote(e.target.value)}
-                placeholder="Optional share note"
-              />
-              <Button onClick={handleShare} disabled={sharing || selectedRecipients.length === 0}>
-                <Send className="mr-2 h-4 w-4" />
-                {sharing ? "Sending..." : "Send Prescription"}
-              </Button>
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <Label>Text Color</Label>
+                <Input
+                  type="color"
+                  value={textColor}
+                  onChange={(e) => {
+                    const color = e.target.value;
+                    setTextColor(color);
+                    applyEditorCommand("foreColor", color);
+                  }}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <Label className="flex items-center gap-2"><Highlighter className="h-4 w-4" />Highlighter</Label>
+                <Input
+                  type="color"
+                  value={highlightColor}
+                  onChange={(e) => {
+                    const color = e.target.value;
+                    setHighlightColor(color);
+                    applyEditorCommand("hiliteColor", color);
+                  }}
+                  className="h-10"
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader><CardTitle>Real-time Preview</CardTitle></CardHeader>
-          <CardContent>
-            <div ref={previewRef} className="bg-white rounded border p-3 sm:p-6" style={{ fontSize: `${fontScale}rem` }}>
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-background p-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => applyEditorCommand("bold")}
+              >
+                <Bold className="mr-1 h-4 w-4" />Bold
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => applyEditorCommand("italic")}
+              >
+                <Italic className="mr-1 h-4 w-4" />Italic
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => applyEditorCommand("underline")}
+              >
+                <Underline className="mr-1 h-4 w-4" />Underline
+              </Button>
+              <Button type="button" variant={textAlign === "left" ? "default" : "outline"} size="sm" onClick={() => applyAlignment("left")}><AlignLeft className="h-4 w-4" /></Button>
+              <Button type="button" variant={textAlign === "center" ? "default" : "outline"} size="sm" onClick={() => applyAlignment("center")}><AlignCenter className="h-4 w-4" /></Button>
+              <Button type="button" variant={textAlign === "right" ? "default" : "outline"} size="sm" onClick={() => applyAlignment("right")}><AlignRight className="h-4 w-4" /></Button>
+              <Button type="button" variant={textAlign === "justify" ? "default" : "outline"} size="sm" onClick={() => applyAlignment("justify")}><AlignJustify className="h-4 w-4" /></Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <Label>Line Spacing</Label>
+                <Select value={lineHeight} onValueChange={setLineHeight}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1.2">1.2</SelectItem>
+                    <SelectItem value="1.4">1.4</SelectItem>
+                    <SelectItem value="1.6">1.6</SelectItem>
+                    <SelectItem value="1.8">1.8</SelectItem>
+                    <SelectItem value="2">2.0</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <Label>Word Spacing</Label>
+                <Select value={wordSpacing} onValueChange={setWordSpacing}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="1">1 px</SelectItem>
+                    <SelectItem value="2">2 px</SelectItem>
+                    <SelectItem value="3">3 px</SelectItem>
+                    <SelectItem value="4">4 px</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <Label>Letter Spacing</Label>
+                <Select value={letterSpacing} onValueChange={setLetterSpacing}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="0.5">0.5 px</SelectItem>
+                    <SelectItem value="1">1 px</SelectItem>
+                    <SelectItem value="1.5">1.5 px</SelectItem>
+                    <SelectItem value="2">2 px</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-background p-3 space-y-3">
+            <h3 className="text-sm font-semibold">Share</h3>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger><SelectValue placeholder="Filter by role" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All (Doctor/Nurse/Lab/Pharmacy/Admin)</SelectItem>
+                <SelectItem value="doctor">Doctor</SelectItem>
+                <SelectItem value="nurse">Nurse</SelectItem>
+                <SelectItem value="head_nurse">Head Nurse</SelectItem>
+                <SelectItem value="billing_staff">Lab/Pharmacy Staff</SelectItem>
+                <SelectItem value="hospital_admin">Hospital Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="max-h-40 overflow-y-auto border rounded p-2 space-y-2">
+              {filteredUsers.map((u) => (
+                <label key={u._id} className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={selectedRecipients.includes(u._id)} onCheckedChange={() => toggleRecipient(u._id)} />
+                  <span>{`${u.firstName || ""} ${u.lastName || ""}`.trim()} ({u.role})</span>
+                </label>
+              ))}
+            </div>
+            <Textarea
+              value={shareNote}
+              onChange={(e) => setShareNote(e.target.value)}
+              placeholder="Optional share note"
+            />
+            <Button onClick={handleShare} disabled={sharing || selectedRecipients.length === 0}>
+              <Send className="mr-2 h-4 w-4" />
+              {sharing ? "Sending..." : "Send Prescription"}
+            </Button>
+          </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Card>
+        <CardHeader><CardTitle>Real-time Preview</CardTitle></CardHeader>
+        <CardContent className="bg-muted/20">
+          <div
+            ref={previewRef}
+            contentEditable
+            suppressContentEditableWarning
+            className="mx-auto w-full max-w-4xl bg-white rounded-md border p-3 sm:p-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            style={previewTypographyStyle}
+          >
               {showHeader && (
-                <div className="border-b pb-3 mb-4" style={{ borderColor: accentColor }}>
-                  <h2 className="text-xl font-bold" style={{ color: accentColor }}>Clinical Prescription</h2>
+                <div className="border-b pb-3 mb-4" style={{ borderColor: textColor }}>
+                  <h2 className="text-xl font-bold" style={{ color: textColor }}>{hospitalSettings.hospitalName}</h2>
+                  {hospitalSettings.registrationNumber && (
+                    <p className="text-sm">Reg No: {hospitalSettings.registrationNumber}</p>
+                  )}
+                  {hospitalSettings.address && <p className="text-sm">{hospitalSettings.address}</p>}
+                  {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
+                    <p className="text-sm">
+                      {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}
+                    </p>
+                  )}
+                  <p className="text-sm font-semibold mt-1">Prescription (Rx)</p>
                   <p className="text-sm">Generated: {createdAt}</p>
                 </div>
               )}
@@ -237,7 +448,7 @@ export default function PrescriptionPreview() {
 
               {showVitals && (
                 <div className="mb-4">
-                  <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Vitals</h3>
+                  <h3 className="font-semibold mb-2" style={{ color: textColor }}>Vitals</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <p>BP: {prescription.vitals?.bloodPressure || "-"}</p>
                     <p>PR: {prescription.vitals?.pulseRate || "-"}</p>
@@ -252,7 +463,7 @@ export default function PrescriptionPreview() {
 
               {showFemaleSection && female && prescription.femaleHealth && (
                 <div className="mb-4">
-                  <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Female Clinical Details</h3>
+                  <h3 className="font-semibold mb-2" style={{ color: textColor }}>Female Clinical Details</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <p>Gravida: {prescription.femaleHealth?.gravida || "-"}</p>
                     <p>Parity: {`${prescription.femaleHealth?.parityA || "-"}+${prescription.femaleHealth?.parityB || "-"}`}</p>
@@ -265,7 +476,7 @@ export default function PrescriptionPreview() {
               )}
 
               <div className="mb-4">
-                <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Medicines</h3>
+                <h3 className="font-semibold mb-2" style={{ color: textColor }}>Medicines</h3>
                 <table className="w-full text-sm">
                   <thead>
                     <tr>
@@ -292,7 +503,7 @@ export default function PrescriptionPreview() {
 
               {showTests && (prescription.testAdvice || []).length > 0 && (
                 <div className="mb-4">
-                  <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Suggested Tests</h3>
+                  <h3 className="font-semibold mb-2" style={{ color: textColor }}>Suggested Tests</h3>
                   <ul className="list-disc pl-5 text-sm">
                     {prescription.testAdvice.map((t, idx) => (
                       <li key={`${t._id || idx}`}>{t.testName}{t.instructions ? ` - ${t.instructions}` : ""}</li>
@@ -303,20 +514,19 @@ export default function PrescriptionPreview() {
 
               {showAdvice && (
                 <div>
-                  <h3 className="font-semibold mb-2" style={{ color: accentColor }}>Advice</h3>
+                  <h3 className="font-semibold mb-2" style={{ color: textColor }}>Advice</h3>
                   <p className="text-sm whitespace-pre-wrap">{prescription.notes || "-"}</p>
                 </div>
               )}
 
               {showFooter && (
                 <div className="mt-5 border-t pt-3 text-xs text-muted-foreground">
-                  For queries, contact hospital front desk.
+                  {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ") || "For queries, contact hospital front desk."}
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

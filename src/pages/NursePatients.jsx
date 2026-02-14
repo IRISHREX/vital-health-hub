@@ -92,8 +92,23 @@ export default function NursePatients() {
     );
   }, [patients, query]);
 
-  const selectedPatient = filteredPatients.find((p) => p._id === selectedId) || filteredPatients[0];
-  const currentAdmissionId = selectedPatient?.currentAdmission || selectedPatient?.currentAdmission?._id;
+  useEffect(() => {
+    if (!filteredPatients.length) {
+      setSelectedId("");
+      return;
+    }
+    if (!selectedId) {
+      setSelectedId(filteredPatients[0]._id);
+    }
+  }, [filteredPatients, selectedId]);
+
+  const selectedPatient = useMemo(
+    () => filteredPatients.find((p) => p._id === selectedId) || null,
+    [filteredPatients, selectedId]
+  );
+  const currentAdmissionId = typeof selectedPatient?.currentAdmission === "string"
+    ? selectedPatient.currentAdmission
+    : selectedPatient?.currentAdmission?._id || "";
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -190,13 +205,17 @@ export default function NursePatients() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-lg font-semibold">
-                    {selectedPatient?.firstName} {selectedPatient?.lastName}
+                    {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Select a patient"}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {selectedPatient?.patientId || "N/A"}
                   </div>
                 </div>
-                <Button onClick={() => navigate(`/patients/${selectedPatient?._id}`)} size="sm">
+                <Button
+                  onClick={() => selectedPatient?._id && navigate(`/patients/${selectedPatient._id}`)}
+                  size="sm"
+                  disabled={!selectedPatient?._id}
+                >
                   View Patient
                 </Button>
               </div>
@@ -254,6 +273,7 @@ export default function NursePatients() {
                       size="sm"
                       disabled={!handoverTo || handoverLoading || !selectedPatient?._id}
                       onClick={async () => {
+                        if (!selectedPatient?._id) return;
                         try {
                           setHandoverLoading(true);
                           await handoverPatient({ patientId: selectedPatient._id, toNurseId: handoverTo });
@@ -291,6 +311,7 @@ export default function NursePatients() {
                     variant="destructive"
                     disabled={!currentAdmissionId || !dischargeReason || dischargeLoading}
                     onClick={async () => {
+                      if (!currentAdmissionId) return;
                       try {
                         setDischargeLoading(true);
                         await dischargePatient(currentAdmissionId, {
