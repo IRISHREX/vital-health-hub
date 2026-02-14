@@ -44,6 +44,7 @@ v1Router.use('/lab-tests', require('./labTests'));
 v1Router.use('/pharmacy', require('./pharmacy'));
 v1Router.use('/personal-permissions', require('./personalPermissions'));
 v1Router.use('/doctor-dashboard', require('./doctorDashboard'));
+v1Router.use('/radiology', require('./radiology'));
 
 // Health check
 v1Router.get('/health', (req, res) => {

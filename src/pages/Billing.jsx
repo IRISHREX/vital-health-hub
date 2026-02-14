@@ -676,7 +676,7 @@ export default function Billing() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Billing Center</h1>
-            <p className="text-muted-foreground">Unified patient billing with OPD, IPD, Lab, Pharmacy and all invoice actions</p>
+            <p className="text-muted-foreground">Unified patient billing with OPD, IPD, Lab, Radiology, Pharmacy and all invoice actions</p>
           </div>
           {permissions.canCreate && (
             <RestrictedAction module="billing" feature="create">
