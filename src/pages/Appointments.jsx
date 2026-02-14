@@ -16,11 +16,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2 } from "lucide-react";
+import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2, ClipboardPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AppointmentDialog from "@/components/dashboard/AppointmentDialog";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
+import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
 
 const statusConfig = {
   scheduled: { label: "Pending", variant: "info" },
@@ -43,6 +45,12 @@ export default function Appointments() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [dialogMode, setDialogMode] = useState("create");
+  const [prescriptionOpen, setPrescriptionOpen] = useState(false);
+  const [prescriptionHistoryOpen, setPrescriptionHistoryOpen] = useState(false);
+  const [selectedPrescriptionPatient, setSelectedPrescriptionPatient] = useState(null);
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [selectedAppointmentStatus, setSelectedAppointmentStatus] = useState("");
   const { toast } = useToast();
 
   const openCreateDialog = () => {
@@ -61,6 +69,15 @@ export default function Appointments() {
     setDialogOpen(false);
     setSelectedAppointment(null);
     fetchData();
+  };
+
+  const openPrescriptionDialog = (apt) => {
+    if (!apt?.patient) return;
+    setSelectedPrescriptionPatient(apt.patient);
+    setSelectedDoctorId(apt?.doctor?._id || apt?.doctor || "");
+    setSelectedAppointmentId(apt?._id || "");
+    setSelectedAppointmentStatus(apt?.status || "");
+    setPrescriptionHistoryOpen(true);
   };
 
   const handleStatusUpdate = async (appointmentId, status) => {
@@ -194,6 +211,26 @@ export default function Appointments() {
         onClose={handleDialogClose}
         appointment={selectedAppointment}
         mode={dialogMode}
+      />
+      <PrescriptionDialog
+        open={prescriptionOpen}
+        onOpenChange={setPrescriptionOpen}
+        initialPatientId={selectedPrescriptionPatient?._id || ""}
+        initialDoctorId={selectedDoctorId}
+        initialAppointmentId={selectedAppointmentId}
+        initialAppointmentStatus={selectedAppointmentStatus}
+        initialEncounterType="opd"
+      />
+      <PrescriptionHistoryDialog
+        open={prescriptionHistoryOpen}
+        onOpenChange={setPrescriptionHistoryOpen}
+        patient={selectedPrescriptionPatient}
+        appointmentId={selectedAppointmentId}
+        appointmentStatus={selectedAppointmentStatus}
+        onCreateNew={() => {
+          setPrescriptionHistoryOpen(false);
+          setPrescriptionOpen(true);
+        }}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -363,6 +400,15 @@ export default function Appointments() {
                           onClick={() => openEditDialog(apt)}
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Prescription"
+                          className="text-primary hover:bg-primary/10"
+                          onClick={() => openPrescriptionDialog(apt)}
+                        >
+                          <ClipboardPlus className="h-4 w-4" />
                         </Button>
                         {apt.status === "scheduled" && (
                           <>

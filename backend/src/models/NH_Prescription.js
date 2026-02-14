@@ -18,6 +18,7 @@ const prescriptionItemSchema = new mongoose.Schema({
 const prescriptionSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true },
+  appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
   admission: { type: mongoose.Schema.Types.ObjectId, ref: 'Admission' },
   encounterType: {
     type: String,
@@ -65,5 +66,6 @@ const prescriptionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 prescriptionSchema.index({ patient: 1, status: 1 });
+prescriptionSchema.index({ appointment: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Prescription', prescriptionSchema);

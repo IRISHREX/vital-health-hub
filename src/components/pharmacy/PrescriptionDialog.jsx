@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createPrescription, getMedicines, requestMedicineStock, sharePrescription } from "@/lib/pharmacy";
+import { createPrescription, getMedicines, getPrescriptions, requestMedicineStock, sharePrescription, updatePrescription } from "@/lib/pharmacy";
 import { getLabCatalog } from "@/lib/labTests";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
@@ -82,6 +82,7 @@ export default function PrescriptionDialog({
   initialDoctorId = "",
   initialAdmissionId = "",
   initialAppointmentId = "",
+  initialAppointmentStatus = "",
   initialEncounterType = "opd",
 }) {
   const isMobile = useIsMobile();
@@ -98,6 +99,7 @@ export default function PrescriptionDialog({
   const [encounterType, setEncounterType] = useState("opd");
   const [admissionId, setAdmissionId] = useState("");
   const [appointmentId, setAppointmentId] = useState("");
+  const [appointmentStatus, setAppointmentStatus] = useState("");
   const [doctorSearch, setDoctorSearch] = useState("");
   const [notes, setNotes] = useState("");
   const [complaints, setComplaints] = useState("");
@@ -122,6 +124,16 @@ export default function PrescriptionDialog({
   const { data: labCatalogData } = useQuery({ queryKey: ["lab-catalog-all"], queryFn: () => getLabCatalog({ active: "true", limit: 1000 }), enabled: open });
   const { data: usersData } = useQuery({ queryKey: ["users"], queryFn: () => getUsers(), enabled: open });
   const { data: hospitalRes } = useQuery({ queryKey: ["hospital-settings"], queryFn: () => getHospitalSettings(), enabled: open });
+  const { data: appointmentRxRes } = useQuery({
+    queryKey: ["prescriptions", "appointment", appointmentId],
+    queryFn: () => getPrescriptions({ appointmentId, limit: 1 }),
+    enabled: open && !!appointmentId,
+  });
+  const { data: latestPatientRxRes } = useQuery({
+    queryKey: ["prescriptions", "patient-latest", patientId],
+    queryFn: () => getPrescriptions({ patientId, limit: 1 }),
+    enabled: open && !!patientId,
+  });
 
   const patients = Array.isArray(patientsData) ? patientsData : patientsData?.data?.patients || [];
   const doctors = Array.isArray(doctorsData) ? doctorsData : doctorsData?.data?.doctors || [];
@@ -129,6 +141,19 @@ export default function PrescriptionDialog({
   const labCatalog = labCatalogData?.data?.tests || [];
   const users = usersData?.data?.users || usersData?.users || [];
   const hospitalSettings = hospitalRes?.data || {};
+  const appointmentPrescription = useMemo(() => {
+    const rows = Array.isArray(appointmentRxRes) ? appointmentRxRes : appointmentRxRes?.data || [];
+    return rows[0] || null;
+  }, [appointmentRxRes]);
+  const latestPatientPrescription = useMemo(() => {
+    const rows = Array.isArray(latestPatientRxRes) ? latestPatientRxRes : latestPatientRxRes?.data || [];
+    return rows[0] || null;
+  }, [latestPatientRxRes]);
+  const currentPrescription = useMemo(() => {
+    if (appointmentPrescription) return appointmentPrescription;
+    if (appointmentStatus === "completed") return latestPatientPrescription;
+    return null;
+  }, [appointmentPrescription, latestPatientPrescription, appointmentStatus]);
   const selectedPatient = patients.find((p) => p?._id === patientId);
   const selectedDoctor = doctors.find((d) => d?._id === doctorId);
   const isFemale = selectedPatient?.gender?.toLowerCase() === "female";
@@ -179,6 +204,7 @@ export default function PrescriptionDialog({
     setDoctorId(initialDoctorId || "");
     setAdmissionId(initialAdmissionId || "");
     setAppointmentId(initialAppointmentId || "");
+    setAppointmentStatus(initialAppointmentStatus || "");
     setEncounterType(initialEncounterType || "opd");
     setDoctorSearch("");
     setSavedPrescription(null);
@@ -186,7 +212,40 @@ export default function PrescriptionDialog({
     setShareNote("");
     setVitals({ ...emptyVitals });
     setFemaleHealth({ ...emptyFemaleHealth });
-  }, [open, initialAdmissionId, initialAppointmentId, initialDoctorId, initialEncounterType, initialPatientId]);
+  }, [open, initialAdmissionId, initialAppointmentId, initialAppointmentStatus, initialDoctorId, initialEncounterType, initialPatientId]);
+
+  const applyPrescriptionToForm = (rx) => {
+    if (!rx) return;
+    setPatientId(rx?.patient?._id || rx?.patient || "");
+    setDoctorId(rx?.doctor?._id || rx?.doctor || "");
+    setEncounterType(rx?.encounterType || "opd");
+    setAdmissionId(rx?.admission?._id || rx?.admission || "");
+    setAppointmentId(rx?.appointment?._id || rx?.appointment || appointmentId || "");
+    setNotes(rx?.notes || "");
+    setComplaints(Array.isArray(rx?.complaints) ? rx.complaints.join(", ") : "");
+    setMedicalHistory(Array.isArray(rx?.medicalHistory) ? rx.medicalHistory.join(", ") : "");
+    setDiagnosis(rx?.diagnosis || "");
+    setFollowUpDate(rx?.followUpDate ? new Date(rx.followUpDate).toISOString().slice(0, 10) : "");
+    setVitals({ ...emptyVitals, ...(rx?.vitals || {}) });
+    setFemaleHealth({ ...emptyFemaleHealth, ...(rx?.femaleHealth || {}) });
+    setItems(
+      Array.isArray(rx?.items) && rx.items.length
+        ? rx.items.map((it) => ({ ...emptyItem, ...it, medicine: it?.medicine?._id || it?.medicine || "" }))
+        : [{ ...emptyItem }]
+    );
+    setTestAdvice(
+      Array.isArray(rx?.testAdvice) && rx.testAdvice.length
+        ? rx.testAdvice.map((t) => ({ ...emptyTest, ...t }))
+        : [{ ...emptyTest }]
+    );
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    if (!currentPrescription) return;
+    setSavedPrescription(currentPrescription);
+    applyPrescriptionToForm(currentPrescription);
+  }, [open, currentPrescription]);
 
   useEffect(() => {
     if (!open) return;
@@ -347,12 +406,16 @@ export default function PrescriptionDialog({
     if (!patientId || !doctorId || cleanedItems.length === 0) {
       return toast.error("Patient, doctor and at least one medicine are required");
     }
+    if (appointmentStatus === "completed" && !currentPrescription?._id) {
+      return toast.error("Completed appointment must use the latest existing prescription. New prescription is not allowed.");
+    }
 
     setLoading(true);
     try {
-      const response = await createPrescription({
+      const payload = {
         patient: patientId,
         doctor: doctorId,
+        appointment: appointmentId || currentPrescription?.appointment?._id || currentPrescription?.appointment || undefined,
         admission: admissionId || undefined,
         encounterType,
         complaints: parseList(complaints),
@@ -364,7 +427,12 @@ export default function PrescriptionDialog({
         notes,
         testAdvice: cleanedTests,
         items: cleanedItems,
-      });
+      };
+
+      const shouldUpdateExisting = !!currentPrescription?._id && appointmentStatus === "completed";
+      const response = shouldUpdateExisting
+        ? await updatePrescription(currentPrescription._id, payload)
+        : await createPrescription(payload);
 
       const created = response?.data || null;
       setSavedPrescription(created);
@@ -382,14 +450,18 @@ export default function PrescriptionDialog({
       );
 
       if (appointmentId) {
-        await updateAppointment(appointmentId, { status: "completed" }).catch(() => null);
+        await updateAppointment(appointmentId, { status: "completed", prescription: created?._id || undefined }).catch(() => null);
         qc.invalidateQueries({ queryKey: ["appointments"] });
       }
 
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
       qc.invalidateQueries({ queryKey: ["pharmacy-stats"] });
 
-      toast.success(appointmentId ? "Prescription saved. Appointment marked completed." : "Prescription saved.");
+      toast.success(
+        shouldUpdateExisting
+          ? "Current prescription updated."
+          : (appointmentId ? "Prescription saved and linked to appointment." : "Prescription saved.")
+      );
     } catch (error) {
       toast.error(error?.message || "Failed to save prescription");
     } finally {
@@ -424,6 +496,13 @@ export default function PrescriptionDialog({
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {!!appointmentId && !!currentPrescription && (
+            <div className="rounded border border-amber-300 bg-amber-50 px-3 py-1 text-xs text-amber-800">
+              {appointmentPrescription
+                ? "This appointment already has a prescription. You can edit/view/print/share it."
+                : "Appointment is completed. Latest prescription is treated as current and editable."}
+            </div>
+          )}
           {!isMobile && (
             <>
               <Label className="text-xs">Editor/Preview Size</Label>
@@ -439,8 +518,15 @@ export default function PrescriptionDialog({
             </>
           )}
           <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
-            <Button onClick={handleSavePrescription} disabled={loading}>
-              {loading ? "Saving..." : "Save"}
+            <Button
+              onClick={handleSavePrescription}
+              disabled={
+                loading ||
+                (!!appointmentPrescription && appointmentStatus !== "completed") ||
+                (appointmentStatus === "completed" && !currentPrescription?._id)
+              }
+            >
+              {loading ? "Saving..." : (currentPrescription && appointmentStatus === "completed") ? "Save Changes" : appointmentPrescription ? "Already Saved" : "Save"}
             </Button>
             <Button
               variant="outline"

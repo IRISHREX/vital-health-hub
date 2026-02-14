@@ -32,6 +32,7 @@ router.route('/prescriptions')
   .post(authenticate, authorize(...clinicalRoles), c.createPrescription);
 
 router.get('/prescriptions/:id', authenticate, authorize(...clinicalRoles), c.getPrescription);
+router.put('/prescriptions/:id', authenticate, authorize(...clinicalRoles), c.updatePrescription);
 router.post('/prescriptions/:id/share', authenticate, authorize(...clinicalRoles), c.sharePrescription);
 router.post('/prescriptions/:id/dispense', authenticate, authorize(...pharmacyRoles), c.dispensePrescription);
 router.patch('/prescriptions/:id/cancel', authenticate, authorize('doctor', ...adminRoles), c.cancelPrescription);

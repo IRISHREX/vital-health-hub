@@ -58,6 +58,7 @@ export default function OpdDashboard() {
   const [selectedPrescriptionPatient, setSelectedPrescriptionPatient] = useState(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [selectedAppointmentStatus, setSelectedAppointmentStatus] = useState("");
 
   const fetchData = async () => {
     try {
@@ -148,6 +149,7 @@ export default function OpdDashboard() {
     setSelectedPrescriptionPatient(apt.patient);
     setSelectedDoctorId(apt?.doctor?._id || apt?.doctor || "");
     setSelectedAppointmentId(apt?._id || "");
+    setSelectedAppointmentStatus(apt?.status || "");
     setPrescriptionHistoryOpen(true);
   };
 
@@ -321,6 +323,7 @@ export default function OpdDashboard() {
         initialPatientId={selectedPrescriptionPatient?._id || ""}
         initialDoctorId={selectedDoctorId}
         initialAppointmentId={selectedAppointmentId}
+        initialAppointmentStatus={selectedAppointmentStatus}
         initialEncounterType="opd"
       />
 
@@ -328,6 +331,8 @@ export default function OpdDashboard() {
         open={prescriptionHistoryOpen}
         onOpenChange={setPrescriptionHistoryOpen}
         patient={selectedPrescriptionPatient}
+        appointmentId={selectedAppointmentId}
+        appointmentStatus={selectedAppointmentStatus}
         onCreateNew={() => {
           setPrescriptionHistoryOpen(false);
           setPrescriptionOpen(true);

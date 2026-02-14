@@ -1,7 +1,7 @@
 const Medicine = require('../models/NH_Medicine');
 const Prescription = require('../models/NH_Prescription');
 const StockAdjustment = require('../models/NH_StockAdjustment');
-const { BillingLedger, Invoice, User, Notification } = require('../models');
+const { BillingLedger, Invoice, User, Notification, Appointment } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 
 const getComputedInvoiceStatus = (invoice) => {
@@ -179,16 +179,89 @@ exports.getStockHistory = async (req, res, next) => {
 // Prescriptions
 exports.createPrescription = async (req, res, next) => {
   try {
-    const rx = await Prescription.create({ ...req.body, createdBy: req.user._id });
+    const payload = { ...req.body };
+    const appointmentId = payload.appointment;
+
+    if (appointmentId) {
+      const appointment = await Appointment.findById(appointmentId).select('patient doctor prescription');
+      if (!appointment) throw new AppError('Appointment not found', 404);
+
+      if (String(appointment.patient) !== String(payload.patient)) {
+        throw new AppError('Appointment does not belong to selected patient', 400);
+      }
+
+      const existingForAppointment = await Prescription.findOne({ appointment: appointmentId }).select('_id');
+      if (existingForAppointment || appointment.prescription) {
+        throw new AppError('This appointment already has a prescription', 400);
+      }
+
+      payload.appointment = appointmentId;
+    }
+
+    const rx = await Prescription.create({ ...payload, createdBy: req.user._id });
+
+    if (appointmentId) {
+      await Appointment.findByIdAndUpdate(
+        appointmentId,
+        { status: 'completed', prescription: String(rx._id) },
+        { new: true }
+      );
+    }
+
     res.status(201).json({ success: true, data: rx });
+  } catch (err) { next(err); }
+};
+
+exports.updatePrescription = async (req, res, next) => {
+  try {
+    const prescriptionId = req.params.id;
+    const payload = { ...req.body };
+    const appointmentId = payload.appointment;
+
+    const existing = await Prescription.findById(prescriptionId);
+    if (!existing) throw new AppError('Prescription not found', 404);
+
+    if (appointmentId) {
+      const appointment = await Appointment.findById(appointmentId).select('patient prescription');
+      if (!appointment) throw new AppError('Appointment not found', 404);
+      if (String(appointment.patient) !== String(payload.patient || existing.patient)) {
+        throw new AppError('Appointment does not belong to selected patient', 400);
+      }
+
+      const duplicate = await Prescription.findOne({
+        appointment: appointmentId,
+        _id: { $ne: prescriptionId }
+      }).select('_id');
+      if (duplicate) {
+        throw new AppError('This appointment already has a prescription', 400);
+      }
+    }
+
+    const updated = await Prescription.findByIdAndUpdate(
+      prescriptionId,
+      payload,
+      { new: true, runValidators: true }
+    );
+
+    const finalAppointmentId = appointmentId || updated?.appointment;
+    if (finalAppointmentId) {
+      await Appointment.findByIdAndUpdate(
+        finalAppointmentId,
+        { status: 'completed', prescription: String(updated._id) },
+        { new: true }
+      );
+    }
+
+    res.json({ success: true, data: updated });
   } catch (err) { next(err); }
 };
 
 exports.getPrescriptions = async (req, res, next) => {
   try {
-    const { patientId, status, page = 1, limit = 30 } = req.query;
+    const { patientId, appointmentId, status, page = 1, limit = 30 } = req.query;
     const query = {};
     if (patientId) query.patient = patientId;
+    if (appointmentId) query.appointment = appointmentId;
     if (status) query.status = status;
 
     const total = await Prescription.countDocuments(query);
@@ -196,6 +269,7 @@ exports.getPrescriptions = async (req, res, next) => {
       .populate('patient', 'firstName lastName patientId')
       .populate('doctor', 'firstName lastName specialization name user')
       .populate({ path: 'doctor', populate: { path: 'user', select: 'firstName lastName' } })
+      .populate('appointment', 'appointmentId appointmentDate timeSlot status')
       .populate('items.medicine', 'name sellingPrice stock')
       .sort('-createdAt')
       .skip((page - 1) * limit)
@@ -211,6 +285,7 @@ exports.getPrescription = async (req, res, next) => {
       .populate('patient', 'firstName lastName patientId gender dateOfBirth')
       .populate('doctor', 'firstName lastName specialization name user')
       .populate({ path: 'doctor', populate: { path: 'user', select: 'firstName lastName email' } })
+      .populate('appointment', 'appointmentId appointmentDate timeSlot status')
       .populate('items.medicine', 'name sellingPrice stock');
 
     if (!rx) throw new AppError('Prescription not found', 404);
