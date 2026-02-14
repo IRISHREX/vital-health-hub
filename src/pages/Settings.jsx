@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -28,6 +29,19 @@ import {
   Sun,
   Moon,
   Monitor,
+  Search,
+  Filter,
+  UsersRound,
+  UserCog,
+  ShieldCheck,
+  Mail,
+  Send,
+  Inbox,
+  Clock3,
+  Check,
+  X,
+  BellRing,
+  LayoutPanelTop,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -38,7 +52,11 @@ import {
   getUserStats,
   getVisualAccessSettings,
   updateVisualAccessSettings,
+  createAccessRequest,
+  getPendingAccessRequests,
+  respondToAccessRequest,
 } from "@/lib/settings";
+import { getNotifications } from "@/lib/notifications";
 import { updateProfile } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
@@ -48,6 +66,38 @@ import { getUsers } from "@/lib/users";
 import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
+
+const assignmentRoleOptions = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"];
+const assignmentTypeLabels = {
+  floor: "Floor Assignment",
+  room: "Room Assignment",
+  patient: "Patient Assignment",
+};
+const defaultAssignmentPolicies = {
+  floor: { assignerRoles: [], assigneeRoles: [] },
+  room: { assignerRoles: [], assigneeRoles: [] },
+  patient: { assignerRoles: [], assigneeRoles: [] },
+};
+const permissionRequestFeatures = ["view", "create", "edit", "delete"];
+const moduleIconMap = {
+  dashboard: LayoutPanelTop,
+  beds: Building2,
+  admissions: UsersRound,
+  patients: Users,
+  doctors: User,
+  nurses: UserCog,
+  appointments: Clock3,
+  facilities: Building2,
+  billing: Database,
+  reports: Database,
+  notifications: BellRing,
+  settings: Shield,
+  tasks: Check,
+  vitals: ShieldCheck,
+  lab: Database,
+  pharmacy: Database,
+  radiology: Database,
+};
 
 export default function Settings() {
   const { user, logout } = useAuth();
@@ -109,6 +159,15 @@ export default function Settings() {
   const [permissionEmail, setPermissionEmail] = useState("");
   const [permissionManagers, setPermissionManagers] = useState([]);
   const [managerEmailInput, setManagerEmailInput] = useState("");
+  const [assignmentPolicies, setAssignmentPolicies] = useState(defaultAssignmentPolicies);
+  const [permissionModuleSearch, setPermissionModuleSearch] = useState("");
+  const [permissionModuleFilter, setPermissionModuleFilter] = useState("all");
+  const [permissionSubtab, setPermissionSubtab] = useState("matrix");
+  const [requestForm, setRequestForm] = useState({ module: "billing", feature: "view", reason: "" });
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [pendingAccessRequests, setPendingAccessRequests] = useState([]);
+  const [permissionNotifications, setPermissionNotifications] = useState([]);
+  const [requestActionLoadingId, setRequestActionLoadingId] = useState("");
 
   // Fetch user stats using react-query (v5 object syntax)
   useQuery({
@@ -146,6 +205,10 @@ export default function Settings() {
           getVisualAccessSettings(),
           (adminUser || canManageVisualPermissions) ? getUsers() : Promise.resolve(null),
         ]);
+        const [pendingRes, permissionNotifRes] = await Promise.all([
+          user?.role === "super_admin" ? getPendingAccessRequests().catch(() => null) : Promise.resolve(null),
+          getNotifications({ limit: 50 }).catch(() => null),
+        ]);
 
         if (settingsRes?.success && settingsRes?.data) {
           const { hospital, security, notifications } = settingsRes.data;
@@ -181,6 +244,20 @@ export default function Settings() {
         if (visualAccessRes?.success && visualAccessRes?.data) {
           setPermissionOverrides(visualAccessRes.data.overrides || []);
           setPermissionManagers(visualAccessRes.data.permissionManagers || []);
+          setAssignmentPolicies({
+            floor: {
+              assignerRoles: visualAccessRes.data.assignmentPolicies?.floor?.assignerRoles || [],
+              assigneeRoles: visualAccessRes.data.assignmentPolicies?.floor?.assigneeRoles || [],
+            },
+            room: {
+              assignerRoles: visualAccessRes.data.assignmentPolicies?.room?.assignerRoles || [],
+              assigneeRoles: visualAccessRes.data.assignmentPolicies?.room?.assigneeRoles || [],
+            },
+            patient: {
+              assignerRoles: visualAccessRes.data.assignmentPolicies?.patient?.assignerRoles || [],
+              assigneeRoles: visualAccessRes.data.assignmentPolicies?.patient?.assigneeRoles || [],
+            },
+          });
           if (!permissionEmail && visualAccessRes.data.overrides?.length) {
             setPermissionEmail(visualAccessRes.data.overrides[0].email);
           }
@@ -193,6 +270,15 @@ export default function Settings() {
             .sort((a, b) => a.localeCompare(b));
           setUserEmails(emails);
         }
+        if (pendingRes?.success && Array.isArray(pendingRes.data)) {
+          setPendingAccessRequests(pendingRes.data);
+        } else {
+          setPendingAccessRequests([]);
+        }
+        const notifList = permissionNotifRes?.data?.notifications || [];
+        setPermissionNotifications(
+          notifList.filter((n) => ["access_request", "access_request_resolved"].includes(n.type))
+        );
       } catch (error) {
         console.error("Failed to load settings:", error);
         toast.error("Failed to load settings");
@@ -303,6 +389,16 @@ export default function Settings() {
     });
   }, [selectedPermissionOverride]);
 
+  const filteredPermissionModules = useMemo(() => {
+    const query = permissionModuleSearch.trim().toLowerCase();
+    return selectedPermissionModules.filter((mod) => {
+      const label = (moduleLabels[mod.module] || mod.module).toLowerCase();
+      const byFilter = permissionModuleFilter === "all" || mod.module === permissionModuleFilter;
+      const bySearch = !query || label.includes(query) || mod.module.toLowerCase().includes(query);
+      return byFilter && bySearch;
+    });
+  }, [selectedPermissionModules, permissionModuleSearch, permissionModuleFilter]);
+
   const ensureEmailOverride = (email) => {
     const normalizedEmail = String(email || "").trim().toLowerCase();
     if (!normalizedEmail) return null;
@@ -383,6 +479,7 @@ export default function Settings() {
       setSaving(true);
       const payload = {
         permissionManagers: user?.role === "super_admin" ? permissionManagers : undefined,
+        assignmentPolicies,
         overrides: permissionOverrides
           .filter((entry) => entry.email)
           .map((entry) => ({
@@ -419,6 +516,53 @@ export default function Settings() {
   const handleRemovePermissionManager = (email) => {
     if (user?.role !== "super_admin") return;
     setPermissionManagers((prev) => prev.filter((item) => item !== email));
+  };
+
+  const handleSubmitPermissionRequest = async () => {
+    if (!requestForm.module || !requestForm.feature) return;
+    try {
+      setSubmittingRequest(true);
+      await createAccessRequest({
+        module: requestForm.module,
+        feature: requestForm.feature,
+        reason: requestForm.reason
+      });
+      toast.success("Permission request submitted");
+      setRequestForm((prev) => ({ ...prev, reason: "" }));
+    } catch (error) {
+      toast.error(error.message || "Failed to submit request");
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
+  const handleRequestDecision = async (requestId, decision) => {
+    try {
+      setRequestActionLoadingId(requestId);
+      await respondToAccessRequest(requestId, { decision });
+      toast.success(`Request ${decision}`);
+      setPendingAccessRequests((prev) => prev.filter((req) => req._id !== requestId));
+    } catch (error) {
+      toast.error(error.message || `Failed to ${decision} request`);
+    } finally {
+      setRequestActionLoadingId("");
+    }
+  };
+
+  const toggleAssignmentPolicyRole = (assignmentType, policyKey, role, checked) => {
+    setAssignmentPolicies((prev) => {
+      const current = prev?.[assignmentType]?.[policyKey] || [];
+      const nextRoles = checked
+        ? Array.from(new Set([...current, role]))
+        : current.filter((item) => item !== role);
+      return {
+        ...prev,
+        [assignmentType]: {
+          ...(prev?.[assignmentType] || {}),
+          [policyKey]: nextRoles
+        }
+      };
+    });
   };
 
   if (loading) {
@@ -1097,155 +1241,323 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle>Visual Access Permissions</CardTitle>
                 <CardDescription>
-                  Role permissions are still enforced. These overrides only adjust visible modules/actions for selected emails.
+                  Manage module visibility, action restrictions, and permission workflow.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="rounded-md border p-3 text-sm">
-                  <p>
-                    Edit mode:{" "}
-                    <span className="font-semibold">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border p-4">
+                    <p className="text-xs text-muted-foreground">Edit Mode</p>
+                    <p className="mt-1 text-sm font-semibold">
                       {canEditVisualPermissions ? "Enabled" : "Read-only"}
-                    </span>
-                  </p>
-                  {!canEditVisualPermissions && (
-                    <p className="mt-1 text-muted-foreground">
-                      Only Super Admin or delegated permission managers can update this section.
                     </p>
-                  )}
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="text-xs text-muted-foreground">Delegated Managers</p>
+                    <p className="mt-1 text-sm font-semibold">{permissionManagers.length}</p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="text-xs text-muted-foreground">Overrides</p>
+                    <p className="mt-1 text-sm font-semibold">{permissionOverrides.length}</p>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  <Label>Delegated Permission Managers (by email)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="manager@hospital.com"
-                      value={managerEmailInput}
-                      disabled={!canEditDelegation}
-                      onChange={(e) => setManagerEmailInput(e.target.value)}
-                    />
-                    <Button type="button" variant="outline" disabled={!canEditDelegation} onClick={handleAddPermissionManager}>
-                      Add
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {permissionManagers.length === 0 && (
-                      <span className="text-sm text-muted-foreground">No delegated managers. Super Admin only.</span>
-                    )}
-                    {permissionManagers.map((email) => (
-                      <Badge key={email} variant="secondary" className="gap-2">
-                        {email}
-                        {canEditDelegation && (
-                          <button type="button" onClick={() => handleRemovePermissionManager(email)} className="text-xs">
-                            x
-                          </button>
+                <Tabs value={permissionSubtab} onValueChange={setPermissionSubtab} className="space-y-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="matrix" className="gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      Access Matrix
+                    </TabsTrigger>
+                    <TabsTrigger value="requests" className="gap-2">
+                      <BellRing className="h-4 w-4" />
+                      Requests & Notifications
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="matrix" className="space-y-4">
+                    <div className="space-y-3 rounded-lg border p-4">
+                      <Label className="flex items-center gap-2">
+                        <UserCog className="h-4 w-4" />
+                        Delegated Permission Managers
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="manager@hospital.com"
+                          value={managerEmailInput}
+                          disabled={!canEditDelegation}
+                          onChange={(e) => setManagerEmailInput(e.target.value)}
+                        />
+                        <Button type="button" variant="outline" disabled={!canEditDelegation} onClick={handleAddPermissionManager}>
+                          Add
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {permissionManagers.length === 0 && (
+                          <span className="text-sm text-muted-foreground">No delegated managers. Super Admin only.</span>
                         )}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Select User Email</Label>
-                    <Select
-                      value={permissionEmail || "__none__"}
-                      onValueChange={(value) => setPermissionEmail(value === "__none__" ? "" : value)}
-                      disabled={!canEditVisualPermissions}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose user email" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Select email</SelectItem>
-                        {userEmails.map((email) => (
-                          <SelectItem key={email} value={email}>{email}</SelectItem>
+                        {permissionManagers.map((email) => (
+                          <Badge key={email} variant="secondary" className="gap-2">
+                            {email}
+                            {canEditDelegation && (
+                              <button type="button" onClick={() => handleRemovePermissionManager(email)} className="text-xs">
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </Badge>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Or Enter Email</Label>
-                    <Input
-                      placeholder="user@hospital.com"
-                      value={permissionEmail}
-                      disabled={!canEditVisualPermissions}
-                      onChange={(e) => setPermissionEmail(e.target.value.trim().toLowerCase())}
-                    />
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                <div className="rounded-lg border">
-                  <div className="grid grid-cols-5 gap-2 border-b p-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <span>Module</span>
-                    <span>View</span>
-                    <span>Create</span>
-                    <span>Edit</span>
-                    <span>Delete</span>
-                  </div>
-                  <div className="space-y-1 p-2">
-                    {selectedPermissionModules.map((mod) => (
-                      <div key={mod.module} className="grid grid-cols-5 items-center gap-2 rounded-md p-2 hover:bg-muted/40">
-                        <span className="text-sm font-medium">{moduleLabels[mod.module] || mod.module}</span>
-                        <Switch
-                          checked={mod.canView}
-                          disabled={!canEditVisualPermissions || !permissionEmail}
-                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canView", checked)}
-                        />
-                        <Switch
-                          checked={mod.canCreate}
-                          disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
-                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canCreate", checked)}
-                        />
-                        <Switch
-                          checked={mod.canEdit}
-                          disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
-                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canEdit", checked)}
-                        />
-                        <Switch
-                          checked={mod.canDelete}
-                          disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
-                          onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canDelete", checked)}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2 rounded-lg border p-4">
+                        <Label className="flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          Select User Email
+                        </Label>
+                        <Select
+                          value={permissionEmail || "__none__"}
+                          onValueChange={(value) => setPermissionEmail(value === "__none__" ? "" : value)}
+                          disabled={!canEditVisualPermissions}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose user email" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Select email</SelectItem>
+                            {userEmails.map((email) => (
+                              <SelectItem key={email} value={email}>{email}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2 rounded-lg border p-4">
+                        <Label>Or Enter Email</Label>
+                        <Input
+                          placeholder="user@hospital.com"
+                          value={permissionEmail}
+                          disabled={!canEditVisualPermissions}
+                          onChange={(e) => setPermissionEmail(e.target.value.trim().toLowerCase())}
                         />
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                <div className="rounded-lg border">
-                  <div className="border-b p-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Advanced Restrictions (Per Module)
-                  </div>
-                  <div className="space-y-2 p-2">
-                    {selectedPermissionModules.map((mod) => (
-                      <div key={`${mod.module}-advanced`} className="rounded-md border p-3">
-                        <div className="mb-2 text-sm font-medium">{moduleLabels[mod.module] || mod.module}</div>
-                        <div className="grid gap-2 sm:grid-cols-4">
-                          {(moduleFeatureCatalog[mod.module] || []).map((feature) => (
-                            <label key={`${mod.module}-${feature}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                              <span>Restrict {featureLabels[feature] || feature}</span>
-                              <Switch
-                                checked={mod.restrictedFeatures.includes(feature)}
-                                disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
-                                onCheckedChange={(checked) => handleRestrictedFeatureToggle(mod.module, feature, checked)}
-                              />
-                            </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="Search modules..."
+                          value={permissionModuleSearch}
+                          onChange={(e) => setPermissionModuleSearch(e.target.value)}
+                        />
+                      </div>
+                      <Select value={permissionModuleFilter} onValueChange={setPermissionModuleFilter}>
+                        <SelectTrigger>
+                          <Filter className="mr-2 h-4 w-4" />
+                          <SelectValue placeholder="Filter module" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All modules</SelectItem>
+                          {rbacModules.map((module) => (
+                            <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {filteredPermissionModules.map((mod) => {
+                        const Icon = moduleIconMap[mod.module] || Shield;
+                        return (
+                          <div key={mod.module} className="rounded-lg border p-4">
+                            <div className="mb-3 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-semibold">{moduleLabels[mod.module] || mod.module}</span>
+                              </div>
+                              <Badge variant={mod.canView ? "default" : "secondary"}>
+                                {mod.canView ? "Visible" : "Hidden"}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>View</span>
+                                <Switch checked={mod.canView} disabled={!canEditVisualPermissions || !permissionEmail} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canView", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Create</span>
+                                <Switch checked={mod.canCreate} disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canCreate", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Edit</span>
+                                <Switch checked={mod.canEdit} disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canEdit", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Delete</span>
+                                <Switch checked={mod.canDelete} disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canDelete", checked)} />
+                              </label>
+                            </div>
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-semibold uppercase text-muted-foreground">Advanced Restrictions</p>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {(moduleFeatureCatalog[mod.module] || []).map((feature) => (
+                                  <label key={`${mod.module}-${feature}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                    <span>{featureLabels[feature] || feature}</span>
+                                    <Switch
+                                      checked={mod.restrictedFeatures.includes(feature)}
+                                      disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView}
+                                      onCheckedChange={(checked) => handleRestrictedFeatureToggle(mod.module, feature, checked)}
+                                    />
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="rounded-lg border">
+                      <div className="border-b p-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Assignment Policies (Who Can Assign and Who Can Be Assigned)
+                      </div>
+                      <div className="space-y-3 p-3">
+                        {Object.keys(assignmentTypeLabels).map((assignmentType) => (
+                          <div key={assignmentType} className="rounded-md border p-3">
+                            <div className="mb-3 text-sm font-medium">{assignmentTypeLabels[assignmentType]}</div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label className="text-xs uppercase text-muted-foreground">Roles Who Can Assign</Label>
+                                {assignmentRoleOptions.map((role) => (
+                                  <div key={`${assignmentType}-assigner-${role}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                                    <span>{role.replace(/_/g, " ")}</span>
+                                    <Switch checked={(assignmentPolicies?.[assignmentType]?.assignerRoles || []).includes(role)} disabled={!canEditVisualPermissions} onCheckedChange={(checked) => toggleAssignmentPolicyRole(assignmentType, "assignerRoles", role, checked)} />
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs uppercase text-muted-foreground">Roles Who Can Be Assigned</Label>
+                                {assignmentRoleOptions.map((role) => (
+                                  <div key={`${assignmentType}-assignee-${role}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                                    <span>{role.replace(/_/g, " ")}</span>
+                                    <Switch checked={(assignmentPolicies?.[assignmentType]?.assigneeRoles || []).includes(role)} disabled={!canEditVisualPermissions} onCheckedChange={(checked) => toggleAssignmentPolicyRole(assignmentType, "assigneeRoles", role, checked)} />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={handleRemoveOverride} disabled={!canEditVisualPermissions || !permissionEmail}>
+                        Remove Override
+                      </Button>
+                      <Button onClick={handleSaveVisualPermissions} disabled={saving || !canEditVisualPermissions}>
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Permissions
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="requests" className="space-y-4">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-lg border p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Send className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-semibold">Create Permission Request</p>
+                        </div>
+                        <div className="grid gap-3">
+                          <div>
+                            <Label>Module</Label>
+                            <Select value={requestForm.module} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, module: value }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {rbacModules.map((module) => (
+                                  <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Feature</Label>
+                            <Select value={requestForm.feature} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, feature: value }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {permissionRequestFeatures.map((feature) => (
+                                  <SelectItem key={feature} value={feature}>{featureLabels[feature] || feature}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Reason</Label>
+                            <Input placeholder="Why do you need this access?" value={requestForm.reason} onChange={(e) => setRequestForm((prev) => ({ ...prev, reason: e.target.value }))} />
+                          </div>
+                          <Button onClick={handleSubmitPermissionRequest} disabled={submittingRequest}>
+                            {submittingRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            Submit Request
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Inbox className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-semibold">Pending Requests</p>
+                          <Badge variant="secondary">{pendingAccessRequests.length}</Badge>
+                        </div>
+                        {user?.role !== "super_admin" && (
+                          <p className="text-sm text-muted-foreground">Only Super Admin can approve/reject requests.</p>
+                        )}
+                        <div className="space-y-2">
+                          {pendingAccessRequests.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No pending requests.</p>
+                          )}
+                          {pendingAccessRequests.map((req) => (
+                            <div key={req._id} className="rounded-md border p-3">
+                              <p className="text-sm font-medium">{req.requesterEmail}</p>
+                              <p className="text-xs text-muted-foreground">Module: {req.module} | Feature: {req.feature}</p>
+                              {req.reason && <p className="mt-1 text-xs text-muted-foreground">{req.reason}</p>}
+                              {user?.role === "super_admin" && (
+                                <div className="mt-2 flex gap-2">
+                                  <Button size="sm" variant="outline" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "approved")}>
+                                    <Check className="mr-1 h-3 w-3" />
+                                    Approve
+                                  </Button>
+                                  <Button size="sm" variant="destructive" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "rejected")}>
+                                    <X className="mr-1 h-3 w-3" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={handleRemoveOverride} disabled={!canEditVisualPermissions || !permissionEmail}>
-                    Remove Override
-                  </Button>
-                  <Button onClick={handleSaveVisualPermissions} disabled={saving || !permissionEmail || !canEditVisualPermissions}>
-                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Permissions
-                  </Button>
-                </div>
+                    <div className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <BellRing className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-semibold">Permission Notifications</p>
+                      </div>
+                      <div className="space-y-2">
+                        {permissionNotifications.length === 0 && (
+                          <p className="text-sm text-muted-foreground">No permission notifications yet.</p>
+                        )}
+                        {permissionNotifications.map((n) => (
+                          <div key={n._id} className="rounded-md border p-3">
+                            <p className="text-sm font-medium">{n.title}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{n.message}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>
