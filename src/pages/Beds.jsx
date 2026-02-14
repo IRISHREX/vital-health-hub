@@ -213,7 +213,10 @@ export default function Beds() {
       />
       <RoomAssignDialog
         isOpen={roomAssignOpen}
-        onClose={() => setRoomAssignOpen(false)}
+        onClose={() => {
+          setRoomAssignOpen(false);
+          fetchData();
+        }}
         rooms={roomTuples}
       />
 

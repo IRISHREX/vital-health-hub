@@ -54,7 +54,9 @@ const invoiceSchema = z.object({
   notes: z.string().optional(),
 });
 
-export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "create" }) {
+const allInvoiceTypes = ["opd", "ipd", "lab", "radiology", "pharmacy", "other"];
+
+export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "create", allowedBillingTypes = allInvoiceTypes }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -79,13 +81,17 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
   });
 
   useEffect(() => {
+    const safeDefaultType = allowedBillingTypes.includes("opd")
+      ? "opd"
+      : allowedBillingTypes[0] || "opd";
+
     if (invoice && mode === "edit") {
       form.reset({
         patient: invoice.patient?._id || invoice.patient || "",
         totalAmount: invoice.totalAmount || 0,
         paidAmount: invoice.paidAmount || 0,
         dueDate: invoice.dueDate ? new Date(invoice.dueDate) : new Date(),
-        invoiceType: invoice.type || "opd",
+        invoiceType: allowedBillingTypes.includes(invoice.type) ? invoice.type : safeDefaultType,
         status: invoice.status || "pending",
         notes: invoice.notes || "",
       });
@@ -94,12 +100,12 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         patient: "",
         totalAmount: 0,
         paidAmount: 0,
-        invoiceType: "opd",
+        invoiceType: safeDefaultType,
         status: "pending",
         notes: "",
       });
     }
-  }, [invoice, mode, form]);
+  }, [invoice, mode, form, allowedBillingTypes]);
 
   const createMutation = useMutation({
     mutationFn: (values) => {
@@ -177,6 +183,14 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
   });
 
   const onSubmit = (values) => {
+    if (!allowedBillingTypes.includes(values.invoiceType)) {
+      toast({
+        variant: "destructive",
+        title: "Not allowed",
+        description: "You are not allowed to create/update this billing type.",
+      });
+      return;
+    }
     if (mode === "create") {
       createMutation.mutate(values);
     } else {
@@ -243,19 +257,19 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
                   <FormLabel>Invoice Type</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="opd">OPD (Outpatient)</SelectItem>
-                      <SelectItem value="ipd">IPD (Inpatient)</SelectItem>
-                      <SelectItem value="lab">Lab</SelectItem>
-                      <SelectItem value="radiology">Radiology</SelectItem>
-                      <SelectItem value="pharmacy">Pharmacy</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                      {allowedBillingTypes.includes("opd") && <SelectItem value="opd">OPD (Outpatient)</SelectItem>}
+                      {allowedBillingTypes.includes("ipd") && <SelectItem value="ipd">IPD (Inpatient)</SelectItem>}
+                      {allowedBillingTypes.includes("lab") && <SelectItem value="lab">Lab</SelectItem>}
+                      {allowedBillingTypes.includes("radiology") && <SelectItem value="radiology">Radiology</SelectItem>}
+                      {allowedBillingTypes.includes("pharmacy") && <SelectItem value="pharmacy">Pharmacy</SelectItem>}
+                      {allowedBillingTypes.includes("other") && <SelectItem value="other">Other</SelectItem>}
+                  </SelectContent>
+                </Select>
                   <FormMessage />
                 </FormItem>
               )}

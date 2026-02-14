@@ -3,6 +3,13 @@ export const featureLabels = {
   create: "Create",
   edit: "Edit",
   delete: "Delete",
+  billing_opd: "OPD Billing",
+  billing_ipd: "IPD Billing",
+  billing_emergency: "Emergency Billing",
+  billing_lab: "Lab Billing",
+  billing_radiology: "Radiology Billing",
+  billing_pharmacy: "Pharmacy Billing",
+  billing_other: "Other Billing",
 };
 
 export const moduleFeatureCatalog = {
@@ -14,7 +21,19 @@ export const moduleFeatureCatalog = {
   nurses: ["view", "create", "edit", "delete"],
   appointments: ["view", "create", "edit", "delete"],
   facilities: ["view", "create", "edit", "delete"],
-  billing: ["view", "create", "edit", "delete"],
+  billing: [
+    "view",
+    "create",
+    "edit",
+    "delete",
+    "billing_opd",
+    "billing_ipd",
+    "billing_emergency",
+    "billing_lab",
+    "billing_radiology",
+    "billing_pharmacy",
+    "billing_other"
+  ],
   reports: ["view"],
   notifications: ["view"],
   settings: ["view", "create", "edit", "delete"],

@@ -57,6 +57,16 @@ const statusConfig = {
   draft: { label: "Draft", variant: "default", icon: Clock }
 };
 
+const billingOptionConfig = {
+  opd: { label: "OPD Billing" },
+  ipd: { label: "IPD Billing" },
+  emergency: { label: "Emergency Billing" },
+  lab: { label: "Lab Billing" },
+  radiology: { label: "Radiology Billing" },
+  pharmacy: { label: "Pharmacy Billing" },
+  other: { label: "Other Billing" }
+};
+
 const getPatientName = (invoiceOrPatient) => {
   const patient = invoiceOrPatient?.patient ? invoiceOrPatient.patient : invoiceOrPatient;
   if (!patient) return "Unknown Patient";
@@ -282,6 +292,14 @@ const getCareLabel = (invoice) => {
   return "OPD";
 };
 
+const getBillingOption = (invoice) => {
+  const type = String(invoice?.type || "").toLowerCase();
+  if (["opd", "ipd", "emergency", "lab", "radiology", "pharmacy", "other"].includes(type)) return type;
+  if (invoice?.admission) return "ipd";
+  if (invoice?.patient?.registrationType === "emergency") return "emergency";
+  return "opd";
+};
+
 const aggregateStatus = (invoices) => {
   const hasDue = invoices.some((inv) => Number(inv.dueAmount || 0) > 0);
   const allPaid = invoices.length > 0 && invoices.every((inv) => inv.status === "paid");
@@ -386,12 +404,13 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
 
 export default function Billing() {
   const qc = useQueryClient();
-  const { getModulePermissions } = useVisualAuth();
+  const { getModulePermissions, canUseFeature } = useVisualAuth();
   const permissions = getModulePermissions("billing");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [careFilter, setCareFilter] = useState("all");
+  const [billingOptionFilter, setBillingOptionFilter] = useState("all");
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -415,8 +434,21 @@ export default function Billing() {
 
   const invoices = Array.isArray(invoicesRes) ? invoicesRes : [];
 
-  const patientRows = useMemo(() => {
-    const filteredInvoices = invoices.filter((invoice) => {
+  const allowedBillingOptions = useMemo(() => {
+    return Object.keys(billingOptionConfig).filter((option) =>
+      canUseFeature("billing", `billing_${option}`)
+    );
+  }, [canUseFeature]);
+
+  const effectiveBillingOptionFilter =
+    billingOptionFilter === "all" || allowedBillingOptions.includes(billingOptionFilter)
+      ? billingOptionFilter
+      : "all";
+
+  const baseFilteredInvoices = useMemo(() => {
+    return invoices.filter((invoice) => {
+      const option = getBillingOption(invoice);
+      if (!allowedBillingOptions.includes(option)) return false;
       if (statusFilter !== "all" && invoice.status !== statusFilter) return false;
       const care = getCareLabel(invoice).toLowerCase();
       if (careFilter !== "all" && care !== careFilter) return false;
@@ -428,7 +460,32 @@ export default function Billing() {
       const patientId = String(invoice?.patient?.patientId || "").toLowerCase();
       return invoiceId.includes(query) || patientName.includes(query) || patientId.includes(query);
     });
+  }, [
+    invoices,
+    allowedBillingOptions,
+    statusFilter,
+    careFilter,
+    searchQuery
+  ]);
 
+  const filteredInvoices = useMemo(() => {
+    if (effectiveBillingOptionFilter === "all") return baseFilteredInvoices;
+    return baseFilteredInvoices.filter((invoice) => getBillingOption(invoice) === effectiveBillingOptionFilter);
+  }, [baseFilteredInvoices, effectiveBillingOptionFilter]);
+
+  const billingOptionCounts = useMemo(() => {
+    const counts = Object.keys(billingOptionConfig).reduce((acc, option) => {
+      acc[option] = 0;
+      return acc;
+    }, {});
+    baseFilteredInvoices.forEach((invoice) => {
+      const option = getBillingOption(invoice);
+      if (counts[option] !== undefined) counts[option] += 1;
+    });
+    return counts;
+  }, [baseFilteredInvoices]);
+
+  const patientRows = useMemo(() => {
     const grouped = Object.values(
       filteredInvoices.reduce((acc, invoice) => {
         const patientId = invoice?.patient?._id || "unknown";
@@ -466,7 +523,7 @@ export default function Billing() {
     }));
 
     return grouped.sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate));
-  }, [invoices, searchQuery, statusFilter, careFilter]);
+  }, [filteredInvoices]);
 
   const stats = useMemo(() => {
     const total = patientRows.reduce((sum, row) => sum + row.total, 0);
@@ -680,7 +737,9 @@ export default function Billing() {
           </div>
           {permissions.canCreate && (
             <RestrictedAction module="billing" feature="create">
-              <Button onClick={openCreateDialog}><Plus className="mr-2 h-4 w-4" />Create Invoice</Button>
+              <Button onClick={openCreateDialog} disabled={!allowedBillingOptions.length}>
+                <Plus className="mr-2 h-4 w-4" />Create Invoice
+              </Button>
             </RestrictedAction>
           )}
         </div>
@@ -721,15 +780,54 @@ export default function Billing() {
           </Select>
         </div>
 
-        <Card><CardContent className="p-0">
-          <PatientBillingTable
-            rows={patientRows}
-            onOpenPatient={openPatientDialog}
-            onOpenBulkPay={(row) => openPayment({ mode: "bulk", row })}
-            canEdit={permissions.canEdit}
-            canPay={permissions.canCreate || permissions.canEdit}
-          />
-        </CardContent></Card>
+        {!allowedBillingOptions.length ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No billing category is permitted for your account. Ask admin to enable billing options in Settings.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Billing Options</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+                <button
+                  type="button"
+                  onClick={() => setBillingOptionFilter("all")}
+                  className={`rounded-lg border p-3 text-left ${effectiveBillingOptionFilter === "all" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                >
+                  <p className="text-xs text-muted-foreground">All Allowed</p>
+                  <p className="text-sm font-semibold">{baseFilteredInvoices.length} invoices</p>
+                </button>
+                {allowedBillingOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setBillingOptionFilter(option)}
+                    className={`rounded-lg border p-3 text-left ${effectiveBillingOptionFilter === option ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                  >
+                    <p className="text-xs text-muted-foreground">{billingOptionConfig[option].label}</p>
+                    <p className="text-sm font-semibold">{billingOptionCounts[option] || 0} invoices</p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {allowedBillingOptions.length > 0 && (
+          <Card><CardContent className="p-0">
+            <PatientBillingTable
+              rows={patientRows}
+              onOpenPatient={openPatientDialog}
+              onOpenBulkPay={(row) => openPayment({ mode: "bulk", row })}
+              canEdit={permissions.canEdit}
+              canPay={permissions.canCreate || permissions.canEdit}
+            />
+          </CardContent></Card>
+        )}
       </div>
 
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
@@ -831,7 +929,7 @@ export default function Billing() {
             </Card>
           ))}
 
-          {permissions.canCreate && (
+          {permissions.canCreate && canUseFeature("billing", "billing_other") && (
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-base">Add/Adjust Bills (key/value + discount)</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -874,6 +972,7 @@ export default function Billing() {
         }}
         invoice={selectedInvoice}
         mode={dialogMode}
+        allowedBillingTypes={allowedBillingOptions}
       />
     </>
   );

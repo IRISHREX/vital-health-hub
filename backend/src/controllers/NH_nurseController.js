@@ -1,6 +1,7 @@
 const { Patient, Appointment, User, Bed, Prescription, Notification } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { emitNotification } = require('../config/socket');
+const { assertAssignmentAllowed } = require('../utils/assignmentPermissions');
 
 const canQueryOtherNurses = (role) => ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(role);
 
@@ -34,6 +35,24 @@ const isPatientAssignedToNurse = async (patient, nurseId) => {
 
   const bed = await Bed.findById(patient.assignedBed).select('nurseInCharge');
   return !!(bed?.nurseInCharge && bed.nurseInCharge.toString() === nurseId.toString());
+};
+
+const ensurePatientAssignedToNurse = async (patientId, nurseId) => {
+  if (!patientId || !nurseId) return;
+  const patient = await Patient.findById(patientId).select('assignedNurses primaryNurse');
+  if (!patient) return;
+
+  const assignedIds = (patient.assignedNurses || []).map((id) => id.toString());
+  const updates = {};
+  if (!assignedIds.includes(nurseId.toString())) {
+    updates.assignedNurses = [...patient.assignedNurses, nurseId];
+  }
+  if (!patient.primaryNurse) {
+    updates.primaryNurse = nurseId;
+  }
+  if (Object.keys(updates).length) {
+    await Patient.findByIdAndUpdate(patientId, updates, { new: true });
+  }
 };
 
 // Get patients assigned to this nurse (supports admin/doctor requesting a specific nurse via ?nurseId=)
@@ -114,6 +133,11 @@ exports.assignRoomToNurse = async (req, res, next) => {
     if (!['nurse', 'head_nurse'].includes(nurse.role)) {
       throw new AppError('User is not a nurse', 400);
     }
+    await assertAssignmentAllowed({
+      assignmentType: 'room',
+      assignerRole: req.user?.role,
+      assigneeRole: nurse.role
+    });
 
     const roomExists = await Bed.exists({ ward, floor: Number(floor), roomNumber });
     if (!roomExists) {
@@ -126,10 +150,23 @@ exports.assignRoomToNurse = async (req, res, next) => {
       { new: true }
     ).select('firstName lastName role assignedRooms');
 
+    const roomBeds = await Bed.find({ ward, floor: Number(floor), roomNumber, isActive: true }).select('_id currentPatient');
+    if (roomBeds.length) {
+      await Bed.updateMany(
+        { _id: { $in: roomBeds.map((b) => b._id) } },
+        { $set: { nurseInCharge: nurseId } }
+      );
+      await Promise.all(
+        roomBeds
+          .filter((b) => !!b.currentPatient)
+          .map((b) => ensurePatientAssignedToNurse(b.currentPatient, nurseId))
+      );
+    }
+
     res.json({
       success: true,
       message: 'Room assigned to nurse',
-      data: { nurse: updatedNurse }
+      data: { nurse: updatedNurse, updatedBeds: roomBeds.length }
     });
   } catch (error) {
     next(error);
@@ -154,6 +191,11 @@ exports.handoverPatient = async (req, res, next) => {
     if (!targetNurse || !['nurse', 'head_nurse'].includes(targetNurse.role)) {
       throw new AppError('Target nurse is invalid', 400);
     }
+    await assertAssignmentAllowed({
+      assignmentType: 'patient',
+      assignerRole: req.user?.role,
+      assigneeRole: targetNurse.role
+    });
 
     const isPrivileged = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
     const isAssigned = await isPatientAssignedToNurse(patient, req.user._id);

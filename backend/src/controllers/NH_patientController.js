@@ -9,9 +9,11 @@ const {
   Prescription,
   ServiceOrder,
   BillingLedger,
-  Task
+  Task,
+  User
 } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
+const { assertAssignmentAllowed } = require('../utils/assignmentPermissions');
 
 const safeDate = (value) => {
   if (!value) return null;
@@ -20,6 +22,28 @@ const safeDate = (value) => {
 };
 
 const toText = (value) => String(value || '').toLowerCase();
+
+const enforcePatientAssignmentPolicy = async (req, payload = {}) => {
+  const nurseIds = [
+    ...(Array.isArray(payload.assignedNurses) ? payload.assignedNurses : []),
+    payload.primaryNurse
+  ].filter(Boolean);
+
+  if (!nurseIds.length) return;
+
+  const nurses = await User.find({ _id: { $in: nurseIds } }).select('role');
+  if (nurses.length !== nurseIds.length) {
+    throw new AppError('One or more assigned nurses are invalid', 400);
+  }
+
+  for (const nurse of nurses) {
+    await assertAssignmentAllowed({
+      assignmentType: 'patient',
+      assignerRole: req.user?.role,
+      assigneeRole: nurse.role
+    });
+  }
+};
 
 // @desc    Get all patients
 // @route   GET /api/patients
@@ -599,6 +623,7 @@ exports.createPatient = async (req, res, next) => {
     if (req.body.primaryNurse) {
       patientData.primaryNurse = req.body.primaryNurse;
     }
+    await enforcePatientAssignmentPolicy(req, patientData);
 
     // Assign bed if IPD and bed provided
     if (registrationType === 'ipd' && assignedBed) {
@@ -778,6 +803,7 @@ exports.updatePatient = async (req, res, next) => {
       const updatePayload = {};
       if (req.body.assignedNurses !== undefined) updatePayload.assignedNurses = req.body.assignedNurses;
       if (req.body.primaryNurse !== undefined) updatePayload.primaryNurse = req.body.primaryNurse;
+      await enforcePatientAssignmentPolicy(req, updatePayload);
 
       const updatedPatient = await Patient.findByIdAndUpdate(
         req.params.id,
@@ -804,6 +830,7 @@ exports.updatePatient = async (req, res, next) => {
     };
     if (req.body.assignedNurses !== undefined) updatePayload.assignedNurses = req.body.assignedNurses;
     if (req.body.primaryNurse !== undefined) updatePayload.primaryNurse = req.body.primaryNurse;
+    await enforcePatientAssignmentPolicy(req, updatePayload);
 
     const updatedPatient = await Patient.findByIdAndUpdate(
       req.params.id,

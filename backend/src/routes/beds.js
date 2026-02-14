@@ -7,6 +7,15 @@ const validate = require('../middleware/validate');
 
 // Stats route (must be before :id route)
 router.get('/stats', authenticate, bedController.getBedStats);
+router.patch(
+  '/assign-nurse-floor',
+  authenticate,
+  authorize('hospital_admin', 'super_admin', 'doctor', 'head_nurse', 'nurse'),
+  body('ward').optional().isString().withMessage('Ward must be a valid text value'),
+  body('floor').isInt({ min: 0 }).withMessage('Floor must be a valid number'),
+  validate,
+  bedController.assignNurseByFloor
+);
 
 router.post('/', [
   authenticate,

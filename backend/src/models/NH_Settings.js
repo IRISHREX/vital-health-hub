@@ -189,7 +189,19 @@ const visualAccessSettingsSchema = new mongoose.Schema({
       canDelete: { type: Boolean, default: false },
       restrictedFeatures: [{
         type: String,
-        enum: ['view', 'create', 'edit', 'delete']
+        enum: [
+          'view',
+          'create',
+          'edit',
+          'delete',
+          'billing_opd',
+          'billing_ipd',
+          'billing_emergency',
+          'billing_lab',
+          'billing_radiology',
+          'billing_pharmacy',
+          'billing_other'
+        ]
       }]
     }]
   }],
@@ -198,6 +210,20 @@ const visualAccessSettingsSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   }],
+  assignmentPolicies: {
+    floor: {
+      assignerRoles: [{ type: String, trim: true, lowercase: true }],
+      assigneeRoles: [{ type: String, trim: true, lowercase: true }]
+    },
+    room: {
+      assignerRoles: [{ type: String, trim: true, lowercase: true }],
+      assigneeRoles: [{ type: String, trim: true, lowercase: true }]
+    },
+    patient: {
+      assignerRoles: [{ type: String, trim: true, lowercase: true }],
+      assigneeRoles: [{ type: String, trim: true, lowercase: true }]
+    }
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

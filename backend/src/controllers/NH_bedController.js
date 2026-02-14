@@ -1,6 +1,7 @@
 const { Bed, Patient, Admission, User } = require('../models');
 const { emitBedUpdate } = require('../config/socket');
 const { AppError } = require('../middleware/errorHandler');
+const { assertAssignmentAllowed } = require('../utils/assignmentPermissions');
 
 const isRoomAssignedToNurse = (nurse, bed) => {
   if (!nurse?.assignedRooms || nurse.assignedRooms.length === 0) return false;
@@ -206,6 +207,18 @@ exports.updateBed = async (req, res, next) => {
       }
     }
 
+    if (req.body.nurseInCharge) {
+      const targetNurse = await User.findById(req.body.nurseInCharge).select('role');
+      if (!targetNurse || !['nurse', 'head_nurse'].includes(targetNurse.role)) {
+        throw new AppError('Invalid nurseInCharge value', 400);
+      }
+      await assertAssignmentAllowed({
+        assignmentType: 'room',
+        assignerRole: req.user?.role,
+        assigneeRole: targetNurse.role
+      });
+    }
+
     const updatedBed = await Bed.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -248,6 +261,12 @@ exports.assignNurse = async (req, res, next) => {
         throw new AppError('Invalid nurseId', 400);
       }
 
+      await assertAssignmentAllowed({
+        assignmentType: 'room',
+        assignerRole: req.user?.role,
+        assigneeRole: nurse.role
+      });
+
       if (req.user.role === 'nurse' && nurseId.toString() !== req.user._id.toString()) {
         throw new AppError('Nurses can only assign themselves to beds', 403);
       }
@@ -275,6 +294,75 @@ exports.assignNurse = async (req, res, next) => {
       success: true,
       message: 'Nurse assigned to bed successfully',
       data: { bed }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Assign a nurse to all beds on a floor
+// @route   PATCH /api/beds/assign-nurse-floor
+// @access  Admin
+exports.assignNurseByFloor = async (req, res, next) => {
+  try {
+    const { nurseId, floor } = req.body;
+    const ward = req.body.ward ? String(req.body.ward).trim() : '';
+
+    if (floor === undefined || floor === null) {
+      throw new AppError('floor is required', 400);
+    }
+
+    let nurse = null;
+    if (nurseId) {
+      nurse = await User.findById(nurseId).select('role');
+      if (!nurse || !['nurse', 'head_nurse'].includes(nurse.role)) {
+        throw new AppError('Invalid nurseId', 400);
+      }
+    }
+
+    await assertAssignmentAllowed({
+      assignmentType: 'floor',
+      assignerRole: req.user?.role,
+      assigneeRole: nurse?.role
+    });
+
+    const floorQuery = {
+      floor: Number(floor),
+      isActive: true
+    };
+    if (ward) floorQuery.ward = ward;
+
+    const beds = await Bed.find(floorQuery);
+    if (!beds.length) {
+      throw new AppError('No beds found for selected floor', 404);
+    }
+
+    const nurseValue = nurseId || null;
+    await Bed.updateMany(floorQuery, { $set: { nurseInCharge: nurseValue } });
+
+    const updatedBeds = await Bed.find(floorQuery)
+      .populate('currentPatient', 'firstName lastName patientId')
+      .populate('nurseInCharge', 'firstName lastName email');
+
+    if (nurseValue) {
+      await Promise.all(
+        updatedBeds
+          .filter((bed) => !!bed.currentPatient)
+          .map((bed) => ensurePatientAssignedToNurse(bed.currentPatient._id || bed.currentPatient, nurseValue))
+      );
+    }
+
+    updatedBeds.forEach((bed) => emitBedUpdate(bed));
+
+    res.json({
+      success: true,
+      message: nurseValue ? 'Nurse assigned to floor successfully' : 'Floor nurse assignment cleared successfully',
+      data: {
+        ward: ward || null,
+        floor: Number(floor),
+        updatedCount: updatedBeds.length,
+        beds: updatedBeds
+      }
     });
   } catch (error) {
     next(error);

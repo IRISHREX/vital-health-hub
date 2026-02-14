@@ -1,6 +1,7 @@
 const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings } = require('../models/NH_Settings');
 const { AppError } = require('../middleware/errorHandler');
 const { User, Notification, AccessRequest } = require('../models');
+const { DEFAULT_ASSIGNMENT_POLICIES, normalizeAssignmentPolicies } = require('../utils/assignmentPermissions');
 
 // ============ HOSPITAL SETTINGS ============
 
@@ -330,7 +331,16 @@ exports.getVisualAccessSettings = async (req, res, next) => {
   try {
     let settings = await VisualAccessSettings.findOne();
     if (!settings) {
-      settings = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
+      settings = await VisualAccessSettings.create({
+        overrides: [],
+        permissionManagers: [],
+        assignmentPolicies: DEFAULT_ASSIGNMENT_POLICIES
+      });
+    }
+
+    if (!settings.assignmentPolicies) {
+      settings.assignmentPolicies = DEFAULT_ASSIGNMENT_POLICIES;
+      await settings.save();
     }
 
     res.json({
@@ -347,10 +357,14 @@ exports.getVisualAccessSettings = async (req, res, next) => {
 // @access  Private (Super Admin, Hospital Admin)
 exports.updateVisualAccessSettings = async (req, res, next) => {
   try {
-    const { overrides = [], permissionManagers = [] } = req.body;
+    const { overrides = [], permissionManagers = [], assignmentPolicies = DEFAULT_ASSIGNMENT_POLICIES } = req.body;
     let settings = await VisualAccessSettings.findOne();
     if (!settings) {
-      settings = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
+      settings = await VisualAccessSettings.create({
+        overrides: [],
+        permissionManagers: [],
+        assignmentPolicies: DEFAULT_ASSIGNMENT_POLICIES
+      });
     }
 
     const userEmail = String(req.user?.email || "").trim().toLowerCase();
@@ -376,12 +390,25 @@ exports.updateVisualAccessSettings = async (req, res, next) => {
             canDelete: !!mod.canDelete,
             restrictedFeatures: (Array.isArray(mod.restrictedFeatures) ? mod.restrictedFeatures : [])
               .map((feature) => String(feature || "").trim().toLowerCase())
-              .filter((feature) => ['view', 'create', 'edit', 'delete'].includes(feature))
+              .filter((feature) => [
+                'view',
+                'create',
+                'edit',
+                'delete',
+                'billing_opd',
+                'billing_ipd',
+                'billing_emergency',
+                'billing_lab',
+                'billing_radiology',
+                'billing_pharmacy',
+                'billing_other'
+              ].includes(feature))
           }))
       }));
 
     const nextPayload = {
       overrides: sanitizedOverrides,
+      assignmentPolicies: normalizeAssignmentPolicies(assignmentPolicies),
       updatedBy: req.user?._id
     };
 
@@ -530,7 +557,11 @@ exports.respondToAccessRequest = async (req, res, next) => {
     if (decision === 'approved') {
       let settings = await VisualAccessSettings.findOne();
       if (!settings) {
-        settings = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
+        settings = await VisualAccessSettings.create({
+          overrides: [],
+          permissionManagers: [],
+          assignmentPolicies: DEFAULT_ASSIGNMENT_POLICIES
+        });
       }
 
       const requesterEmail = String(request.requesterEmail || '').toLowerCase();
@@ -591,7 +622,11 @@ exports.getAllSettings = async (req, res, next) => {
     if (!security) security = await SecuritySettings.create({});
     if (!notifications) notifications = await NotificationSettings.create({});
     if (!preferences) preferences = await UserPreferences.create({ userId: req.user._id });
-    if (!visualAccess) visualAccess = await VisualAccessSettings.create({ overrides: [], permissionManagers: [] });
+    if (!visualAccess) visualAccess = await VisualAccessSettings.create({
+      overrides: [],
+      permissionManagers: [],
+      assignmentPolicies: DEFAULT_ASSIGNMENT_POLICIES
+    });
 
     res.json({
       success: true,
