@@ -103,7 +103,7 @@ const createInvoice = asyncHandler(async (req, res) => {
   }
 
   // Validate that type is one of the allowed values
-  const validTypes = ['opd', 'ipd', 'pharmacy', 'lab', 'other'];
+  const validTypes = ['opd', 'ipd', 'pharmacy', 'lab', 'radiology', 'other'];
   if (!validTypes.includes(type)) {
     res.status(400);
     throw new Error(`Invalid invoice type. Must be one of: ${validTypes.join(', ')}`);

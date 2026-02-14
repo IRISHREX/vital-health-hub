@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import OpdDashboard from './pages/OpdDashboard';
 import LabDashboard from './pages/LabDashboard';
+import RadiologyDashboard from './pages/RadiologyDashboard';
 import PharmacyDashboard from './pages/PharmacyDashboard';
 import PrescriptionPreview from "./pages/PrescriptionPreview";
 
@@ -91,6 +92,9 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="lab" />}>
                   <Route path="/lab" element={<LabDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="radiology" />}>
+                  <Route path="/radiology" element={<RadiologyDashboard />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/pharmacy" element={<PharmacyDashboard />} />
