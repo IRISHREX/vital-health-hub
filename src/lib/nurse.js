@@ -21,3 +21,7 @@ export const assignRoomToNurse = async ({ nurseId, ward, floor, roomNumber }) =>
 export const handoverPatient = async ({ patientId, toNurseId }) => {
   return await apiClient.post('/nurse/handover', { patientId, toNurseId });
 };
+
+export const respondToHandoverRequest = async (id, decision) => {
+  return await apiClient.post(`/nurse/handover/${id}/respond`, { decision });
+};

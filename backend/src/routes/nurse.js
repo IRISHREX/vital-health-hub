@@ -9,6 +9,7 @@ router.get('/patients/:id/prescriptions', authenticate, authorize('nurse', 'head
 router.get('/appointments', authenticate, authorize('nurse', 'head_nurse', 'hospital_admin', 'super_admin', 'doctor'), nurseController.getAssignedAppointments);
 router.post('/assign-room', authenticate, authorize('nurse', 'head_nurse', 'hospital_admin', 'super_admin', 'doctor'), nurseController.assignRoomToNurse);
 router.post('/handover', authenticate, authorize('nurse', 'head_nurse', 'hospital_admin', 'super_admin', 'doctor'), nurseController.handoverPatient);
+router.post('/handover/:id/respond', authenticate, authorize('nurse', 'head_nurse', 'hospital_admin', 'super_admin', 'doctor'), nurseController.respondToHandoverRequest);
 router.post('/patients/:id/status', authenticate, authorize('nurse', 'head_nurse', 'hospital_admin', 'super_admin'), nurseController.updatePatientStatus);
 
 module.exports = router;

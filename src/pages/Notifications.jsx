@@ -35,8 +35,10 @@ import {
   AlertCircle,
   Shield,
   FileText,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { respondToHandoverRequest } from "@/lib/nurse";
 
 // Icon mapping based on notification type
 const typeIcons = {
@@ -59,6 +61,8 @@ const typeIcons = {
   access_request: Shield,
   access_request_resolved: CheckCircle2,
   prescription_shared: FileText,
+  handover_request: ArrowRightLeft,
+  handover_response: ArrowRightLeft,
 };
 
 const priorityColors = {
@@ -255,6 +259,23 @@ export default function Notifications() {
     }
   };
 
+  const handleHandoverDecision = async (notification, decision) => {
+    try {
+      await respondToHandoverRequest(notification._id, decision);
+      await fetchData();
+      toast({
+        title: "Success",
+        description: decision === "accepted" ? "Handover accepted" : "Handover rejected",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to process handover request",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -360,7 +381,10 @@ export default function Notifications() {
                         notification.type === "prescription_shared" &&
                         notification.requiresAcknowledgement &&
                         !notification.acknowledgedBy;
-                      if (!isActionableAccessRequest && !isActionablePrescriptionShare && !notification.isRead) {
+                      const isActionableHandoverRequest =
+                        notification.type === "handover_request" &&
+                        (notification?.data?.status || "pending") === "pending";
+                      if (!isActionableAccessRequest && !isActionablePrescriptionShare && !isActionableHandoverRequest && !notification.isRead) {
                         handleMarkAsRead(notification._id);
                       }
                     }}
@@ -467,6 +491,37 @@ export default function Notifications() {
                             >
                               Open Preview
                             </Button>
+                          </div>
+                        )}
+                        {notification.type === "handover_request" && (notification?.data?.status || "pending") === "pending" && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHandoverDecision(notification, "accepted");
+                              }}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHandoverDecision(notification, "rejected");
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                        {notification.type === "handover_request" && (notification?.data?.status || "pending") !== "pending" && (
+                          <div className="mt-3">
+                            <Badge variant="secondary" className="capitalize">
+                              {notification?.data?.status || "processed"}
+                            </Badge>
                           </div>
                         )}
                       </div>

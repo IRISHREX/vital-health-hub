@@ -156,7 +156,7 @@ export default function NurseDashboard() {
     setHandoverLoading(prev => ({ ...prev, [patientId]: true }));
     try {
       await handoverPatient({ patientId, toNurseId });
-      toast.success('Patient handed over successfully');
+      toast.success('Handover request sent');
       setHandoverTarget(prev => ({ ...prev, [patientId]: '' }));
       refreshData();
     } catch (err) {

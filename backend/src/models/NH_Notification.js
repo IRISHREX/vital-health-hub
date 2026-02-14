@@ -15,6 +15,7 @@ const notificationSchema = new mongoose.Schema({
       'invoice_generated', 'payment_received', 'payment_overdue',
       'schedule_update', 'leave_approved',
       'access_request', 'access_request_resolved',
+      'handover_request', 'handover_response',
       'prescription_shared',
       'system', 'alert', 'info'
     ],

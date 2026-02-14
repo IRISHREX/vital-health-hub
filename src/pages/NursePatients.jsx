@@ -266,7 +266,7 @@ export default function NursePatients() {
                         }
                       }}
                     >
-                      {handoverLoading ? "Handing..." : "Handover"}
+                      {handoverLoading ? "Requesting..." : "Request Handover"}
                     </Button>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
-const { Patient, Appointment, User, Bed, Prescription } = require('../models');
+const { Patient, Appointment, User, Bed, Prescription, Notification } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
+const { emitNotification } = require('../config/socket');
 
 const canQueryOtherNurses = (role) => ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(role);
 
@@ -155,41 +156,145 @@ exports.handoverPatient = async (req, res, next) => {
     }
 
     const isPrivileged = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
-    const isAssigned = (patient.assignedNurses || []).some((id) => id.toString() === req.user._id.toString()) ||
-      (patient.primaryNurse && patient.primaryNurse.toString() === req.user._id.toString());
+    const isAssigned = await isPatientAssignedToNurse(patient, req.user._id);
 
     if (!isPrivileged && !isAssigned) {
       throw new AppError('You are not assigned to this patient', 403);
     }
 
-    const currentAssigned = (patient.assignedNurses || []).map((id) => id.toString());
-    let nextAssigned = currentAssigned.slice();
-
-    if (!isPrivileged) {
-      // If a nurse is handing over, remove themselves from assigned list
-      nextAssigned = nextAssigned.filter((id) => id !== req.user._id.toString());
+    const fromNurseId = req.user._id;
+    const existingPending = await Notification.findOne({
+      recipient: toNurseId,
+      type: 'handover_request',
+      'data.entityType': 'handover',
+      'data.patientId': patient._id,
+      'data.fromNurseId': fromNurseId,
+      'data.toNurseId': toNurseId,
+      'data.status': 'pending'
+    });
+    if (existingPending) {
+      throw new AppError('A pending handover request already exists for this patient and nurse', 400);
     }
 
-    if (!nextAssigned.includes(toNurseId.toString())) {
-      nextAssigned.push(toNurseId.toString());
-    }
-
-    const updates = { assignedNurses: nextAssigned };
-    if (!patient.primaryNurse || (!isPrivileged && patient.primaryNurse.toString() === req.user._id.toString())) {
-      updates.primaryNurse = toNurseId;
-    }
-
-    const updatedPatient = await Patient.findByIdAndUpdate(
-      patientId,
-      updates,
-      { new: true }
-    ).populate('assignedNurses', 'firstName lastName email')
-     .populate('primaryNurse', 'firstName lastName email');
+    const requesterName = `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || req.user?.email || 'A nurse';
+    const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Patient';
+    const requestNotification = await Notification.create({
+      recipient: toNurseId,
+      type: 'handover_request',
+      title: 'Patient Handover Request',
+      message: `${requesterName} requested handover for ${patientName}.`,
+      priority: 'high',
+      requiresAcknowledgement: false,
+      data: {
+        entityType: 'handover',
+        entityId: patient._id,
+        patientId: patient._id,
+        fromNurseId,
+        toNurseId,
+        requestedByRole: req.user.role,
+        status: 'pending',
+        link: '/notifications'
+      }
+    });
+    emitNotification(toNurseId, requestNotification);
 
     res.json({
       success: true,
-      message: 'Patient handed over successfully',
-      data: { patient: updatedPatient }
+      message: 'Handover request sent successfully',
+      data: { requestId: requestNotification._id }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Respond to handover request notification
+exports.respondToHandoverRequest = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const decision = String(req.body?.decision || '').toLowerCase();
+    if (!['accepted', 'rejected'].includes(decision)) {
+      throw new AppError('decision must be accepted or rejected', 400);
+    }
+
+    const notification = await Notification.findOne({ _id: id, recipient: req.user._id, type: 'handover_request' });
+    if (!notification) throw new AppError('Handover request not found', 404);
+    if (notification?.data?.status && notification.data.status !== 'pending') {
+      throw new AppError('This handover request has already been processed', 400);
+    }
+
+    const patientId = notification?.data?.patientId || notification?.data?.entityId;
+    const fromNurseId = notification?.data?.fromNurseId;
+    const toNurseId = notification?.data?.toNurseId;
+    if (!patientId || !fromNurseId || !toNurseId) {
+      throw new AppError('Invalid handover request data', 400);
+    }
+    if (String(toNurseId) !== String(req.user._id)) {
+      throw new AppError('You are not the target nurse for this request', 403);
+    }
+
+    const patient = await Patient.findById(patientId);
+    if (!patient) throw new AppError('Patient not found', 404);
+
+    if (decision === 'accepted') {
+      const requestedByRole = String(notification?.data?.requestedByRole || '').toLowerCase();
+      const isPrivilegedRequester = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(requestedByRole);
+      const currentAssigned = (patient.assignedNurses || []).map((pid) => String(pid));
+      let nextAssigned = currentAssigned.slice();
+
+      if (!isPrivilegedRequester) {
+        nextAssigned = nextAssigned.filter((pid) => pid !== String(fromNurseId));
+      }
+      if (!nextAssigned.includes(String(toNurseId))) {
+        nextAssigned.push(String(toNurseId));
+      }
+
+      const updates = { assignedNurses: nextAssigned };
+      if (!patient.primaryNurse || (!isPrivilegedRequester && String(patient.primaryNurse) === String(fromNurseId))) {
+        updates.primaryNurse = toNurseId;
+      }
+
+      await Patient.findByIdAndUpdate(patientId, updates, { new: true });
+    }
+
+    notification.data = {
+      ...(notification.data || {}),
+      status: decision,
+      respondedAt: new Date(),
+      respondedBy: req.user._id
+    };
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    const requester = await User.findById(fromNurseId).select('_id firstName lastName email');
+    if (requester?._id) {
+      const responderName = `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || req.user?.email || 'Nurse';
+      const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Patient';
+      const responseNotification = await Notification.create({
+        recipient: requester._id,
+        type: 'handover_response',
+        title: `Handover ${decision === 'accepted' ? 'Accepted' : 'Rejected'}`,
+        message: `${responderName} ${decision} handover request for ${patientName}.`,
+        priority: decision === 'accepted' ? 'medium' : 'high',
+        data: {
+          entityType: 'handover',
+          entityId: patient._id,
+          patientId: patient._id,
+          fromNurseId,
+          toNurseId,
+          requestId: notification._id,
+          status: decision,
+          link: '/nurse/patients'
+        }
+      });
+      emitNotification(requester._id, responseNotification);
+    }
+
+    res.json({
+      success: true,
+      message: decision === 'accepted' ? 'Handover accepted and applied' : 'Handover rejected',
+      data: { decision }
     });
   } catch (error) {
     next(error);
