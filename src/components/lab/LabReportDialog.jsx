@@ -1,17 +1,42 @@
 import { useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getHospitalSettings } from "@/lib/settings";
 import { Download, Printer } from "lucide-react";
+
+const defaultHospital = {
+  hospitalName: "Hospital",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
+};
 
 export default function LabReportDialog({ isOpen, onClose, test, tests = [] }) {
   const reportRef = useRef(null);
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
 
   const reportTests = useMemo(() => {
     if (Array.isArray(tests) && tests.length > 0) return tests;
     return test ? [test] : [];
   }, [test, tests]);
+
+  const hospitalSettings = useMemo(() => {
+    const raw = hospitalRes?.data || {};
+    return {
+      hospitalName: raw.hospitalName || defaultHospital.hospitalName,
+      address: raw.address || defaultHospital.address,
+      phone: raw.phone || defaultHospital.phone,
+      email: raw.email || defaultHospital.email,
+      website: raw.website || defaultHospital.website,
+    };
+  }, [hospitalRes?.data]);
 
   if (reportTests.length === 0) return null;
 
@@ -130,11 +155,16 @@ export default function LabReportDialog({ isOpen, onClose, test, tests = [] }) {
 
         <div ref={reportRef} className="space-y-4 p-4 border rounded-lg bg-card">
           <div className="text-center border-b-2 border-primary pb-4">
-            <h1 className="text-2xl font-bold text-primary">MediCare Hospital</h1>
+            <h1 className="text-2xl font-bold text-primary">{hospitalSettings.hospitalName}</h1>
             <p className="text-sm text-muted-foreground">
               {isCombined ? "Combined Laboratory Reports" : "Laboratory Report"}
             </p>
-            <p className="text-xs text-muted-foreground">123 Healthcare Avenue, Medical District</p>
+            {hospitalSettings.address && <p className="text-xs text-muted-foreground">{hospitalSettings.address}</p>}
+            {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
+              <p className="text-xs text-muted-foreground">
+                {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}
+              </p>
+            )}
           </div>
 
           <div className="text-sm">

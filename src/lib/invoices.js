@@ -13,25 +13,25 @@ export const getInvoices = async (filters = {}) => {
 
 export const getInvoiceById = async (id) => {
     const response = await apiClient.get(`/invoices/${id}`);
-    return response.data;
+    return response;
 };
 
 export const createInvoice = async (invoiceData) => {
     const response = await apiClient.post('/invoices', invoiceData);
-    return response.data;
+    return response;
 };
 
 export const updateInvoice = async (id, invoiceData) => {
     const response = await apiClient.put(`/invoices/${id}`, invoiceData);
-    return response.data;
+    return response;
 };
 
 export const deleteInvoice = async (id) => {
     const response = await apiClient.delete(`/invoices/${id}`);
-    return response.data;
+    return response;
 };
 
 export const addPayment = async (invoiceId, paymentData) => {
     const response = await apiClient.post(`/invoices/${invoiceId}/payments`, paymentData);
-    return response.data;
+    return response;
 };

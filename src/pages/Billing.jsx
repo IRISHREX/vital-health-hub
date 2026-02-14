@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { addPayment, createInvoice, getInvoices } from "@/lib/invoices";
+import { getHospitalSettings } from "@/lib/settings";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
@@ -65,6 +66,14 @@ const billingOptionConfig = {
   radiology: { label: "Radiology Billing" },
   pharmacy: { label: "Pharmacy Billing" },
   other: { label: "Other Billing" }
+};
+
+const defaultHospital = {
+  hospitalName: "Hospital",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
 };
 
 const getPatientName = (invoiceOrPatient) => {
@@ -173,22 +182,23 @@ const getGeneratedByLabel = (invoice) => {
   return full || "System";
 };
 
-const addPdfHeaderFooter = (doc, pageNumber, title = "Hospital Invoice") => {
+const addPdfHeaderFooter = (doc, pageNumber, title = "Hospital Invoice", hospitalSettings = defaultHospital) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFontSize(14);
-  doc.text("MediCare Hospital", 14, 14);
+  doc.text(String(hospitalSettings.hospitalName || defaultHospital.hospitalName), 14, 14);
   doc.setFontSize(9);
   doc.text(title, 14, 20);
   doc.setFontSize(8);
   doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 14, 14, { align: "right" });
   doc.text(`Page ${pageNumber}`, pageWidth - 14, pageHeight - 8, { align: "right" });
-  doc.text("Confidential Hospital Billing Document", 14, pageHeight - 8);
+  const contactLine = `Contact: ${hospitalSettings.phone || "-"}${hospitalSettings.email ? ` | ${hospitalSettings.email}` : ""}${hospitalSettings.website ? ` | ${hospitalSettings.website}` : ""}`;
+  doc.text(contactLine, 14, pageHeight - 8);
 };
 
-const downloadInvoicePdf = (invoice) => {
+const downloadInvoicePdf = (invoice, hospitalSettings = defaultHospital) => {
   const doc = new jsPDF();
-  addPdfHeaderFooter(doc, 1, "Invoice");
+  addPdfHeaderFooter(doc, 1, "Invoice", hospitalSettings);
 
   const patientName = getPatientName(invoice);
   const patientId = invoice?.patient?.patientId || "-";
@@ -228,13 +238,13 @@ const downloadInvoicePdf = (invoice) => {
   doc.save(`${invoice?.invoiceNumber || "invoice"}.pdf`);
 };
 
-const downloadInvoicesPdfBundle = (patientName, invoices, titleSuffix = "All Invoices") => {
+const downloadInvoicesPdfBundle = (patientName, invoices, titleSuffix = "All Invoices", hospitalSettings = defaultHospital) => {
   if (!invoices?.length) return;
   const doc = new jsPDF();
   const safeName = String(patientName || "patient").replace(/[^a-z0-9_-]+/gi, "_");
 
   let pageNumber = 1;
-  addPdfHeaderFooter(doc, pageNumber, titleSuffix);
+  addPdfHeaderFooter(doc, pageNumber, titleSuffix, hospitalSettings);
   doc.setFontSize(12);
   doc.text(`Patient: ${patientName}`, 14, 30);
   doc.text(`Total Invoices: ${invoices.length}`, 14, 36);
@@ -245,7 +255,7 @@ const downloadInvoicesPdfBundle = (patientName, invoices, titleSuffix = "All Inv
     if (needsNewPage) {
       doc.addPage();
       pageNumber += 1;
-      addPdfHeaderFooter(doc, pageNumber, titleSuffix);
+      addPdfHeaderFooter(doc, pageNumber, titleSuffix, hospitalSettings);
       cursorY = 28;
     }
 
@@ -310,7 +320,7 @@ const aggregateStatus = (invoices) => {
   return "pending";
 };
 
-const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canPay }) => {
+const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canPay, hospitalSettings }) => {
   if (!rows.length) {
     return (
       <Table>
@@ -371,7 +381,7 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
                   <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(row.patientName, row.invoices)}>
                     <Download className="mr-2 h-3 w-3" />CSV
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(row.patientName, row.invoices, "All Invoices")}>
+                  <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(row.patientName, row.invoices, "All Invoices", hospitalSettings)}>
                     <Download className="mr-2 h-3 w-3" />PDF
                   </Button>
                 </div>
@@ -431,8 +441,13 @@ export default function Billing() {
     queryKey: ["invoices", "patient-centric"],
     queryFn: () => getInvoices()
   });
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings()
+  });
 
   const invoices = Array.isArray(invoicesRes) ? invoicesRes : [];
+  const hospitalSettings = hospitalRes?.data || defaultHospital;
 
   const allowedBillingOptions = useMemo(() => {
     return Object.keys(billingOptionConfig).filter((option) =>
@@ -825,6 +840,7 @@ export default function Billing() {
               onOpenBulkPay={(row) => openPayment({ mode: "bulk", row })}
               canEdit={permissions.canEdit}
               canPay={permissions.canCreate || permissions.canEdit}
+              hospitalSettings={hospitalSettings}
             />
           </CardContent></Card>
         )}
@@ -859,7 +875,7 @@ export default function Billing() {
 
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => selectedPatientRow && downloadPatientInvoices(selectedPatientRow.patientName, selectedPatientRow.invoices)}><Download className="mr-2 h-4 w-4" />Download All CSV</Button>
-            <Button variant="outline" onClick={() => selectedPatientRow && downloadInvoicesPdfBundle(selectedPatientRow.patientName, selectedPatientRow.invoices, "All Invoices")}><Download className="mr-2 h-4 w-4" />Download All PDF</Button>
+            <Button variant="outline" onClick={() => selectedPatientRow && downloadInvoicesPdfBundle(selectedPatientRow.patientName, selectedPatientRow.invoices, "All Invoices", hospitalSettings)}><Download className="mr-2 h-4 w-4" />Download All PDF</Button>
             {(permissions.canCreate || permissions.canEdit) && Number(selectedPatientRow?.due || 0) > 0 && <Button variant="outline" onClick={() => openPayment({ mode: "bulk", row: selectedPatientRow })}>Pay All Dues</Button>}
             {permissions.canCreate && (
               <RestrictedAction module="billing" feature="create">
@@ -877,7 +893,7 @@ export default function Billing() {
                     <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(`${selectedPatientRow?.patientName || "patient"}_${type}`, typeInvoices)}>
                       <Download className="mr-1 h-3 w-3" />{type} CSV
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(selectedPatientRow?.patientName || "patient", typeInvoices, `${type} Invoices`)}>
+                    <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(selectedPatientRow?.patientName || "patient", typeInvoices, `${type} Invoices`, hospitalSettings)}>
                       <Download className="mr-1 h-3 w-3" />{type} PDF
                     </Button>
                   </div>
@@ -911,7 +927,7 @@ export default function Billing() {
                           <TableCell>
                             <div className="flex gap-1">
                               <Button variant="ghost" size="sm" onClick={() => downloadSingleInvoice(inv)}><Download className="mr-1 h-3 w-3" />CSV</Button>
-                              <Button variant="ghost" size="sm" onClick={() => downloadInvoicePdf(inv)}><Download className="mr-1 h-3 w-3" />PDF</Button>
+                              <Button variant="ghost" size="sm" onClick={() => downloadInvoicePdf(inv, hospitalSettings)}><Download className="mr-1 h-3 w-3" />PDF</Button>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">

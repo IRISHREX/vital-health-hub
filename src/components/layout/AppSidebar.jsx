@@ -1,4 +1,5 @@
 import { useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { NavLink } from "@/components/NavLink";
 import {
   LayoutDashboard,
@@ -33,6 +34,7 @@ import {
 import { useAuth } from "@/lib/AuthContext";
 import { getRoleLabel } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
+import { getHospitalSettings } from "@/lib/settings";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
@@ -67,6 +69,11 @@ export function AppSidebar() {
   const { user } = useAuth();
   const { canView } = useVisualAuth();
   const isCollapsed = state === "collapsed";
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
+  const hospitalName = hospitalRes?.data?.hospitalName || "Hospital";
 
   const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
@@ -86,7 +93,7 @@ export function AppSidebar() {
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="text-lg font-bold text-sidebar-foreground">
-                MediCare
+                {hospitalName}
               </span>
               <span className="text-xs text-sidebar-foreground/60">
                 Hospital Management

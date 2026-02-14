@@ -9,8 +9,8 @@ router.use(authenticate);
 // Get all settings (for initial load)
 router.get('/', authorize('super_admin', 'hospital_admin'), settingsController.getAllSettings);
 
-// Hospital settings
-router.get('/hospital', authorize('super_admin', 'hospital_admin'), settingsController.getHospitalSettings);
+// Hospital settings (GET is open to all authenticated users for display in reports/prints)
+router.get('/hospital', settingsController.getHospitalSettings);
 router.put('/hospital', authorize('super_admin', 'hospital_admin'), settingsController.updateHospitalSettings);
 
 // Security settings

@@ -112,6 +112,10 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       if (!user) {
         throw new Error("You must be logged in to create an invoice.");
       }
+      const generatedBy = user._id || user.id;
+      if (!generatedBy) {
+        throw new Error("Unable to resolve current user id.");
+      }
       const dueAmount = values.totalAmount - values.paidAmount;
       const invoiceData = {
         patient: values.patient,
@@ -129,7 +133,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         dueDate: values.dueDate,
         status: values.status,
         notes: values.notes || "",
-        generatedBy: user.id
+        generatedBy
       };
       return createInvoice(invoiceData);
     },

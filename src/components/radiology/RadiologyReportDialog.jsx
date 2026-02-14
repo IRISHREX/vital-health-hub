@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createReport, verifyReport } from "@/lib/radiology";
+import { getHospitalSettings } from "@/lib/settings";
 import { jsPDF } from "jspdf";
 import { Download, Loader2, CheckCircle2, FileText } from "lucide-react";
 
@@ -15,12 +17,24 @@ const studyTypeLabels = {
   dexa: "DEXA", angiography: "Angiography", other: "Other"
 };
 
+const defaultHospital = {
+  hospitalName: "Hospital",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
+};
+
 export default function RadiologyReportDialog({ isOpen, onClose, order, permissions }) {
   const [findings, setFindings] = useState("");
   const [impression, setImpression] = useState("");
   const [recommendation, setRecommendation] = useState("");
   const [reportNotes, setReportNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
 
   useEffect(() => {
     if (order) {
@@ -35,6 +49,7 @@ export default function RadiologyReportDialog({ isOpen, onClose, order, permissi
 
   const patient = order.patient || {};
   const patientName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim() || "Unknown";
+  const hospitalSettings = hospitalRes?.data || defaultHospital;
   const isReported = ["reported", "verified", "delivered"].includes(order.status);
   const canEdit = ["completed", "reported"].includes(order.status) && (permissions?.canEdit || permissions?.canCreate);
 
@@ -70,7 +85,7 @@ export default function RadiologyReportDialog({ isOpen, onClose, order, permissi
     const pw = doc.internal.pageSize.getWidth();
 
     doc.setFontSize(16);
-    doc.text("MediCare Hospital", 14, 14);
+    doc.text(hospitalSettings.hospitalName || defaultHospital.hospitalName, 14, 14);
     doc.setFontSize(10);
     doc.text("Radiology Report", 14, 21);
     doc.setFontSize(8);
@@ -129,7 +144,7 @@ export default function RadiologyReportDialog({ isOpen, onClose, order, permissi
     const content = `
 RADIOLOGY REPORT
 ================
-MediCare Hospital
+${hospitalSettings.hospitalName || defaultHospital.hospitalName}
 
 Order ID: ${order.orderId || "-"}
 Patient: ${patientName}
