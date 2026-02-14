@@ -19,6 +19,7 @@ const Medicine = require('./NH_Medicine');
 const Prescription = require('./NH_Prescription');
 const StockAdjustment = require('./NH_StockAdjustment');
 const AccessRequest = require('./NH_AccessRequest');
+const RadiologyOrder = require('./NH_RadiologyOrder');
 
 module.exports = {
   User,
@@ -45,5 +46,6 @@ module.exports = {
   Medicine,
   Prescription,
   StockAdjustment,
-  AccessRequest
+  AccessRequest,
+  RadiologyOrder
 };

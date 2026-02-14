@@ -49,7 +49,7 @@ const invoiceSchema = z.object({
   dueDate: z.date({
     required_error: "A due date is required.",
   }),
-  invoiceType: z.enum(["opd", "ipd"]),
+  invoiceType: z.enum(["opd", "ipd", "lab", "radiology", "pharmacy", "other"]),
   status: z.enum(["draft", "pending", "partial", "paid", "overdue", "cancelled"]),
   notes: z.string().optional(),
 });
@@ -250,6 +250,10 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
                     <SelectContent>
                       <SelectItem value="opd">OPD (Outpatient)</SelectItem>
                       <SelectItem value="ipd">IPD (Inpatient)</SelectItem>
+                      <SelectItem value="lab">Lab</SelectItem>
+                      <SelectItem value="radiology">Radiology</SelectItem>
+                      <SelectItem value="pharmacy">Pharmacy</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
