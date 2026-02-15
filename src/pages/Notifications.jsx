@@ -10,10 +10,13 @@ import {
   getNotifications,
   getNotificationStats,
   markAsRead,
+  acknowledgeNotification,
   markAllAsRead,
   deleteNotification,
   clearReadNotifications,
 } from "@/lib/notifications";
+import { respondToAccessRequest } from "@/lib/settings";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Bell,
   Bed,
@@ -30,7 +33,12 @@ import {
   CreditCard,
   Info,
   AlertCircle,
+  Shield,
+  FileText,
+  ArrowRightLeft,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { respondToHandoverRequest } from "@/lib/nurse";
 
 // Icon mapping based on notification type
 const typeIcons = {
@@ -50,6 +58,11 @@ const typeIcons = {
   system: Info,
   alert: AlertCircle,
   info: Info,
+  access_request: Shield,
+  access_request_resolved: CheckCircle2,
+  prescription_shared: FileText,
+  handover_request: ArrowRightLeft,
+  handover_response: ArrowRightLeft,
 };
 
 const priorityColors = {
@@ -67,6 +80,8 @@ const priorityBadgeVariants = {
 };
 
 export default function Notifications() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [stats, setStats] = useState({
     unreadCount: 0,
@@ -179,6 +194,33 @@ export default function Notifications() {
     }
   };
 
+  const handleAccessDecision = async (notification, decision) => {
+    try {
+      const requestId = notification?.data?.entityId;
+      if (!requestId) {
+        toast({
+          title: "Error",
+          description: "Request ID not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await respondToAccessRequest(requestId, { decision });
+      await handleMarkAsRead(notification._id);
+      toast({
+        title: "Success",
+        description: `Request ${decision}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || `Failed to ${decision} request`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleClearRead = async () => {
     try {
       await clearReadNotifications();
@@ -191,6 +233,44 @@ export default function Notifications() {
       toast({
         title: "Error",
         description: "Failed to clear read notifications",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAcknowledge = async (notification) => {
+    try {
+      await acknowledgeNotification(notification._id);
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notification._id
+            ? { ...n, isRead: true, acknowledgedAt: new Date().toISOString(), acknowledgedBy: user?._id }
+            : n
+        )
+      );
+      setStats((prev) => ({ ...prev, unreadCount: Math.max(0, (prev.unreadCount || 0) - 1) }));
+      toast({ title: "Acknowledged", description: "You can now forward this prescription if needed." });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to acknowledge notification",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleHandoverDecision = async (notification, decision) => {
+    try {
+      await respondToHandoverRequest(notification._id, decision);
+      await fetchData();
+      toast({
+        title: "Success",
+        description: decision === "accepted" ? "Handover accepted" : "Handover rejected",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to process handover request",
         variant: "destructive",
       });
     }
@@ -245,7 +325,7 @@ export default function Notifications() {
             Stay updated with hospital alerts and reminders
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -294,9 +374,20 @@ export default function Notifications() {
                     className={`transition-all hover:shadow-md cursor-pointer ${
                       !notification.isRead ? "border-l-4 border-l-primary" : ""
                     }`}
-                    onClick={() =>
-                      !notification.isRead && handleMarkAsRead(notification._id)
-                    }
+                    onClick={() => {
+                      const isActionableAccessRequest =
+                        user?.role === "super_admin" && notification.type === "access_request";
+                      const isActionablePrescriptionShare =
+                        notification.type === "prescription_shared" &&
+                        notification.requiresAcknowledgement &&
+                        !notification.acknowledgedBy;
+                      const isActionableHandoverRequest =
+                        notification.type === "handover_request" &&
+                        (notification?.data?.status || "pending") === "pending";
+                      if (!isActionableAccessRequest && !isActionablePrescriptionShare && !isActionableHandoverRequest && !notification.isRead) {
+                        handleMarkAsRead(notification._id);
+                      }
+                    }}
                   >
                     <CardContent className="flex items-start gap-4 p-4">
                       <div
@@ -350,6 +441,89 @@ export default function Notifications() {
                             {formatTimeAgo(notification.createdAt)}
                           </span>
                         </div>
+                        {user?.role === "super_admin" && notification.type === "access_request" && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAccessDecision(notification, "approved");
+                              }}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAccessDecision(notification, "rejected");
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                        {notification.type === "prescription_shared" && (
+                          <div className="mt-3 flex items-center gap-2">
+                            {notification.requiresAcknowledgement && !notification.acknowledgedBy ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAcknowledge(notification);
+                                }}
+                              >
+                                Acknowledge
+                              </Button>
+                            ) : (
+                              <Badge variant="secondary">Acknowledged</Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const link = notification?.data?.link;
+                                if (link) navigate(link);
+                              }}
+                            >
+                              Open Preview
+                            </Button>
+                          </div>
+                        )}
+                        {notification.type === "handover_request" && (notification?.data?.status || "pending") === "pending" && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHandoverDecision(notification, "accepted");
+                              }}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleHandoverDecision(notification, "rejected");
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                        {notification.type === "handover_request" && (notification?.data?.status || "pending") !== "pending" && (
+                          <div className="mt-3">
+                            <Badge variant="secondary" className="capitalize">
+                              {notification?.data?.status || "processed"}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

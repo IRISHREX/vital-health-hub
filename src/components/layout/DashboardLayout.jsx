@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { Header } from "./Header";
@@ -6,8 +6,6 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { checkHealth } from "@/lib/health";
 
 export function DashboardLayout() {
-  const [sidebarOpen, setSidebarOpen] =useState(true);
-
   useEffect(() => {
     const performHealthCheck = async () => {
       try {
@@ -27,7 +25,7 @@ export function DashboardLayout() {
         <AppSidebar />
         <div className="flex flex-1 flex-col">
           <Header />
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
             <Outlet />
           </main>
         </div>

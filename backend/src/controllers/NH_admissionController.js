@@ -1,31 +1,6 @@
-const { Admission, Bed, Patient, Invoice, BillingLedger } = require('../models');
+const { Admission, Bed, Patient, Invoice } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { emitBedUpdate, emitNotification } = require('../config/socket');
-
-const attachLedgerEntriesToInvoice = async (invoice, admissionId) => {
-  const ledgerEntries = await BillingLedger.find({ admission: admissionId, billed: false });
-  if (!ledgerEntries.length || !invoice) return 0;
-
-  ledgerEntries.forEach((entry) => {
-    invoice.items.push({
-      description: entry.description,
-      category: entry.category,
-      quantity: entry.quantity,
-      unitPrice: entry.unitPrice,
-      discount: 0,
-      tax: 0,
-      amount: entry.amount
-    });
-  });
-
-  const entryIds = ledgerEntries.map((entry) => entry._id);
-  await BillingLedger.updateMany(
-    { _id: { $in: entryIds } },
-    { billed: true, billedAt: new Date(), invoice: invoice._id }
-  );
-
-  return ledgerEntries.length;
-};
 
 /**
  * PATIENT ADMISSION FLOW
@@ -127,7 +102,8 @@ exports.createAdmission = async (req, res, next) => {
     // Update patient's assigned bed and admission
     const patientUpdateData = { 
       currentAdmission: admission._id,
-      admissionStatus: 'ADMITTED'
+      admissionStatus: 'ADMITTED',
+      status: 'admitted'
     };
     if (bedId) {
       patientUpdateData.assignedBed = bedId;
@@ -253,10 +229,22 @@ exports.transferPatient = async (req, res, next) => {
       throw new AppError('Can only transfer patients with ADMITTED status', 400);
     }
 
-    // Get old bed
-    const oldBed = await Bed.findById(admission.bed);
+    // Resolve old/current bed:
+    // 1) admission.bed
+    // 2) patient's assignedBed (legacy/inconsistent records)
+    // 3) bed that references this admission as currentAdmission
+    let oldBed = null;
+    if (admission.bed) {
+      oldBed = await Bed.findById(admission.bed);
+    }
     if (!oldBed) {
-      throw new AppError('Current bed not found', 404);
+      const patientDoc = await Patient.findById(admission.patient).select('assignedBed');
+      if (patientDoc?.assignedBed) {
+        oldBed = await Bed.findById(patientDoc.assignedBed);
+      }
+    }
+    if (!oldBed) {
+      oldBed = await Bed.findOne({ currentAdmission: admissionId });
     }
 
     // Get new bed
@@ -269,33 +257,42 @@ exports.transferPatient = async (req, res, next) => {
       throw new AppError(`New bed is not available. Status: ${newBed.status}`, 400);
     }
 
-    if (newBedId === admission.bed.toString()) {
+    if (oldBed && newBedId === oldBed._id.toString()) {
       throw new AppError('Patient is already in this bed', 400);
     }
 
     const transferDate = new Date();
 
-    // Create bed utilization record for old bed (end the allocation)
-    const oldBedUtilization = {
-      bed: oldBed._id,
-      admission: admissionId,
-      allocatedFrom: admission.bedAllocations?.[admission.bedAllocations.length - 1]?.allocatedFrom || admission.admissionDate,
-      allocatedTo: transferDate,
-      pricePerDay: oldBed.pricePerDay,
-      status: 'RELEASED'
-    };
+    let oldBedCharges = 0;
+    let oldBedDays = 0;
 
-    // Calculate old bed charges
-    const oldBedStartDate = oldBedUtilization.allocatedFrom;
-    const oldBedEndDate = oldBedUtilization.allocatedTo;
-    const oldBedDays = Math.ceil((oldBedEndDate - oldBedStartDate) / (1000 * 60 * 60 * 24));
-    const oldBedCharges = oldBedDays * oldBed.pricePerDay;
+    // Create bed utilization record for old bed (end allocation) when old bed exists
+    if (oldBed) {
+      const oldBedUtilization = {
+        bed: oldBed._id,
+        admission: admissionId,
+        allocatedFrom: admission.bedAllocations?.[admission.bedAllocations.length - 1]?.allocatedFrom || admission.admissionDate,
+        allocatedTo: transferDate,
+        pricePerDay: oldBed.pricePerDay,
+        status: 'RELEASED'
+      };
 
-    // Update old bed
-    oldBed.status = 'available';
-    oldBed.currentPatient = null;
-    oldBed.currentAdmission = null;
-    await oldBed.save();
+      const oldBedStartDate = oldBedUtilization.allocatedFrom;
+      const oldBedEndDate = oldBedUtilization.allocatedTo;
+      oldBedDays = Math.ceil((oldBedEndDate - oldBedStartDate) / (1000 * 60 * 60 * 24));
+      oldBedCharges = oldBedDays * oldBed.pricePerDay;
+
+      // Update old bed
+      oldBed.status = 'available';
+      oldBed.currentPatient = null;
+      oldBed.currentAdmission = null;
+      await oldBed.save();
+
+      if (!admission.bedAllocations) {
+        admission.bedAllocations = [];
+      }
+      admission.bedAllocations.push(oldBedUtilization);
+    }
 
     // Update new bed
     newBed.status = 'occupied';
@@ -304,20 +301,13 @@ exports.transferPatient = async (req, res, next) => {
     newBed.lastOccupied = new Date();
     await newBed.save();
 
-    // Add bed allocation record to admission
-    if (!admission.bedAllocations) {
-      admission.bedAllocations = [];
-    }
-
-    admission.bedAllocations.push(oldBedUtilization);
-
     // Update current bed reference
     admission.bed = newBedId;
     admission.transferHistory = admission.transferHistory || [];
     admission.transferHistory.push({
-      fromBed: oldBed._id,
+      fromBed: oldBed?._id || null,
       toBed: newBed._id,
-      fromWard: oldBed.ward,
+      fromWard: oldBed?.ward || '',
       toWard: newBed.ward,
       transferDate,
       transferReason,
@@ -334,26 +324,28 @@ exports.transferPatient = async (req, res, next) => {
 
     if (invoice) {
       // Find and update bed charge item for old bed
-      const oldBedItemIndex = invoice.items.findIndex(
-        item => item.description.includes(oldBed.bedNumber)
-      );
+      if (oldBed) {
+        const oldBedItemIndex = invoice.items.findIndex(
+          item => item.description.includes(oldBed.bedNumber)
+        );
 
-      if (oldBedItemIndex !== -1) {
-        invoice.items[oldBedItemIndex].amount = oldBedCharges;
-        invoice.items[oldBedItemIndex].quantity = oldBedDays;
-        invoice.items[oldBedItemIndex].description = 
-          `Bed charges - ${oldBed.bedType} (${oldBed.bedNumber}) - ${oldBedDays} days`;
-      } else {
-        // Add if not found
-        invoice.items.push({
-          description: `Bed charges - ${oldBed.bedType} (${oldBed.bedNumber}) - ${oldBedDays} days`,
-          category: 'bed_charges',
-          quantity: oldBedDays,
-          unitPrice: oldBed.pricePerDay,
-          discount: 0,
-          tax: 0,
-          amount: oldBedCharges
-        });
+        if (oldBedItemIndex !== -1) {
+          invoice.items[oldBedItemIndex].amount = oldBedCharges;
+          invoice.items[oldBedItemIndex].quantity = oldBedDays;
+          invoice.items[oldBedItemIndex].description =
+            `Bed charges - ${oldBed.bedType} (${oldBed.bedNumber}) - ${oldBedDays} days`;
+        } else {
+          // Add if not found
+          invoice.items.push({
+            description: `Bed charges - ${oldBed.bedType} (${oldBed.bedNumber}) - ${oldBedDays} days`,
+            category: 'bed_charges',
+            quantity: oldBedDays,
+            unitPrice: oldBed.pricePerDay,
+            discount: 0,
+            tax: 0,
+            amount: oldBedCharges
+          });
+        }
       }
 
       // Add new bed charge item
@@ -392,15 +384,17 @@ exports.transferPatient = async (req, res, next) => {
       });
 
     // Emit notifications
-    emitBedUpdate(oldBed);
+    if (oldBed) emitBedUpdate(oldBed);
     emitBedUpdate(newBed);
 
     const patient = await Patient.findById(admission.patient);
     emitNotification({
       type: 'transfer',
       title: 'Patient Transferred',
-      message: `${patient.firstName} ${patient.lastName} transferred from bed ${oldBed.bedNumber} to ${newBed.bedNumber}`,
-      data: { admissionId, oldBedId: oldBed._id, newBedId }
+      message: oldBed
+        ? `${patient.firstName} ${patient.lastName} transferred from bed ${oldBed.bedNumber} to ${newBed.bedNumber}`
+        : `${patient.firstName} ${patient.lastName} assigned to bed ${newBed.bedNumber}`,
+      data: { admissionId, oldBedId: oldBed?._id || null, newBedId }
     });
 
     res.json({
@@ -446,16 +440,6 @@ exports.dischargePatient = async (req, res, next) => {
 
     const dischargeDate = new Date();
 
-    // If nurse/head nurse, ensure they are assigned to the patient
-    if (['nurse', 'head_nurse'].includes(req.user.role)) {
-      const patient = await Patient.findById(admission.patient).select('assignedNurses primaryNurse');
-      const assigned = (patient?.assignedNurses || []).some((id) => id.toString() === req.user._id.toString()) ||
-        (patient?.primaryNurse && patient.primaryNurse.toString() === req.user._id.toString());
-      if (!assigned) {
-        throw new AppError('You are not assigned to this patient', 403);
-      }
-    }
-
     // Get current bed
     const currentBed = await Bed.findById(admission.bed);
     if (!currentBed) {
@@ -490,11 +474,8 @@ exports.dischargePatient = async (req, res, next) => {
     // Update admission status
     admission.status = 'DISCHARGED';
     admission.actualDischargeDate = dischargeDate;
-    if (dischargingDoctorId) {
-      admission.dischargingDoctor = dischargingDoctorId;
-    }
+    admission.dischargingDoctor = dischargingDoctorId;
     admission.dischargeNotes = notes;
-    admission.dischargedBy = req.user._id;
 
     await admission.save();
 
@@ -511,7 +492,8 @@ exports.dischargePatient = async (req, res, next) => {
       {
         assignedBed: null,
         currentAdmission: null,
-        admissionStatus: 'DISCHARGED'
+        admissionStatus: 'DISCHARGED',
+        status: 'discharged'
       },
       { new: true }
     );
@@ -547,8 +529,6 @@ exports.dischargePatient = async (req, res, next) => {
           amount: finalBedCharges
         });
       }
-
-      await attachLedgerEntriesToInvoice(invoice, admissionId);
 
       // Recalculate totals
       invoice.subtotal = invoice.items.reduce((sum, item) => sum + item.amount, 0);

@@ -1,9 +1,11 @@
 import { useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { NavLink } from "@/components/NavLink";
 import {
   LayoutDashboard,
   Bed,
   Users,
+  ClipboardList,
   Stethoscope,
   Calendar,
   Building2,
@@ -12,6 +14,10 @@ import {
   Bell,
   Settings,
   Hospital,
+  FlaskConical,
+  Pill,
+  ScanLine,
+  Scissors,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,7 +33,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/AuthContext";
-import { canAccessModule, getRoleLabel } from "@/lib/rbac";
+import { getRoleLabel } from "@/lib/rbac";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import { getHospitalSettings } from "@/lib/settings";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
@@ -35,12 +43,18 @@ const mainNavItems = [
   { title: "Admissions", url: "/admissions", icon: Hospital, module: "admissions" },
   { title: "Patients", url: "/patients", icon: Users, module: "patients" },
   { title: "Doctors", url: "/doctors", icon: Stethoscope, module: "doctors" },
+  { title: "Nurses", url: "/nurses", icon: Users, module: "nurses" },
   { title: "Appointments", url: "/appointments", icon: Calendar, module: "appointments" },
-  { title: "Nurse", url: "/nurse", icon: Users, module: "patients" },
-  { title: "OPD", url: "/opd", icon: Users, module: "dashboard" },
+  { title: "Tasks", url: "/tasks", icon: ClipboardList, module: "tasks" },
+  { title: "Nurse", url: "/nurse", icon: Users, module: "nurses" },
+  { title: "OPD", url: "/opd", icon: Users, module: "patients" },
 ];
 
 const managementItems = [
+  { title: "Operating Theatre", url: "/ot", icon: Scissors, module: "ot" },
+  { title: "Pathology Lab", url: "/lab", icon: FlaskConical, module: "lab" },
+  { title: "Radiology", url: "/radiology", icon: ScanLine, module: "radiology" },
+  { title: "Pharmacy", url: "/pharmacy", icon: Pill, module: "pharmacy" },
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
@@ -55,7 +69,13 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const { user } = useAuth();
+  const { canView } = useVisualAuth();
   const isCollapsed = state === "collapsed";
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
+  const hospitalName = hospitalRes?.data?.hospitalName || "Hospital";
 
   const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
@@ -63,7 +83,7 @@ export function AppSidebar() {
   };
 
   const filterByRole = (items) => 
-    items.filter(item => canAccessModule(user?.role, item.module));
+    items.filter(item => canView(item.module));
 
   return (
     <Sidebar className="border-r-0 bg-gradient-sidebar">
@@ -75,7 +95,7 @@ export function AppSidebar() {
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="text-lg font-bold text-sidebar-foreground">
-                MediCare
+                {hospitalName}
               </span>
               <span className="text-xs text-sidebar-foreground/60">
                 Hospital Management

@@ -23,6 +23,22 @@ import { getNurses } from '@/lib/users';
 import { getPatients } from '@/lib/patients';
 import { useToast } from '@/hooks/use-toast';
 
+const TASK_TYPE_TO_API = {
+  vitals: 'vitals',
+  medication: 'medication',
+  procedure: 'procedure',
+  documentation: 'custom',
+  discharge: 'custom',
+  other: 'general',
+};
+
+const PRIORITY_TO_API = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'urgent',
+};
+
 export default function AssignTaskDialog({ open, onOpenChange }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -63,11 +79,14 @@ export default function AssignTaskDialog({ open, onOpenChange }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const normalizedType = TASK_TYPE_TO_API[taskType] || 'general';
+    const normalizedPriority = PRIORITY_TO_API[priority] || 'medium';
+
     const payload = {
       title: title || `${taskType} task for ${patientId}`,
       description,
-      type: taskType,
-      priority,
+      type: normalizedType,
+      priority: normalizedPriority,
       assignedTo: assignedTo || null,
       patient: patientId || null,
       dueDate: dueDate || null,

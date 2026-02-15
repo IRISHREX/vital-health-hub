@@ -6,16 +6,20 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Phone, Mail, MapPin, User, Heart, Pill, Shield } from "lucide-react";
+import { Calendar, Download, FileText, Phone, Mail, MapPin, User, Heart, Pill, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getNurses } from "@/lib/users";
-import { getPatientById } from "@/lib/patients";
+import { getPatientById, getPatientHistory } from "@/lib/patients";
 import { getPatientVitals, getVitalTrends } from "@/lib/vitals";
 import { getAppointments } from "@/lib/appointments";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   LineChart,
   Line,
@@ -80,16 +84,89 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
     queryFn: () => getAppointments({ patientId }),
     enabled: !!patientId && isOpen,
   });
+  const { data: historyRes } = useQuery({
+    queryKey: ["patient-history", patientId],
+    queryFn: () => getPatientHistory(patientId, { page: 1, limit: 80 }),
+    enabled: !!patientId && isOpen,
+  });
 
   const vitals = vitalsRes?.data || [];
   const latestVital = vitals[0];
   const trends = trendsRes?.data || [];
   const appointments = appointmentsRes?.data?.appointments || [];
+  const history = historyRes?.data?.timeline || [];
+  const historySummary = historyRes?.data?.summary || {};
+  const groupedHistory = history.reduce((acc, entry) => {
+    const key = String(entry?.module || "other").toLowerCase();
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(entry);
+    return acc;
+  }, {});
+  const moduleKeys = Object.keys(groupedHistory).sort((a, b) => a.localeCompare(b));
 
   const handleOpenChange = (nextOpen) => {
     if (!nextOpen) {
       onClose();
     }
+  };
+
+  const buildHistoryRows = () =>
+    history.map((entry) => ({
+      when: entry?.timestamp ? new Date(entry.timestamp).toLocaleString() : "-",
+      module: String(entry?.module || "other").toUpperCase(),
+      event: [entry?.title || "Event", entry?.description || ""].filter(Boolean).join(" | "),
+      status: entry?.status || "-",
+    }));
+
+  const downloadHistoryCsv = () => {
+    const rows = buildHistoryRows();
+    if (!rows.length) return;
+
+    const headers = ["When", "Module", "Event", "Status"];
+    const escapeCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const csvData = [
+      headers.join(","),
+      ...rows.map((r) => [r.when, r.module, r.event, r.status].map(escapeCell).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `patient-history-${patientData?.patientId || patientId || "export"}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadHistoryPdf = () => {
+    const rows = buildHistoryRows();
+    if (!rows.length) return;
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const patientName = `${patientData?.firstName || ""} ${patientData?.lastName || ""}`.trim() || "Patient";
+    doc.setFontSize(14);
+    doc.text(`Patient History: ${patientName}`, 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Patient ID: ${patientData?.patientId || patientId || "N/A"}`, 40, 58);
+
+    autoTable(doc, {
+      startY: 72,
+      head: [["When", "Module", "Event", "Status"]],
+      body: rows.map((r) => [r.when, r.module, r.event, r.status]),
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [30, 64, 175] },
+      columnStyles: {
+        0: { cellWidth: 150 },
+        1: { cellWidth: 90 },
+        2: { cellWidth: 300 },
+        3: { cellWidth: 90 },
+      },
+      margin: { left: 30, right: 30 },
+    });
+
+    doc.save(`patient-history-${patientData?.patientId || patientId || "export"}.pdf`);
   };
 
   return (
@@ -391,12 +468,13 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="vitals" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="vitals">Vitals</TabsTrigger>
                   <TabsTrigger value="monitor">Monitor</TabsTrigger>
                   <TabsTrigger value="meds">Meds</TabsTrigger>
                   <TabsTrigger value="schedule">Schedule</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="vitals" className="mt-4 space-y-4">
@@ -547,6 +625,91 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">No notes recorded</p>
+                  )}
+                </TabsContent>
+                <TabsContent value="history" className="mt-4 space-y-4">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={downloadHistoryCsv} disabled={!history.length}>
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={downloadHistoryPdf} disabled={!history.length}>
+                      <FileText className="h-4 w-4" />
+                      Export PDF
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">Total Events</p>
+                        <p className="text-lg font-semibold">{historySummary?.totalEvents || 0}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">Total Billed</p>
+                        <p className="text-lg font-semibold">Rs {Number(historySummary?.financial?.totalBilled || 0).toLocaleString()}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">Total Paid</p>
+                        <p className="text-lg font-semibold">Rs {Number(historySummary?.financial?.totalPaid || 0).toLocaleString()}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">Outstanding</p>
+                        <p className="text-lg font-semibold">Rs {Number(historySummary?.financial?.totalDue || 0).toLocaleString()}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {moduleKeys.length > 0 ? (
+                    <Accordion type="multiple" className="w-full rounded-md border px-3">
+                      {moduleKeys.map((moduleKey) => (
+                        <AccordionItem key={moduleKey} value={moduleKey}>
+                          <AccordionTrigger className="hover:no-underline">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{moduleKey.toUpperCase()}</Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {groupedHistory[moduleKey].length} event{groupedHistory[moduleKey].length > 1 ? "s" : ""}
+                              </span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>When</TableHead>
+                                  <TableHead>Event</TableHead>
+                                  <TableHead>Status</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {groupedHistory[moduleKey].map((entry) => (
+                                  <TableRow key={entry.id}>
+                                    <TableCell>{entry.timestamp ? new Date(entry.timestamp).toLocaleString() : "-"}</TableCell>
+                                    <TableCell>
+                                      <div className="font-medium">{entry.title || "Event"}</div>
+                                      {entry.description ? (
+                                        <div className="text-xs text-muted-foreground">{entry.description}</div>
+                                      ) : null}
+                                    </TableCell>
+                                    <TableCell>{entry.status || "-"}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  ) : (
+                    <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
+                      No history events found
+                    </div>
                   )}
                 </TabsContent>
               </Tabs>

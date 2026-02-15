@@ -26,6 +26,7 @@ export const broadcastNotification = (data) => apiClient.post('/notifications/br
 
 // Mark notification as read
 export const markAsRead = (id) => apiClient.patch(`/notifications/${id}/read`);
+export const acknowledgeNotification = (id) => apiClient.patch(`/notifications/${id}/acknowledge`);
 
 // Mark all notifications as read
 export const markAllAsRead = () => apiClient.patch('/notifications/read-all');

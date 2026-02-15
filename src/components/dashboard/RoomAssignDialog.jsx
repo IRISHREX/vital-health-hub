@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { assignRoomToNurse } from "@/lib/nurse";
+import { assignNurseByFloor } from "@/lib/beds";
 import { getNurses } from "@/lib/users";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -24,6 +25,7 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [nurseId, setNurseId] = useState("");
+  const [assignmentType, setAssignmentType] = useState("room");
   const [ward, setWard] = useState("");
   const [floor, setFloor] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
@@ -41,9 +43,10 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
   }, [rooms]);
 
   const floors = useMemo(() => {
+    const shouldFilterByWard = ward && ward !== "__all__";
     const set = new Set(
       rooms
-        .filter((r) => (ward ? r.ward === ward : true))
+        .filter((r) => (shouldFilterByWard ? r.ward === ward : true))
         .map((r) => r.floor)
         .filter((v) => v !== undefined && v !== null)
     );
@@ -51,8 +54,9 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
   }, [rooms, ward]);
 
   const roomNumbers = useMemo(() => {
+    const shouldFilterByWard = ward && ward !== "__all__";
     return rooms
-      .filter((r) => (ward ? r.ward === ward : true))
+      .filter((r) => (shouldFilterByWard ? r.ward === ward : true))
       .filter((r) => (floor !== "" ? Number(r.floor) === Number(floor) : true))
       .map((r) => r.roomNumber)
       .filter(Boolean)
@@ -60,16 +64,28 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
   }, [rooms, ward, floor]);
 
   const assignMutation = useMutation({
-    mutationFn: () =>
-      assignRoomToNurse({
+    mutationFn: () => {
+      if (assignmentType === "floor") {
+        return assignNurseByFloor({
+          nurseId,
+          ward: ward && ward !== "__all__" ? ward : undefined,
+          floor: Number(floor),
+        });
+      }
+      return assignRoomToNurse({
         nurseId,
         ward,
         floor: Number(floor),
         roomNumber,
-      }),
+      });
+    },
     onSuccess: () => {
-      toast({ title: "Success", description: "Room assigned to nurse." });
+      toast({
+        title: "Success",
+        description: assignmentType === "floor" ? "Floor assigned to nurse." : "Room assigned to nurse."
+      });
       queryClient.invalidateQueries({ queryKey: ["nurses"] });
+      queryClient.invalidateQueries({ queryKey: ["beds"] });
       handleClose();
     },
     onError: (error) => {
@@ -83,13 +99,14 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
 
   const handleClose = () => {
     setNurseId("");
+    setAssignmentType("room");
     setWard("");
     setFloor("");
     setRoomNumber("");
     onClose();
   };
 
-  const canSubmit = nurseId && ward && floor !== "" && roomNumber;
+  const canSubmit = nurseId && floor !== "" && (assignmentType === "floor" || (ward && roomNumber));
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -102,6 +119,30 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
         </DialogHeader>
 
         <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Assignment Type</label>
+            <Select
+              value={assignmentType}
+              onValueChange={(value) => {
+                setAssignmentType(value);
+                if (value === "floor") {
+                  setRoomNumber("");
+                  setWard((prev) => prev || "__all__");
+                } else if (ward === "__all__") {
+                  setWard("");
+                }
+              }}
+            >
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select assignment type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="room">Room</SelectItem>
+                <SelectItem value="floor">Whole Floor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <label className="text-sm font-medium">Nurse</label>
             <Select value={nurseId} onValueChange={setNurseId}>
@@ -119,7 +160,9 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
           </div>
 
           <div>
-            <label className="text-sm font-medium">Ward</label>
+            <label className="text-sm font-medium">
+              Ward {assignmentType === "floor" ? "(optional)" : ""}
+            </label>
             <Select
               value={ward}
               onValueChange={(v) => {
@@ -129,9 +172,12 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
               }}
             >
               <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select ward" />
+                <SelectValue placeholder={assignmentType === "floor" ? "All wards" : "Select ward"} />
               </SelectTrigger>
               <SelectContent>
+                {assignmentType === "floor" && (
+                  <SelectItem value="__all__">All wards</SelectItem>
+                )}
                 {wards.map((w) => (
                   <SelectItem key={w} value={w}>
                     {w}
@@ -163,21 +209,23 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
             </Select>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Room Number</label>
-            <Select value={roomNumber} onValueChange={setRoomNumber}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select room" />
-              </SelectTrigger>
-              <SelectContent>
-                {roomNumbers.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {assignmentType === "room" && (
+            <div>
+              <label className="text-sm font-medium">Room Number</label>
+              <Select value={roomNumber} onValueChange={setRoomNumber}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select room" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roomNumbers.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -185,7 +233,7 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
             Cancel
           </Button>
           <Button onClick={() => assignMutation.mutate()} disabled={!canSubmit || assignMutation.isPending}>
-            Assign Room
+            {assignmentType === "floor" ? "Assign Floor" : "Assign Room"}
           </Button>
         </DialogFooter>
       </DialogContent>

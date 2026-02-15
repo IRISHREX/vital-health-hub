@@ -44,3 +44,7 @@ export const releaseBed = async (id) => {
 export const assignNurse = async (id, nurseId) => {
   return await apiClient.patch(`/beds/${id}/assign-nurse`, { nurseId });
 };
+
+export const assignNurseByFloor = async ({ nurseId, ward, floor }) => {
+  return await apiClient.patch('/beds/assign-nurse-floor', { nurseId, ward, floor });
+};

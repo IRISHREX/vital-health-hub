@@ -40,6 +40,12 @@ v1Router.use('/nurse', nurseRoutes);
 v1Router.use('/dashboard', dashboardRoutes);
 v1Router.use('/service-orders', serviceOrderRoutes);
 v1Router.use('/billing', billingRoutes);
+v1Router.use('/lab-tests', require('./labTests'));
+v1Router.use('/pharmacy', require('./pharmacy'));
+v1Router.use('/personal-permissions', require('./personalPermissions'));
+v1Router.use('/doctor-dashboard', require('./doctorDashboard'));
+v1Router.use('/radiology', require('./radiology'));
+v1Router.use('/ot', require('./ot'));
 
 // Health check
 v1Router.get('/health', (req, res) => {

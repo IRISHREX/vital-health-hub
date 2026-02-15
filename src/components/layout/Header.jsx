@@ -17,13 +17,17 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { getNotifications, markAsRead } from "@/lib/notifications";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 
 export function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { canView } = useVisualAuth();
   const { theme, toggleTheme, resolvedTheme } = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const canViewNotifications = canView("notifications");
+  const canViewSettings = canView("settings");
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -36,13 +40,16 @@ export function Header() {
       }
     };
 
-    if (user) {
+    if (user && canViewNotifications) {
       fetchNotifications();
       // Poll every 30 seconds for new notifications
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     }
-  }, [user]);
+
+    setNotifications([]);
+    setUnreadCount(0);
+  }, [user, canViewNotifications]);
 
   const handleLogout = () => {
     logout();
@@ -82,7 +89,7 @@ export function Header() {
     : "SA";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-6 shadow-sm">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-3 sm:px-4 lg:px-6 shadow-sm">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         <div className="relative hidden md:block">
@@ -95,7 +102,7 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         {/* Live indicator */}
         <div className="hidden items-center gap-2 rounded-full bg-status-available/10 px-3 py-1.5 sm:flex">
           <span className="relative flex h-2 w-2">
@@ -121,73 +128,75 @@ export function Header() {
         </Button>
 
         {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px] justify-center flex items-center"
+        {canViewNotifications && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px] justify-center flex items-center"
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[calc(100vw-1rem)] max-w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notifications</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  onClick={() => navigate("/notifications")}
                 >
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </Badge>
+                  View All
+                </Button>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  No new notifications
+                </div>
+              ) : (
+                notifications.slice(0, 5).map((notification) => (
+                  <DropdownMenuItem
+                    key={notification._id}
+                    className="flex flex-col items-start gap-1 py-3 cursor-pointer"
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <span className="font-medium flex-1">{notification.title}</span>
+                      {!notification.isRead && (
+                        <span className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground line-clamp-2">
+                      {notification.message}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatTimeAgo(notification.createdAt)}
+                    </span>
+                  </DropdownMenuItem>
+                ))
               )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              <span>Notifications</span>
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="justify-center text-primary"
                 onClick={() => navigate("/notifications")}
               >
-                View All
-              </Button>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                No new notifications
-              </div>
-            ) : (
-              notifications.slice(0, 5).map((notification) => (
-                <DropdownMenuItem
-                  key={notification._id}
-                  className="flex flex-col items-start gap-1 py-3 cursor-pointer"
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    <span className="font-medium flex-1">{notification.title}</span>
-                    {!notification.isRead && (
-                      <span className="h-2 w-2 rounded-full bg-primary" />
-                    )}
-                  </div>
-                  <span className="text-sm text-muted-foreground line-clamp-2">
-                    {notification.message}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatTimeAgo(notification.createdAt)}
-                  </span>
-                </DropdownMenuItem>
-              ))
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="justify-center text-primary"
-              onClick={() => navigate("/notifications")}
-            >
-              See all notifications
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                See all notifications
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-2">
+            <Button variant="ghost" className="flex items-center gap-2 px-1 sm:px-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.avatar || ""} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
@@ -205,14 +214,18 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
-              <User className="mr-2 h-4 w-4" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
-              <Bell className="mr-2 h-4 w-4" />
-              Preferences
-            </DropdownMenuItem>
+            {canViewSettings && (
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+            )}
+            {canViewSettings && (
+              <DropdownMenuItem onClick={() => navigate("/settings")}>
+                <Bell className="mr-2 h-4 w-4" />
+                Preferences
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />

@@ -4,6 +4,32 @@ import { apiClient } from './api-client';
  * Admission API functions for bed allocation and service utilization tracking
  */
 
+type BedAllocationLike = {
+  allocatedFrom: string | Date;
+  allocatedTo: string | Date;
+  pricePerDay: number;
+};
+
+type TransferHistoryLike = {
+  transferDate: string | Date;
+  fromWard?: string;
+  toWard?: string;
+  transferReason?: string;
+  fromBed?: unknown;
+  toBed?: unknown;
+};
+
+type TimelineEvent = {
+  type: 'admission' | 'transfer' | 'discharge';
+  date: string | Date;
+  description: string;
+  bed?: unknown;
+  transferReason?: string;
+  fromBed?: unknown;
+  toBed?: unknown;
+  dischargeNotes?: string;
+};
+
 // @desc Create new patient admission
 // @param data { patientId, bedId, admittingDoctorId, admissionType, diagnosis, symptoms, treatmentPlan, expectedDischargeDate, notes }
 // @returns Promise with admission and invoice data
@@ -126,7 +152,7 @@ export const formatAdmissionData = (admission) => {
     lengthOfStay: admission.actualDischargeDate 
       ? calculateLengthOfStay(admission.admissionDate, admission.actualDischargeDate)
       : calculateLengthOfStay(admission.admissionDate, new Date()),
-    totalBedCharges: admission.bedAllocations?.reduce((sum: number, bed: any) => {
+    totalBedCharges: admission.bedAllocations?.reduce((sum: number, bed: BedAllocationLike) => {
       const start = new Date(bed.allocatedFrom).getTime();
       const end = new Date(bed.allocatedTo).getTime();
       const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -157,7 +183,8 @@ export const getPatientCurrentAdmission = async (patientId) => {
   try {
     const params = new URLSearchParams({ patientId, status: 'ADMITTED' });
     const response = await apiClient.get(`/admissions?${params.toString()}`);
-    return response.data?.admissions?.[0] || null;
+    const admissions = response?.data?.admissions || response?.admissions || [];
+    return Array.isArray(admissions) ? admissions[0] || null : null;
   } catch (error) {
     console.error('Failed to fetch patient admission:', error);
     return null;
@@ -174,8 +201,8 @@ export const getAdmissionBedHistory = (admission) => {
 };
 
 // Build timeline of events
-const buildTimeline = (admission: any) => {
-  const events: any[] = [
+const buildTimeline = (admission) => {
+  const events: TimelineEvent[] = [
     {
       type: 'admission',
       date: admission.admissionDate,
@@ -186,7 +213,7 @@ const buildTimeline = (admission: any) => {
 
   // Add transfers
   if (admission.transferHistory?.length > 0) {
-    admission.transferHistory.forEach((transfer: any, index: number) => {
+    admission.transferHistory.forEach((transfer: TransferHistoryLike) => {
       events.push({
         type: 'transfer',
         date: transfer.transferDate,
@@ -208,7 +235,7 @@ const buildTimeline = (admission: any) => {
     });
   }
 
-  return events.sort((a: any, b: any) => {
+  return events.sort((a: TimelineEvent, b: TimelineEvent) => {
     const timeA = new Date(a.date).getTime();
     const timeB = new Date(b.date).getTime();
     return timeA - timeB;

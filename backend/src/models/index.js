@@ -12,7 +12,16 @@ const ActivityLog = require('./NH_ActivityLog');
 const Task = require('./NH_Task');
 const BillingLedger = require('./NH_BillingLedger');
 const ServiceOrder = require('./NH_ServiceOrder');
-const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences } = require('./NH_Settings');
+const LabTest = require('./NH_LabTest');
+const LabTestCatalog = require('./NH_LabTestCatalog');
+const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings } = require('./NH_Settings');
+const Medicine = require('./NH_Medicine');
+const Prescription = require('./NH_Prescription');
+const StockAdjustment = require('./NH_StockAdjustment');
+const AccessRequest = require('./NH_AccessRequest');
+const RadiologyOrder = require('./NH_RadiologyOrder');
+const OTRoom = require('./NH_OTRoom');
+const Surgery = require('./NH_Surgery');
 
 module.exports = {
   User,
@@ -29,8 +38,18 @@ module.exports = {
   Task,
   BillingLedger,
   ServiceOrder,
+  LabTest,
+  LabTestCatalog,
   HospitalSettings,
   SecuritySettings,
   NotificationSettings,
-  UserPreferences
+  UserPreferences,
+  VisualAccessSettings,
+  Medicine,
+  Prescription,
+  StockAdjustment,
+  AccessRequest,
+  RadiologyOrder,
+  OTRoom,
+  Surgery
 };

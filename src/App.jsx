@@ -13,6 +13,7 @@ import Patients from "./pages/Patients";
 import PatientDetails from "./pages/PatientDetails";
 import Admissions from "./pages/Admissions";
 import Doctors from "./pages/Doctors";
+import Nurses from "./pages/Nurses";
 import Appointments from "./pages/Appointments";
 import Facilities from "./pages/Facilities";
 import Billing from "./pages/Billing";
@@ -25,6 +26,11 @@ import NursePatients from "./pages/NursePatients";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import OpdDashboard from './pages/OpdDashboard';
+import LabDashboard from './pages/LabDashboard';
+import RadiologyDashboard from './pages/RadiologyDashboard';
+import PharmacyDashboard from './pages/PharmacyDashboard';
+import OTDashboard from './pages/OTDashboard';
+import PrescriptionPreview from "./pages/PrescriptionPreview";
 
 const queryClient = new QueryClient();
 
@@ -35,7 +41,7 @@ const App = () => (
         <ThemeProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route element={<DashboardLayout />}>
@@ -55,6 +61,9 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="doctors" />}>
                   <Route path="/doctors" element={<Doctors />} />
                 </Route>
+                <Route element={<AuthorizedRoute module="nurses" />}>
+                  <Route path="/nurses" element={<Nurses />} />
+                </Route>
                 <Route element={<AuthorizedRoute module="appointments" />}>
                   <Route path="/appointments" element={<Appointments />} />
                 </Route>
@@ -73,14 +82,29 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="notifications" />}>
                   <Route path="/notifications" element={<Notifications />} />
                 </Route>
-                <Route element={<AuthorizedRoute module="dashboard" />}>
+                <Route element={<AuthorizedRoute module="nurses" />}>
                   <Route path="/nurse" element={<NurseDashboard />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
                   <Route path="/nurse/patients" element={<NursePatients />} />
                 </Route>
-                <Route element={<AuthorizedRoute module="dashboard" />}>
+                <Route element={<AuthorizedRoute module="patients" />}>
                   <Route path="/opd" element={<OpdDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="lab" />}>
+                  <Route path="/lab" element={<LabDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="radiology" />}>
+                  <Route path="/radiology" element={<RadiologyDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="pharmacy" />}>
+                  <Route path="/pharmacy" element={<PharmacyDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="ot" />}>
+                  <Route path="/ot" element={<OTDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="pharmacy" />}>
+                  <Route path="/prescriptions/:id/preview" element={<PrescriptionPreview />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<Settings />} />

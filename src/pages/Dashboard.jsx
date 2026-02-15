@@ -11,23 +11,21 @@ import {
 import { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
-import { getBeds } from "@/lib/beds";
-import { getPatients } from "@/lib/patients";
-import { getDoctors } from "@/lib/doctors";
-import { getAppointments } from "@/lib/appointments";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getDashboard } from '@/lib/dashboard';
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { BedOccupancyChart } from "@/components/dashboard/BedOccupancyChart";
 import { AdmissionChart } from "@/components/dashboard/AdmissionChart";
 import { RecentPatients } from "@/components/dashboard/RecentPatients";
-import { QuickActions } from "@/components/dashboard/QuickActions"; 
-
+import { QuickActions } from "@/components/dashboard/QuickActions";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { canView } = useVisualAuth();
 
   const [stats, setStats] = useState({
+    totalPatients: 0,
     totalBeds: 0,
     availableBeds: 0,
     admittedPatients: 0,
@@ -35,9 +33,10 @@ export default function Dashboard() {
     pendingBills: 0,
     todayAppointments: 0,
     todayDischarges: 0,
+    bedUtilizationRate: 0,
+    pendingRevenue: 0
   });
   const [cards, setCards] = useState([]);
-  const [selectedView, setSelectedView] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,66 +44,50 @@ export default function Dashboard() {
     if (key === 'nurse') return '/nurse';
     if (key === 'doctor') return '/appointments';
     return '/';
-  }
+  };
 
-  const handleSelectView = async (key) => {
-    setSelectedView(key);
-    try {
-      const res = await getDashboard(key);
-      // dashboard endpoint returns data differently per role
-      if (key === 'admin') {
-        setCards(res.data?.cards || []);
-        setStats(res.data.data.stats || {});
-      } else if (key === 'doctor') {
-        setStats({ upcomingAppointments: res.data.data.upcomingAppointments, assignedPatients: res.data.data.assignedPatients });
-      } else if (key === 'nurse') {
-        setStats({ assignedPatients: res.data.data.assignedPatients, todaysAppointments: res.data.data.todaysAppointments, recentVitals: res.data.data.recentVitals });
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const canSeeViewCard = (key) => {
+    if (key === 'nurse') return canView('nurses');
+    if (key === 'doctor') return canView('appointments');
+    return canView('dashboard');
   };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // If admin with availableViews, fetch admin dashboard cards
-        if (user?.availableViews && user.availableViews.length > 0) {
+        const isAdmin = ['super_admin', 'hospital_admin'].includes(user?.role);
+
+        if (isAdmin) {
           const res = await getDashboard('admin');
-          setCards(res.data?.cards || []);
-          setStats(res.data?.stats || {});
+          setCards(res?.data?.cards || []);
+          setStats((prev) => ({ ...prev, ...(res?.data?.stats || {}) }));
+          return;
         }
 
-        // Always fetch base stats for non-admin users
-        const [bedsData, patientsData, doctorsData, appointmentsData] = await Promise.all([
-          getBeds(),
-          getPatients(),
-          getDoctors(),
-          getAppointments(),
-        ]);
+        const res = await getDashboard();
+        const data = res?.data || {};
 
-        const today = new Date().toISOString().split("T")[0];
-        const todayAppointments = appointmentsData.data.appointments.filter(
-          (apt) => apt.appointmentDate.split("T")[0] === today
-        );
-
-        setStats(prev => ({
-          ...prev,
-          totalBeds: bedsData.data.beds.length,
-          availableBeds: bedsData.data.beds.filter((b) => b.status === "available").length,
-          admittedPatients: patientsData.data.patients.filter((p) => p.registrationType === "ipd").length,
-          availableDoctors: doctorsData.data.doctors.filter((d) => d.availabilityStatus).length,
-          pendingBills: 12,
-          todayAppointments: todayAppointments.length,
-          todayDischarges: 5,
-        }));
+        if (user?.role === 'doctor') {
+          setStats((prev) => ({
+            ...prev,
+            todayAppointments: Number(data.upcomingAppointments || 0),
+            admittedPatients: Number(data.assignedPatients || 0)
+          }));
+        } else if (user?.role === 'nurse') {
+          setStats((prev) => ({
+            ...prev,
+            admittedPatients: Number(data.assignedPatients || 0),
+            todayAppointments: Number(data.todaysAppointments || 0)
+          }));
+        }
       } catch (err) {
         setError(err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, [user]);
 
@@ -122,18 +105,23 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Admin: view selector cards */}
       {user?.availableViews && user.availableViews.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {cards?.map((card) => (
-            <div key={card.key} className="rounded-xl bg-card p-5 shadow-card cursor-pointer hover:shadow-lg" onClick={() => handleSelectView(card.key)}>
+          {cards?.filter((card) => canSeeViewCard(card.key)).map((card) => (
+            <div
+              key={card.key}
+              className="rounded-xl bg-card p-5 shadow-card cursor-pointer hover:shadow-lg"
+              onClick={() => navigate(getViewRoute(card.key))}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{card.label}</p>
-                  <p className="text-2xl font-bold text-foreground mt-2">{card.key === 'admin' ? stats.totalPatients : card.key === 'doctor' ? stats.upcomingAppointments : stats.assignedPatients}</p>
+                  <p className="text-2xl font-bold text-foreground mt-2">{Number(card.value || 0)}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); navigate(getViewRoute(card.key)); }}>Open</button>
+                  <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); navigate(getViewRoute(card.key)); }}>
+                    Open
+                  </button>
                 </div>
               </div>
             </div>
@@ -154,7 +142,6 @@ export default function Dashboard() {
           value={stats.admittedPatients}
           subtitle="Currently in hospital"
           icon={Users}
-          trend={{ value: 12, isPositive: true }}
           variant="accent"
         />
         <KpiCard
@@ -169,7 +156,6 @@ export default function Dashboard() {
           value={stats.pendingBills}
           subtitle="Awaiting payment"
           icon={Receipt}
-          trend={{ value: 5, isPositive: false }}
           variant="warning"
         />
       </div>
@@ -181,9 +167,7 @@ export default function Dashboard() {
               <Calendar className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">
-                {stats.todayAppointments}
-              </p>
+              <p className="text-2xl font-bold text-foreground">{stats.todayAppointments}</p>
               <p className="text-sm text-muted-foreground">Today's Appointments</p>
             </div>
           </div>
@@ -194,9 +178,7 @@ export default function Dashboard() {
               <LogOut className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">
-                {stats.todayDischarges}
-              </p>
+              <p className="text-2xl font-bold text-foreground">{stats.todayDischarges}</p>
               <p className="text-sm text-muted-foreground">Today's Discharges</p>
             </div>
           </div>
@@ -207,7 +189,7 @@ export default function Dashboard() {
               <TrendingUp className="h-5 w-5 text-status-available" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">92%</p>
+              <p className="text-2xl font-bold text-foreground">{Number(stats.bedUtilizationRate || 0)}%</p>
               <p className="text-sm text-muted-foreground">Bed Utilization</p>
             </div>
           </div>
@@ -218,7 +200,7 @@ export default function Dashboard() {
               <TrendingDown className="h-5 w-5 text-status-occupied" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">₹4.8L</p>
+              <p className="text-2xl font-bold text-foreground">Rs {Number(stats.pendingRevenue || 0).toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">Pending Revenue</p>
             </div>
           </div>

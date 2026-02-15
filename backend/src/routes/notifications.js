@@ -34,6 +34,7 @@ router.get('/:id', authenticate, notificationController.getNotification);
 
 // Mark single notification as read
 router.patch('/:id/read', authenticate, notificationController.markAsRead);
+router.patch('/:id/acknowledge', authenticate, notificationController.acknowledgeNotification);
 
 // Delete single notification
 router.delete('/:id', authenticate, notificationController.deleteNotification);

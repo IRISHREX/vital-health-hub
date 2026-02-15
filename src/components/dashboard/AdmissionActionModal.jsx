@@ -104,7 +104,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
 
       toast({
         title: 'Success',
-        description: `Patient transferred successfully. Previous bed charges: â‚¹${response.data.oldBedCharges}`,
+        description: `Patient transferred successfully. Previous bed charges: INR ${response.data.oldBedCharges || 0}`,
       });
 
       if (onActionComplete) {
@@ -145,7 +145,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
 
       toast({
         title: 'Success',
-        description: `Patient discharged successfully. Total bed charges: â‚¹${totalCharges}`,
+        description: `Patient discharged successfully. Total bed charges: INR ${totalCharges || 0}`,
       });
 
       if (onActionComplete) {
@@ -183,19 +183,23 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
   };
 
   const getPreviewBedInfo = () => {
-    if (!currentBed) return null;
     const newBed = availableBeds.find((b) => b._id === formData.newBedId);
     if (!newBed) return null;
 
-    const chargeInfo = calculateBedCharges(
-      admission.bedAllocations?.[admission.bedAllocations.length - 1]?.allocatedFrom || admission.admissionDate,
-      new Date(),
-      currentBed.pricePerDay
-    );
+    const ratePerDay = Number(currentBed?.pricePerDay);
+    const hasValidCurrentRate = Number.isFinite(ratePerDay) && ratePerDay >= 0;
+    const chargeInfo = hasValidCurrentRate
+      ? calculateBedCharges(
+          admission.bedAllocations?.[admission.bedAllocations.length - 1]?.allocatedFrom || admission.admissionDate,
+          new Date(),
+          ratePerDay
+        )
+      : { days: 0, amount: 0 };
 
     return {
       currentBed,
       newBed,
+      hasValidCurrentRate,
       currentBedCharges: chargeInfo,
     };
   };
@@ -270,7 +274,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Price Per Day</p>
-                  <p className="text-sm font-semibold">â‚¹{currentBed?.pricePerDay}</p>
+                  <p className="text-sm font-semibold">INR {currentBed?.pricePerDay ?? '-'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -331,9 +335,9 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
             <Card className="border-blue-200 bg-blue-50">
               <CardContent className="pt-6">
                 <p className="text-sm font-medium text-gray-600">Current Bed</p>
-                <p className="text-lg font-semibold">{currentBed?.bedNumber}</p>
+                <p className="text-lg font-semibold">{currentBed?.bedNumber || 'Not assigned'}</p>
                 <p className="text-xs text-gray-600">
-                  {currentBed?.bedType.toUpperCase()} - {currentBed?.ward}
+                  {currentBed?.bedType ? `${currentBed.bedType.toUpperCase()} - ${currentBed?.ward || '-'}` : 'No current bed linked to this admission'}
                 </p>
               </CardContent>
             </Card>
@@ -349,7 +353,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
                   {availableBeds.length > 0 ? (
                     availableBeds.map((bed) => (
                       <SelectItem key={bed._id} value={bed._id}>
-                        {bed.bedNumber} ({bed.bedType.toUpperCase()}, {bed.ward}) - â‚¹{bed.pricePerDay}/day
+                        {bed.bedNumber} ({bed.bedType.toUpperCase()}, {bed.ward}) - INR {bed.pricePerDay}/day
                       </SelectItem>
                     ))
                   ) : (
@@ -397,11 +401,15 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
                     </div>
                     <div className="flex justify-between">
                       <span>Rate Per Day:</span>
-                      <span className="font-semibold">â‚¹{currentBed?.pricePerDay}</span>
+                      <span className="font-semibold">
+                        {getPreviewBedInfo().hasValidCurrentRate ? `INR ${currentBed?.pricePerDay}` : 'N/A'}
+                      </span>
                     </div>
                     <div className="flex justify-between pt-2 border-t">
                       <span>Total Charge:</span>
-                      <span className="font-bold">â‚¹{getPreviewBedInfo().currentBedCharges.amount}</span>
+                      <span className="font-bold">
+                        {getPreviewBedInfo().hasValidCurrentRate ? `INR ${getPreviewBedInfo().currentBedCharges.amount}` : 'N/A'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>

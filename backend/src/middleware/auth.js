@@ -1,11 +1,90 @@
 const passport = require('passport');
+const { VisualAccessSettings } = require('../models/NH_Settings');
 
 // Authenticate with JWT
 const authenticate = passport.authenticate('jwt', { session: false });
 
+const modulePathMap = {
+  '/dashboard': 'dashboard',
+  '/beds': 'beds',
+  '/admissions': 'admissions',
+  '/patients': 'patients',
+  '/doctors': 'doctors',
+  '/nurse': 'nurses',
+  '/appointments': 'appointments',
+  '/facilities': 'facilities',
+  '/billing': 'billing',
+  '/invoices': 'billing',
+  '/reports': 'reports',
+  '/notifications': 'notifications',
+  '/settings': 'settings',
+  '/tasks': 'tasks',
+  '/vitals': 'vitals',
+  '/lab-tests': 'lab',
+  '/pharmacy': 'pharmacy',
+};
+
+const methodActionMap = {
+  GET: 'canView',
+  HEAD: 'canView',
+  OPTIONS: 'canView',
+  POST: 'canCreate',
+  PUT: 'canEdit',
+  PATCH: 'canEdit',
+  DELETE: 'canDelete',
+};
+
+const actionFeatureMap = {
+  canView: 'view',
+  canCreate: 'create',
+  canEdit: 'edit',
+  canDelete: 'delete'
+};
+
+let visualAccessCache = null;
+let visualAccessCacheTs = 0;
+const VISUAL_ACCESS_CACHE_TTL_MS = 5000;
+
+const getVisualAccessSettingsCached = async () => {
+  const now = Date.now();
+  if (visualAccessCache && now - visualAccessCacheTs < VISUAL_ACCESS_CACHE_TTL_MS) {
+    return visualAccessCache;
+  }
+
+  visualAccessCache = await VisualAccessSettings.findOne().lean();
+  visualAccessCacheTs = now;
+  return visualAccessCache;
+};
+
+const resolveModuleFromRequest = (req) => {
+  const path = String(req.baseUrl || req.originalUrl || '').toLowerCase();
+  return Object.entries(modulePathMap).find(([prefix]) => path.includes(prefix))?.[1] || null;
+};
+
+const getUserOverrideContext = (settings, email, module) => {
+  if (!settings || !email) {
+    return { hasUserOverride: false, hasModuleOverride: false, moduleOverride: null };
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const userOverride = (settings.overrides || []).find(
+    (entry) => String(entry?.email || '').trim().toLowerCase() === normalizedEmail
+  );
+
+  if (!userOverride) {
+    return { hasUserOverride: false, hasModuleOverride: false, moduleOverride: null };
+  }
+
+  const moduleOverride = module
+    ? (userOverride.modules || []).find((m) => m?.module === module) || null
+    : null;
+
+  return { hasUserOverride: true, hasModuleOverride: !!moduleOverride, moduleOverride };
+};
+
 // Role-based access control middleware
 const authorizeRoles = (...allowedRoles) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -13,17 +92,50 @@ const authorizeRoles = (...allowedRoles) => {
       });
     }
 
-    const userRole = req.user.role;
-    const hasPermission = allowedRoles.some(requiredRole => canAccess(userRole, requiredRole));
+    try {
+      const module = resolveModuleFromRequest(req);
+      const action = methodActionMap[req.method] || 'canView';
+      const visualSettings = await getVisualAccessSettingsCached();
+      const { hasModuleOverride, moduleOverride } = getUserOverrideContext(
+        visualSettings,
+        req.user.email,
+        module
+      );
 
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have permission to access this resource'
-      });
+      // If a module-specific override exists for this user, treat it as strict allow-list.
+      if (hasModuleOverride) {
+        const restrictedFeatures = (moduleOverride?.restrictedFeatures || []).map((feature) =>
+          String(feature || '').trim().toLowerCase()
+        );
+        const requestedFeature = actionFeatureMap[action];
+        const isRestricted = requestedFeature ? restrictedFeatures.includes(requestedFeature) : false;
+
+        if (moduleOverride?.[action] && !isRestricted) {
+          return next();
+        }
+        return res.status(403).json({
+          success: false,
+          message: isRestricted
+            ? 'This functionality is restricted. Please request access from Super Admin.'
+            : 'You do not have permission to access this resource'
+        });
+      }
+
+      // Fall back to role-based control when no email override exists for the module.
+      const userRole = req.user.role;
+      const hasRolePermission = allowedRoles.some(requiredRole => canAccess(userRole, requiredRole));
+
+      if (!hasRolePermission) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to access this resource'
+        });
+      }
+
+      return next();
+    } catch (error) {
+      return next(error);
     }
-
-    next();
   };
 };
 

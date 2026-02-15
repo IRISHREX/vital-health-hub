@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { getHospitalSettings } from "@/lib/settings";
 import { Download, FileText, Printer, Eye, EyeOff } from 'lucide-react';
 
 const invoiceStatusColors = {
@@ -12,9 +14,32 @@ const invoiceStatusColors = {
   cancelled: 'bg-gray-100 text-gray-800 border-gray-300',
 };
 
+const defaultHospital = {
+  hospitalName: "Hospital",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
+};
+
 export default function InvoicePreview({ invoice, admission, onClose }) {
   const [expanded, setExpanded] = useState(true);
   const [printMode, setPrintMode] = useState(false);
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
+
+  const hospitalSettings = useMemo(() => {
+    const raw = hospitalRes?.data || {};
+    return {
+      hospitalName: raw.hospitalName || defaultHospital.hospitalName,
+      address: raw.address || defaultHospital.address,
+      phone: raw.phone || defaultHospital.phone,
+      email: raw.email || defaultHospital.email,
+      website: raw.website || defaultHospital.website,
+    };
+  }, [hospitalRes?.data]);
 
   if (!invoice || !admission) {
     return (
@@ -62,6 +87,13 @@ export default function InvoicePreview({ invoice, admission, onClose }) {
               <div>
                 <CardTitle className="text-2xl font-bold">Invoice</CardTitle>
                 <p className="text-lg text-gray-600 mt-1">#{invoice.invoiceNumber}</p>
+                <p className="text-sm font-medium mt-2">{hospitalSettings.hospitalName}</p>
+                {hospitalSettings.address && <p className="text-xs text-gray-600">{hospitalSettings.address}</p>}
+                {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
+                  <p className="text-xs text-gray-600">
+                    {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}
+                  </p>
+                )}
               </div>
               <Badge className={`${statusColor} border text-sm px-3 py-1`}>
                 {invoice.status?.toUpperCase()}

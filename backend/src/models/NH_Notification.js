@@ -14,6 +14,9 @@ const notificationSchema = new mongoose.Schema({
       'appointment_scheduled', 'appointment_reminder', 'appointment_cancelled',
       'invoice_generated', 'payment_received', 'payment_overdue',
       'schedule_update', 'leave_approved',
+      'access_request', 'access_request_resolved',
+      'handover_request', 'handover_response',
+      'prescription_shared',
       'system', 'alert', 'info'
     ],
     required: true
@@ -41,6 +44,15 @@ const notificationSchema = new mongoose.Schema({
     default: false
   },
   readAt: Date,
+  requiresAcknowledgement: {
+    type: Boolean,
+    default: false
+  },
+  acknowledgedAt: Date,
+  acknowledgedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   emailSent: {
     type: Boolean,
     default: false

@@ -44,7 +44,7 @@ const vitalSchema = z.object({
   notes: z.string().optional(),
 });
 
-export default function QuickVitalDialog({ isOpen, onClose, patients = [] }) {
+export default function QuickVitalDialog({ isOpen, onClose, patients = [], defaultPatientId = "", onRecorded }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -68,12 +68,19 @@ export default function QuickVitalDialog({ isOpen, onClose, patients = [] }) {
     }
   }, [patients]);
 
+  useEffect(() => {
+    if (defaultPatientId) {
+      form.setValue('patientId', defaultPatientId);
+    }
+  }, [defaultPatientId, form]);
+
   const createMutation = useMutation({
     mutationFn: (data) => createVital(data),
     onSuccess: (res) => {
       toast({ title: 'Success', description: 'Vital recorded' });
       // invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['vitals'] });
+      if (onRecorded) onRecorded(res);
       handleClose();
     },
     onError: (error) => {

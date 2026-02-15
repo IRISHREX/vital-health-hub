@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/AuthContext";
-import { getPermissions } from "@/lib/rbac";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
@@ -34,10 +33,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2, MoreVertical } from "lucide-react";
 import PatientDialog from "@/components/dashboard/PatientDialog";
 import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 export default function Patients() {
-  const { user } = useAuth();
-  const permissions = getPermissions(user?.role, "patients");
+  const { getModulePermissions } = useVisualAuth();
+  const permissions = getModulePermissions("patients");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -141,10 +141,12 @@ export default function Patients() {
           </p>
         </div>
         {permissions.canCreate && (
-          <Button onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Register Patient
-          </Button>
+          <RestrictedAction module="patients" feature="create">
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Register Patient
+            </Button>
+          </RestrictedAction>
         )}
       </div>
 

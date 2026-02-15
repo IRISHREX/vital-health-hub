@@ -14,7 +14,6 @@ const appointmentSchema = new mongoose.Schema({
   doctor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Doctor',
-    required: true
   },
   // Optional nurse assigned to assist this appointment
   assignedNurse: {

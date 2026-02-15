@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getAppointments, updateAppointment } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
+import { useAuth } from "@/lib/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,17 +16,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2 } from "lucide-react";
+import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2, ClipboardPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AppointmentDialog from "@/components/dashboard/AppointmentDialog";
+import { useVisualAuth } from "@/hooks/useVisualAuth";
+import RestrictedAction from "@/components/permissions/RestrictedAction";
+import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
+import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
 
 const statusConfig = {
-  scheduled: { label: "Scheduled", variant: "info" },
+  scheduled: { label: "Pending", variant: "info" },
+  confirmed: { label: "Pending", variant: "info" },
+  in_progress: { label: "Pending", variant: "info" },
   completed: { label: "Completed", variant: "success" },
   cancelled: { label: "Cancelled", variant: "destructive" },
+  no_show: { label: "No Show", variant: "destructive" },
 };
 
 export default function Appointments() {
+  const { user } = useAuth();
+  const { canCreate } = useVisualAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -35,6 +45,12 @@ export default function Appointments() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [dialogMode, setDialogMode] = useState("create");
+  const [prescriptionOpen, setPrescriptionOpen] = useState(false);
+  const [prescriptionHistoryOpen, setPrescriptionHistoryOpen] = useState(false);
+  const [selectedPrescriptionPatient, setSelectedPrescriptionPatient] = useState(null);
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [selectedAppointmentStatus, setSelectedAppointmentStatus] = useState("");
   const { toast } = useToast();
 
   const openCreateDialog = () => {
@@ -55,6 +71,15 @@ export default function Appointments() {
     fetchData();
   };
 
+  const openPrescriptionDialog = (apt) => {
+    if (!apt?.patient) return;
+    setSelectedPrescriptionPatient(apt.patient);
+    setSelectedDoctorId(apt?.doctor?._id || apt?.doctor || "");
+    setSelectedAppointmentId(apt?._id || "");
+    setSelectedAppointmentStatus(apt?.status || "");
+    setPrescriptionHistoryOpen(true);
+  };
+
   const handleStatusUpdate = async (appointmentId, status) => {
     try {
       await updateAppointment(appointmentId, { status });
@@ -73,9 +98,25 @@ export default function Appointments() {
         getPatients(),
         getDoctors(),
       ]);
-      setAppointments(appointmentsData.data.appointments || []);
+      const allAppointments = appointmentsData.data.appointments || [];
+      const allDoctors = doctorsData.data.doctors || [];
+      const loggedInDoctorIds = allDoctors
+        .filter(
+          (d) =>
+            d?.user?._id === user?._id ||
+            String(d?.user?.email || "").toLowerCase() === String(user?.email || "").toLowerCase()
+        )
+        .map((d) => d._id);
+      const scopedAppointments =
+        user?.role === "doctor"
+          ? allAppointments.filter((a) =>
+              loggedInDoctorIds.includes(a?.doctor?._id || a?.doctor || a?.doctorId)
+            )
+          : allAppointments;
+
+      setAppointments(scopedAppointments);
       setPatients(patientsData.data.patients || []);
-      setDoctors(doctorsData.data.doctors || []);
+      setDoctors(allDoctors);
     } catch (err) {
       setError(err);
     } finally {
@@ -85,7 +126,7 @@ export default function Appointments() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?._id, user?.email, user?.role]);
 
   const getPatientName = (patientRef) => {
     if (!patientRef) return "Unknown";
@@ -155,10 +196,14 @@ export default function Appointments() {
             Manage OPD appointments and schedules
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Book Appointment
-        </Button>
+        {canCreate("appointments") && (
+          <RestrictedAction module="appointments" feature="create">
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Book Appointment
+            </Button>
+          </RestrictedAction>
+        )}
       </div>
 
       <AppointmentDialog
@@ -166,6 +211,26 @@ export default function Appointments() {
         onClose={handleDialogClose}
         appointment={selectedAppointment}
         mode={dialogMode}
+      />
+      <PrescriptionDialog
+        open={prescriptionOpen}
+        onOpenChange={setPrescriptionOpen}
+        initialPatientId={selectedPrescriptionPatient?._id || ""}
+        initialDoctorId={selectedDoctorId}
+        initialAppointmentId={selectedAppointmentId}
+        initialAppointmentStatus={selectedAppointmentStatus}
+        initialEncounterType="opd"
+      />
+      <PrescriptionHistoryDialog
+        open={prescriptionHistoryOpen}
+        onOpenChange={setPrescriptionHistoryOpen}
+        patient={selectedPrescriptionPatient}
+        appointmentId={selectedAppointmentId}
+        appointmentStatus={selectedAppointmentStatus}
+        onCreateNew={() => {
+          setPrescriptionHistoryOpen(false);
+          setPrescriptionOpen(true);
+        }}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -224,7 +289,7 @@ export default function Appointments() {
               {todayAppointments.map((apt) => (
                 <div
                   key={apt._id}
-                  className="flex items-center gap-4 rounded-lg border bg-background/50 p-4"
+                  className="flex items-center gap-3 rounded-lg border bg-background/50 p-3 sm:p-4"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                     <span className="text-sm font-bold text-primary">
@@ -234,15 +299,15 @@ export default function Appointments() {
                       })}
                     </span>
                   </div>
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium">{getPatientName(apt.patient || apt.patientId)}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="truncate text-sm text-muted-foreground">
                       {getDoctorName(apt.doctor || apt.doctorId)}
                     </p>
                   </div>
                   {statusConfig[apt.status] && (
-                    <Badge variant={statusConfig[apt.status].variant}>
-                      {apt.reason}
+                    <Badge variant={statusConfig[apt.status].variant} className="max-w-[120px] truncate">
+                      {statusConfig[apt.status].label}
                     </Badge>
                   )}
                 </div>
@@ -335,6 +400,15 @@ export default function Appointments() {
                           onClick={() => openEditDialog(apt)}
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Prescription"
+                          className="text-primary hover:bg-primary/10"
+                          onClick={() => openPrescriptionDialog(apt)}
+                        >
+                          <ClipboardPlus className="h-4 w-4" />
                         </Button>
                         {apt.status === "scheduled" && (
                           <>
