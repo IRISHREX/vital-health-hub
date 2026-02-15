@@ -29,6 +29,7 @@ import OpdDashboard from './pages/OpdDashboard';
 import LabDashboard from './pages/LabDashboard';
 import RadiologyDashboard from './pages/RadiologyDashboard';
 import PharmacyDashboard from './pages/PharmacyDashboard';
+import OTDashboard from './pages/OTDashboard';
 import PrescriptionPreview from "./pages/PrescriptionPreview";
 
 const queryClient = new QueryClient();
@@ -98,6 +99,9 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/pharmacy" element={<PharmacyDashboard />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="ot" />}>
+                  <Route path="/ot" element={<OTDashboard />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/prescriptions/:id/preview" element={<PrescriptionPreview />} />
