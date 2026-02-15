@@ -24,6 +24,7 @@ export const rbacModules = [
   "lab",
   "pharmacy",
   "radiology",
+  "ot",
 ];
 export const moduleLabels = {
   dashboard: "Dashboard",
@@ -43,6 +44,7 @@ export const moduleLabels = {
   lab: "Pathology Lab",
   pharmacy: "Pharmacy",
   radiology: "Radiology",
+  ot: "Operating Theatre",
 };
 
 export const rolePermissions = {
@@ -50,43 +52,43 @@ export const rolePermissions = {
     dashboard: fullAccess, beds: fullAccess, admissions: fullAccess, patients: fullAccess,
     doctors: fullAccess, nurses: fullAccess, appointments: fullAccess, facilities: fullAccess,
     billing: fullAccess, reports: fullAccess, notifications: fullAccess, settings: fullAccess,
-    tasks: fullAccess, vitals: fullAccess, lab: fullAccess, pharmacy: fullAccess, radiology: fullAccess,
+    tasks: fullAccess, vitals: fullAccess, lab: fullAccess, pharmacy: fullAccess, radiology: fullAccess, ot: fullAccess,
   },
   hospital_admin: {
     dashboard: fullAccess, beds: fullAccess, admissions: fullAccess, patients: fullAccess,
     doctors: fullAccess, nurses: fullAccess, appointments: fullAccess, facilities: fullAccess,
     billing: fullAccess, reports: fullAccess, notifications: fullAccess, settings: viewAndEdit,
-    tasks: fullAccess, vitals: fullAccess, lab: fullAccess, pharmacy: fullAccess, radiology: fullAccess,
+    tasks: fullAccess, vitals: fullAccess, lab: fullAccess, pharmacy: fullAccess, radiology: fullAccess, ot: fullAccess,
   },
   head_nurse: {
     dashboard: viewOnly, beds: viewAndEdit, admissions: viewAndEdit, patients: viewAndEdit,
     doctors: viewOnly, nurses: viewOnly, appointments: viewOnly, facilities: viewOnly,
     billing: noAccess, reports: noAccess, notifications: viewOnly, settings: viewOnly,
-    tasks: viewAndEdit, vitals: viewAndCreate, lab: viewAndEdit, pharmacy: viewOnly, radiology: viewAndEdit,
+    tasks: viewAndEdit, vitals: viewAndCreate, lab: viewAndEdit, pharmacy: viewOnly, radiology: viewAndEdit, ot: viewAndEdit,
   },
   doctor: {
     dashboard: viewOnly, beds: viewOnly, admissions: viewAndEdit, patients: viewAndEdit,
     doctors: viewOnly, nurses: viewOnly, appointments: viewAndEdit, facilities: viewOnly,
     billing: viewOnly, reports: viewOnly, notifications: viewOnly, settings: viewOnly,
-    tasks: viewAndEdit, vitals: viewAndCreate, lab: viewAndEdit, pharmacy: viewAndCreate, radiology: viewAndEdit,
+    tasks: viewAndEdit, vitals: viewAndCreate, lab: viewAndEdit, pharmacy: viewAndCreate, radiology: viewAndEdit, ot: viewAndEdit,
   },
   nurse: {
     dashboard: viewOnly, beds: viewAndEdit, admissions: viewAndEdit, patients: viewAndEdit,
     doctors: viewOnly, appointments: viewOnly, facilities: viewOnly,
     billing: noAccess, reports: noAccess, notifications: viewOnly, settings: viewOnly,
-    tasks: viewAndEdit, vitals: viewAndCreate, lab: viewAndEdit, pharmacy: viewOnly, radiology: viewOnly,
+    tasks: viewAndEdit, vitals: viewAndCreate, lab: viewAndEdit, pharmacy: viewOnly, radiology: viewOnly, ot: viewOnly,
   },
   receptionist: {
     dashboard: viewOnly, beds: viewOnly, admissions: viewAndCreate, patients: viewAndCreate,
     doctors: viewOnly, appointments: fullAccess, facilities: viewOnly,
     billing: viewAndCreate, reports: noAccess, notifications: viewOnly, settings: viewOnly,
-    vitals: noAccess, lab: viewAndCreate, pharmacy: viewOnly, radiology: viewAndCreate,
+    vitals: noAccess, lab: viewAndCreate, pharmacy: viewOnly, radiology: viewAndCreate, ot: viewOnly,
   },
   billing_staff: {
     dashboard: viewOnly, beds: noAccess, admissions: viewOnly, patients: viewOnly,
     doctors: noAccess, appointments: noAccess, facilities: viewOnly,
     billing: fullAccess, reports: fullAccess, notifications: viewOnly, settings: viewOnly,
-    vitals: noAccess, lab: viewOnly, pharmacy: viewOnly, radiology: viewOnly,
+    vitals: noAccess, lab: viewOnly, pharmacy: viewOnly, radiology: viewOnly, ot: viewOnly,
   },
 };
 

@@ -17,6 +17,7 @@ import {
   FlaskConical,
   Pill,
   ScanLine,
+  Scissors,
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const mainNavItems = [
 ];
 
 const managementItems = [
+  { title: "Operating Theatre", url: "/ot", icon: Scissors, module: "ot" },
   { title: "Pathology Lab", url: "/lab", icon: FlaskConical, module: "lab" },
   { title: "Radiology", url: "/radiology", icon: ScanLine, module: "radiology" },
   { title: "Pharmacy", url: "/pharmacy", icon: Pill, module: "pharmacy" },
