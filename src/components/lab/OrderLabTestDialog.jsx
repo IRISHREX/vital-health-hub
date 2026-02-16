@@ -26,7 +26,12 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
 
   useEffect(() => {
     if (isOpen) {
-      getLabCatalog({ active: "true" }).then((res) => setCatalog(res.data?.tests || [])).catch(() => {});
+      getLabCatalog({ active: "true" })
+        .then((res) => {
+          const tests = res?.data?.tests || res?.tests || res?.data || [];
+          setCatalog(Array.isArray(tests) ? tests : []);
+        })
+        .catch(() => {});
     } else {
       setSelectedCatalogTests([]);
       setSearchCatalog("");
@@ -80,8 +85,8 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
   };
 
   const filteredCatalog = catalog.filter((c) =>
-    c.testName.toLowerCase().includes(searchCatalog.toLowerCase()) ||
-    c.testCode.toLowerCase().includes(searchCatalog.toLowerCase())
+    String(c?.testName || "").toLowerCase().includes(searchCatalog.toLowerCase()) ||
+    String(c?.testCode || "").toLowerCase().includes(searchCatalog.toLowerCase())
   );
 
   return (
@@ -109,7 +114,9 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
               <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
               <SelectContent>
                 {doctors.map((d) => (
-                  <SelectItem key={d._id} value={d._id}>{d.name} - {d.specialization}</SelectItem>
+                  <SelectItem key={d._id} value={d._id}>
+                    {(d?.name || `${d?.user?.firstName || ""} ${d?.user?.lastName || ""}`.trim() || "Doctor")} - {d?.specialization || "General"}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

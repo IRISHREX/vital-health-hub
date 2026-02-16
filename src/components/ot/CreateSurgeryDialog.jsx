@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
+import { getAdmissions } from "@/lib/admissions";
+import { getPatients } from "@/lib/patients";
 import { createSurgery } from "@/lib/ot";
 import { toast } from "sonner";
 
@@ -22,10 +23,36 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
     notes: ""
   });
 
-  const { data: patientsRes } = useQuery({ queryKey: ["patients"], queryFn: () => getPatients(), enabled: open });
+  const { data: admissionsRes } = useQuery({
+    queryKey: ["admissions", "admitted", "ot-request"],
+    queryFn: () => getAdmissions({ status: "ADMITTED", limit: 500 }),
+    enabled: open
+  });
   const { data: doctorsRes } = useQuery({ queryKey: ["doctors"], queryFn: () => getDoctors(), enabled: open });
-  const patients = patientsRes?.data || patientsRes || [];
-  const doctors = doctorsRes?.data || doctorsRes || [];
+  const { data: patientsRes } = useQuery({ queryKey: ["patients"], queryFn: () => getPatients(), enabled: open });
+  const admissions = admissionsRes?.data?.admissions || admissionsRes?.admissions || [];
+  const allPatients = patientsRes?.data?.patients || [];
+  const admittedPatients = Array.from(
+    new Map(
+      (Array.isArray(admissions) ? admissions : [])
+        .map((a) => {
+          const patientObj = typeof a?.patient === "object"
+            ? a.patient
+            : allPatients.find((p) => p?._id === a?.patient);
+          const patientId = patientObj?._id || (typeof a?.patient === "string" ? a.patient : null);
+          return patientId ? [patientId, patientObj || { _id: patientId, firstName: "Patient", lastName: "", patientId: "" }] : null;
+        })
+        .filter(Boolean)
+    ).values()
+  );
+  const doctors = doctorsRes?.data?.doctors || doctorsRes?.doctors || doctorsRes?.data || doctorsRes || [];
+
+  const doctorLabel = (doctor) => {
+    if (!doctor) return "Doctor";
+    const name = doctor.name || `${doctor?.user?.firstName || ""} ${doctor?.user?.lastName || ""}`.trim();
+    const specialization = doctor.specialization ? ` - ${doctor.specialization}` : "";
+    return `${name || "Doctor"}${specialization}`;
+  };
 
   const mutation = useMutation({
     mutationFn: (data) => createSurgery(data),
@@ -64,12 +91,15 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Patient *</Label>
-              <Select value={form.patient} onValueChange={(v) => setForm({ ...form, patient: v })}>
-                <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
+                <Select value={form.patient} onValueChange={(v) => setForm({ ...form, patient: v })}>
+                <SelectTrigger><SelectValue placeholder="Select admitted patient" /></SelectTrigger>
                 <SelectContent>
-                  {(Array.isArray(patients) ? patients : []).map((p) => (
+                  {(Array.isArray(admittedPatients) ? admittedPatients : []).map((p) => (
                     <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</SelectItem>
                   ))}
+                  {(!admittedPatients || admittedPatients.length === 0) && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No admitted patients found</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -83,8 +113,11 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
                 <SelectTrigger><SelectValue placeholder="Select surgeon" /></SelectTrigger>
                 <SelectContent>
                   {(Array.isArray(doctors) ? doctors : []).map((d) => (
-                    <SelectItem key={d._id} value={d._id}>{d.name} - {d.specialization}</SelectItem>
+                    <SelectItem key={d._id} value={d._id}>{doctorLabel(d)}</SelectItem>
                   ))}
+                  {(!doctors || doctors.length === 0) && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No doctors found</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -94,8 +127,11 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
                 <SelectTrigger><SelectValue placeholder="Select anesthetist" /></SelectTrigger>
                 <SelectContent>
                   {(Array.isArray(doctors) ? doctors : []).map((d) => (
-                    <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>
+                    <SelectItem key={d._id} value={d._id}>{doctorLabel(d)}</SelectItem>
                   ))}
+                  {(!doctors || doctors.length === 0) && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No doctors found</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
