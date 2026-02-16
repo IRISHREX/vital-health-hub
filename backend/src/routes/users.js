@@ -8,6 +8,6 @@ router.get('/', authenticate, authorize('super_admin', 'hospital_admin'), userCo
 router.get('/nurses', authenticate, userController.getNurses);
 router.get('/:id', authenticate, authorize('super_admin', 'hospital_admin'), userController.getUser);
 router.put('/:id', authenticate, authorize('super_admin', 'hospital_admin'), userController.updateUser);
-router.delete('/:id', authenticate, authorize('super_admin'), userController.deleteUser);
+router.delete('/:id', authenticate, authorize('super_admin', 'hospital_admin'), userController.deleteUser);
 
 module.exports = router;
