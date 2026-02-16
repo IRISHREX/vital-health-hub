@@ -65,6 +65,7 @@ const billingOptionConfig = {
   lab: { label: "Lab Billing" },
   radiology: { label: "Radiology Billing" },
   pharmacy: { label: "Pharmacy Billing" },
+  ot: { label: "OT Billing" },
   other: { label: "Other Billing" }
 };
 
@@ -304,7 +305,7 @@ const getCareLabel = (invoice) => {
 
 const getBillingOption = (invoice) => {
   const type = String(invoice?.type || "").toLowerCase();
-  if (["opd", "ipd", "emergency", "lab", "radiology", "pharmacy", "other"].includes(type)) return type;
+  if (["opd", "ipd", "emergency", "lab", "radiology", "pharmacy", "ot", "other"].includes(type)) return type;
   if (invoice?.admission) return "ipd";
   if (invoice?.patient?.registrationType === "emergency") return "emergency";
   return "opd";
@@ -336,79 +337,81 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Patient</TableHead>
-          <TableHead>Care</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Paid</TableHead>
-          <TableHead>Due</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Download Invoice</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => {
-          const status = statusConfig[row.status] || statusConfig.pending;
-          const StatusIcon = status.icon;
-          return (
-            <TableRow key={row.patientId}>
-              <TableCell>
-                <div className="font-medium">{row.patientName}</div>
-                <div className="text-xs text-muted-foreground">{row.patientCode}</div>
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {row.careTypes.map((care) => (
-                    <Badge key={care} variant="outline">{care}</Badge>
-                  ))}
-                </div>
-              </TableCell>
-              <TableCell>Rs {row.total.toLocaleString()}</TableCell>
-              <TableCell className="text-status-available">Rs {row.paid.toLocaleString()}</TableCell>
-              <TableCell className={row.due > 0 ? "text-status-occupied" : ""}>Rs {row.due.toLocaleString()}</TableCell>
-              <TableCell>
-                <Badge variant={status.variant} className="flex w-fit items-center gap-1">
-                  <StatusIcon className="h-3 w-3" />
-                  {status.label}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(row.patientName, row.invoices)}>
-                    <Download className="mr-2 h-3 w-3" />CSV
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(row.patientName, row.invoices, "All Invoices", hospitalSettings)}>
-                    <Download className="mr-2 h-3 w-3" />PDF
-                  </Button>
-                </div>
-              </TableCell>
-              <TableCell>{new Date(row.lastDate).toLocaleDateString()}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => onOpenPatient(row)}>
-                    <Eye className="mr-1 h-3 w-3" />Open
-                  </Button>
-                  {canPay && row.due > 0 && (
-                    <Button variant="ghost" size="sm" onClick={() => onOpenBulkPay(row)}>
-                      Pay All
+    <div className="w-full overflow-x-auto">
+      <Table className="min-w-[980px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Patient</TableHead>
+            <TableHead>Care</TableHead>
+            <TableHead>Total</TableHead>
+            <TableHead>Paid</TableHead>
+            <TableHead>Due</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Download Invoice</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const status = statusConfig[row.status] || statusConfig.pending;
+            const StatusIcon = status.icon;
+            return (
+              <TableRow key={row.patientId}>
+                <TableCell>
+                  <div className="font-medium">{row.patientName}</div>
+                  <div className="text-xs text-muted-foreground">{row.patientCode}</div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {row.careTypes.map((care) => (
+                      <Badge key={care} variant="outline">{care}</Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell>Rs {row.total.toLocaleString()}</TableCell>
+                <TableCell className="text-status-available">Rs {row.paid.toLocaleString()}</TableCell>
+                <TableCell className={row.due > 0 ? "text-status-occupied" : ""}>Rs {row.due.toLocaleString()}</TableCell>
+                <TableCell>
+                  <Badge variant={status.variant} className="flex w-fit items-center gap-1">
+                    <StatusIcon className="h-3 w-3" />
+                    {status.label}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(row.patientName, row.invoices)}>
+                      <Download className="mr-2 h-3 w-3" />CSV
                     </Button>
-                  )}
-                  {canEdit && (
+                    <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(row.patientName, row.invoices, "All Invoices", hospitalSettings)}>
+                      <Download className="mr-2 h-3 w-3" />PDF
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell>{new Date(row.lastDate).toLocaleDateString()}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="sm" onClick={() => onOpenPatient(row)}>
-                      <Pencil className="mr-1 h-3 w-3" />Manage
+                      <Eye className="mr-1 h-3 w-3" />Open
                     </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+                    {canPay && row.due > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => onOpenBulkPay(row)}>
+                        Pay All
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button variant="ghost" size="sm" onClick={() => onOpenPatient(row)}>
+                        <Pencil className="mr-1 h-3 w-3" />Manage
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
@@ -900,7 +903,8 @@ export default function Billing() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <div className="w-full overflow-x-auto">
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Invoice</TableHead>
@@ -941,6 +945,7 @@ export default function Billing() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           ))}
