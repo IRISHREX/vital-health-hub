@@ -9,6 +9,7 @@ export const featureLabels = {
   billing_lab: "Lab Billing",
   billing_radiology: "Radiology Billing",
   billing_pharmacy: "Pharmacy Billing",
+  billing_ot: "OT Billing",
   billing_other: "Other Billing",
 };
 
@@ -32,6 +33,7 @@ export const moduleFeatureCatalog = {
     "billing_lab",
     "billing_radiology",
     "billing_pharmacy",
+    "billing_ot",
     "billing_other"
   ],
   reports: ["view"],

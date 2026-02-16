@@ -200,6 +200,7 @@ const visualAccessSettingsSchema = new mongoose.Schema({
           'billing_lab',
           'billing_radiology',
           'billing_pharmacy',
+          'billing_ot',
           'billing_other'
         ]
       }]

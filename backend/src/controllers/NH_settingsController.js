@@ -401,6 +401,7 @@ exports.updateVisualAccessSettings = async (req, res, next) => {
                 'billing_lab',
                 'billing_radiology',
                 'billing_pharmacy',
+                'billing_ot',
                 'billing_other'
               ].includes(feature))
           }))
