@@ -10,7 +10,7 @@ import { getMyTasks, getTasks, completeTask, updateTask } from '@/lib/tasks';
 import { getVitalsFeed, updateVital as updateVitalApi, deleteVital as deleteVitalApi } from '@/lib/vitals';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import QuickVitalDialog from '@/components/dashboard/QuickVitalDialog';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 export default function NurseDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -52,7 +53,8 @@ export default function NurseDashboard() {
 
   const { data: nursesRes } = useQuery({ queryKey: ['nurses'], queryFn: () => getNurses(), enabled: !!user });
   const nurses = nursesRes?.data?.users || [];
-  const [selectedNurse, setSelectedNurse] = useState('');
+  const initialSelectedNurse = location?.state?.selectedNurseId || '';
+  const [selectedNurse, setSelectedNurse] = useState(initialSelectedNurse);
   const [nurseTasks, setNurseTasks] = useState([]);
   const { data: bedsRes } = useQuery({ queryKey: ['beds'], queryFn: getBeds });
   const allBeds = bedsRes?.data?.beds || [];
@@ -61,6 +63,16 @@ export default function NurseDashboard() {
   const isHeadNurse = user?.role === 'head_nurse';
   const nurseIdToQuery = canSelectNurse ? ((selectedNurse && selectedNurse !== 'all') ? selectedNurse : null) : null;
   const dashboardNurseScope = canSelectNurse ? (selectedNurse || (isHeadNurse ? 'all' : null)) : null;
+
+  useEffect(() => {
+    if (!canSelectNurse) return;
+    const incomingNurseId = location?.state?.selectedNurseId;
+    if (incomingNurseId) {
+      setSelectedNurse(incomingNurseId);
+      return;
+    }
+    if (!selectedNurse) setSelectedNurse('all');
+  }, [canSelectNurse, location?.state?.selectedNurseId, selectedNurse]);
 
   const vitalsFeedQuery = useQuery({
     queryKey: ['vitals-feed', nurseIdToQuery || 'self', vitalSearch, vitalPriority, vitalSort, vitalStartDate, vitalEndDate],
@@ -126,7 +138,9 @@ export default function NurseDashboard() {
         getDashboard('nurse', { nurseId: dashboardNurseScope || undefined }),
         getAssignedPatients(nurseIdToQuery),
         getAssignedAppointments(nurseIdToQuery),
-        (nurseIdToQuery && canSelectNurse) ? getTasks({ assignedTo: nurseIdToQuery }) : getMyTasks(),
+        canSelectNurse
+          ? (nurseIdToQuery ? getTasks({ assignedTo: nurseIdToQuery }) : getTasks({}))
+          : getMyTasks(),
       ]);
 
       if (dashResult.status === 'fulfilled') {

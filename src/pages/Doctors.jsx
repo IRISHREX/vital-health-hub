@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { getDoctors, updateAvailability } from "@/lib/doctors";
+import { deleteDoctor, getDoctors, updateAvailability } from "@/lib/doctors";
 import { getDoctorProfile } from "@/lib/doctorDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,6 +83,17 @@ export default function Doctors() {
   const openEditDialog = (doctor) => { setSelectedDoctor(doctor); setDialogMode("edit"); setDialogOpen(true); };
   const openViewDialog = (doctor) => { setSelectedViewDoctor(doctor); setViewDialogOpen(true); };
   const handleDialogClose = () => { setDialogOpen(false); setSelectedDoctor(null); fetchData(); };
+  const handleDeleteDoctor = async (doctor) => {
+    const ok = window.confirm(`Delete doctor "${doctor?.name || "this doctor"}"?`);
+    if (!ok) return;
+    try {
+      await deleteDoctor(doctor._id);
+      sonnerToast.success("Doctor deleted");
+      fetchData();
+    } catch (err) {
+      sonnerToast.error(err?.message || "Failed to delete doctor");
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -307,7 +318,7 @@ export default function Doctors() {
                         <h3 className="font-semibold text-foreground truncate">{doctor.name}</h3>
                         <p className="text-xs text-primary">{doctor.specialization}</p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-auto p-1" onClick={() => {
+                      <Button variant="ghost" size="sm" className="h-auto p-1" title="Toggle Availability" aria-label="Toggle doctor availability" onClick={() => {
                         const newStatus = doctor.availabilityStatus === "available" ? "unavailable" : "available";
                         availabilityMutation.mutate({ doctorId: doctor._id, status: newStatus });
                       }} disabled={availabilityMutation.isPending}>
@@ -328,7 +339,7 @@ export default function Doctors() {
                 <div className="mt-4 flex items-center gap-1.5">
                   <Button variant="ghost" size="icon" className="h-8 w-8" title="View Profile" onClick={() => openProfile(doctor)}><Eye className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => openEditDialog(doctor)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete"><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete" onClick={() => handleDeleteDoctor(doctor)}><Trash2 className="h-4 w-4" /></Button>
                   <Button size="sm" variant="outline" className="flex-1 ml-1 text-xs" onClick={() => openProfile(doctor)}>
                     <Activity className="mr-1 h-3 w-3" />Profile & Stats
                   </Button>

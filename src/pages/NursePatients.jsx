@@ -38,7 +38,7 @@ export default function NursePatients() {
   const [dischargeNotes, setDischargeNotes] = useState("");
   const [dischargeLoading, setDischargeLoading] = useState(false);
   const [prescriptionHistoryOpen, setPrescriptionHistoryOpen] = useState(false);
-  const [selectedNurseId, setSelectedNurseId] = useState(savedState.selectedNurseId || "");
+  const [selectedNurseId, setSelectedNurseId] = useState(savedState.selectedNurseId || "all");
   const navigate = useNavigate();
   const { user } = useAuth();
   const canSelectNurse = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(user?.role);
@@ -56,7 +56,7 @@ export default function NursePatients() {
     const fetch = async () => {
       try {
         setLoading(true);
-        await loadPatients(canSelectNurse ? selectedNurseId : "");
+        await loadPatients(canSelectNurse && selectedNurseId !== "all" ? selectedNurseId : "");
       } catch (err) {
         console.error(err);
       } finally {
@@ -72,8 +72,8 @@ export default function NursePatients() {
         const res = await getNurses();
         const nextNurses = res?.data?.users || [];
         setNurses(nextNurses);
-        if (canSelectNurse && !selectedNurseId && nextNurses.length > 0) {
-          setSelectedNurseId(nextNurses[0]._id);
+        if (canSelectNurse && !selectedNurseId) {
+          setSelectedNurseId("all");
         }
       } catch (err) {
         console.error(err);
@@ -143,6 +143,7 @@ export default function NursePatients() {
                   <SelectValue placeholder="Select nurse" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All Nurses</SelectItem>
                   {nurses.map((n) => (
                     <SelectItem key={n._id} value={n._id}>
                       {n.firstName} {n.lastName}
@@ -278,7 +279,7 @@ export default function NursePatients() {
                           setHandoverLoading(true);
                           await handoverPatient({ patientId: selectedPatient._id, toNurseId: handoverTo });
                           setHandoverTo("");
-                          await loadPatients(canSelectNurse ? selectedNurseId : "");
+                          await loadPatients(canSelectNurse && selectedNurseId !== "all" ? selectedNurseId : "");
                         } catch (err) {
                           console.error(err);
                         } finally {
@@ -320,7 +321,7 @@ export default function NursePatients() {
                         });
                         setDischargeReason("");
                         setDischargeNotes("");
-                        await loadPatients(canSelectNurse ? selectedNurseId : "");
+                        await loadPatients(canSelectNurse && selectedNurseId !== "all" ? selectedNurseId : "");
                       } catch (err) {
                         console.error(err);
                       } finally {
