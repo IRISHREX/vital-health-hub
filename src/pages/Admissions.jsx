@@ -11,13 +11,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import {
   getAdmissions,
@@ -496,11 +489,6 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
               {admission.doctor?.firstName} {admission.doctor?.lastName}
             </p>
           </div>
-          <div className="flex items-center justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                  <MoreVertical className="h-4 w-4 text-gray-600" />
           <div className="flex items-center justify-end gap-2">
             <button
               onClick={handleViewDetails}
@@ -532,31 +520,15 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
                 >
                   <ArrowRight className="h-4 w-4 text-orange-600" />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleViewDetails}>
-                  <History className="h-4 w-4 mr-2 text-blue-600" />
-                  View History
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleViewDetails}>
-                  <Eye className="h-4 w-4 mr-2 text-green-600" />
-                  View Details
-                </DropdownMenuItem>
-                {admission.status === 'ADMITTED' && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleTransfer}>
-                      <ArrowRight className="h-4 w-4 mr-2 text-orange-600" />
-                      Transfer Bed
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleDischarge}>
-                      <LogOut className="h-4 w-4 mr-2 text-red-600" />
-                      Discharge
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <button
+                  onClick={handleDischarge}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                  title="Discharge"
+                >
+                  <LogOut className="h-4 w-4 text-red-600" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </CardContent>

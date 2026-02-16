@@ -4,26 +4,6 @@ const Patient = require('../models/NH_Patient');
 const Invoice = require('../models/NH_Invoice');
 const asyncHandler = require('express-async-handler');
 
-const generateUniqueSampleId = async () => {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const now = new Date();
-    const yy = now.getFullYear().toString().slice(-2);
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const hh = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    const sec = String(now.getSeconds()).padStart(2, '0');
-    const ms = String(now.getMilliseconds()).padStart(3, '0');
-    const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-    const sampleId = `SMP${yy}${mm}${dd}${hh}${min}${sec}${ms}${rand}`;
-
-    const exists = await LabTest.exists({ sampleId });
-    if (!exists) return sampleId;
-  }
-
-  throw new Error('Unable to generate unique sample ID');
-};
-
 // ====== CATALOG ======
 
 const getCatalog = asyncHandler(async (req, res) => {
@@ -102,65 +82,35 @@ const getLabTestById = asyncHandler(async (req, res) => {
 });
 
 const createLabTest = asyncHandler(async (req, res) => {
-  const { catalogTestId, catalogTestIds } = req.body;
+  const { catalogTestId, patient, doctor, admission, appointment, priority, notes } = req.body;
 
-  // If catalog test IDs provided, create one lab test record per selected catalog test
-  const selectedCatalogIds = Array.isArray(catalogTestIds) && catalogTestIds.length
-    ? catalogTestIds
-    : (catalogTestId ? [catalogTestId] : []);
+  // If catalogTestId provided, pull details from catalog
+  let testData = { ...req.body, orderedBy: req.user._id };
 
-  if (selectedCatalogIds.length > 0) {
-    const catalogItems = await LabTestCatalog.find({ _id: { $in: selectedCatalogIds } });
-    if (catalogItems.length !== selectedCatalogIds.length) {
-      res.status(404);
-      throw new Error('One or more catalog tests not found');
-    }
+  if (catalogTestId) {
+    const catalogItem = await LabTestCatalog.findById(catalogTestId);
+    if (!catalogItem) { res.status(404); throw new Error('Catalog test not found'); }
 
-    const sharedData = { ...req.body, orderedBy: req.user._id };
-
-    const testsToCreate = selectedCatalogIds.map((id) => {
-      const catalogItem = catalogItems.find((item) => item._id.toString() === id.toString());
-      return {
-        ...sharedData,
-        testName: catalogItem.testName,
-        testCode: catalogItem.testCode,
-        category: catalogItem.category,
-        description: catalogItem.description,
-        sampleType: catalogItem.sampleType,
-        parameters: catalogItem.parameters.map(p => ({
-          name: p.name,
-          unit: p.unit,
-          normalRange: p.normalRange,
-          value: '',
-          status: 'pending'
-        })),
-        price: catalogItem.price,
-        totalAmount: Math.max(0, catalogItem.price - (req.body.discount || 0)),
-        expectedCompletionAt: new Date(Date.now() + catalogItem.turnaroundTime * 3600000)
-      };
-    });
-
-    const createdTests = await LabTest.insertMany(testsToCreate);
-    const createdIds = createdTests.map((t) => t._id);
-    const populatedTests = await LabTest.find({ _id: { $in: createdIds } })
-      .populate('patient', 'firstName lastName patientId')
-      .populate('doctor', 'name');
-
-    if (populatedTests.length === 1) {
-      res.status(201).json({ success: true, data: populatedTests[0] });
-      return;
-    }
-
-    res.status(201).json({
-      success: true,
-      data: { tests: populatedTests, count: populatedTests.length },
-      message: `${populatedTests.length} lab tests ordered successfully`
-    });
-    return;
+    testData = {
+      ...testData,
+      testName: catalogItem.testName,
+      testCode: catalogItem.testCode,
+      category: catalogItem.category,
+      description: catalogItem.description,
+      sampleType: catalogItem.sampleType,
+      parameters: catalogItem.parameters.map(p => ({
+        name: p.name,
+        unit: p.unit,
+        normalRange: p.normalRange,
+        value: '',
+        status: 'pending'
+      })),
+      price: catalogItem.price,
+      totalAmount: catalogItem.price - (req.body.discount || 0),
+      expectedCompletionAt: new Date(Date.now() + catalogItem.turnaroundTime * 3600000)
+    };
   }
 
-  // Fallback: create a direct manual test order payload
-  const testData = { ...req.body, orderedBy: req.user._id };
   const test = await LabTest.create(testData);
   const populated = await LabTest.findById(test._id)
     .populate('patient', 'firstName lastName patientId')
@@ -195,18 +145,16 @@ const collectSample = asyncHandler(async (req, res) => {
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
 
-  if (test.sampleStatus === 'collected' || test.sampleStatus === 'received' || test.sampleStatus === 'processing') {
-    res.json({ success: true, data: test, message: 'Sample already collected' });
-    return;
-  }
-
   test.sampleStatus = 'collected';
   test.sampleCollectedAt = new Date();
   test.sampleCollectedBy = req.user._id;
   test.status = 'sample_collected';
-  if (!test.sampleId) {
-    test.sampleId = await generateUniqueSampleId();
-  }
+  // Generate sample ID
+  const date = new Date();
+  const yr = date.getFullYear().toString().slice(-2);
+  const mo = String(date.getMonth() + 1).padStart(2, '0');
+  const count = await LabTest.countDocuments({ sampleId: { $ne: null } });
+  test.sampleId = `SMP${yr}${mo}${String(count + 1).padStart(5, '0')}`;
 
   await test.save();
   res.json({ success: true, data: test, message: 'Sample collected successfully' });
@@ -232,10 +180,6 @@ const rejectSample = asyncHandler(async (req, res) => {
 const startProcessing = asyncHandler(async (req, res) => {
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
-  if (!['collected', 'received', 'processing'].includes(test.sampleStatus)) {
-    res.status(400);
-    throw new Error('Collect sample first before starting processing');
-  }
   test.sampleStatus = 'processing';
   test.status = 'processing';
   await test.save();

@@ -31,12 +31,6 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Search,
@@ -48,8 +42,6 @@ import {
   Receipt,
   IndianRupee,
   AlertCircle,
-  Loader2,
-  MoreVertical
   CheckCircle2,
   Clock
 } from "lucide-react";
@@ -840,61 +832,6 @@ export default function Billing() {
           </Card>
         )}
 
-                  return (
-                    <TableRow key={invoice._id}>
-                      <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                      <TableCell>{invoice.patient.name}</TableCell>
-                      <TableCell>
-                        ₹{invoice.totalAmount.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-status-available">
-                        ₹{invoice.paidAmount.toLocaleString()}
-                      </TableCell>
-                      <TableCell
-                        className={invoice.dueAmount > 0 ? "text-status-occupied" : ""}
-                      >
-                        ₹{invoice.dueAmount.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={config.variant}
-                          className="flex w-fit items-center gap-1"
-                        >
-                          <StatusIcon className="h-3 w-3" />
-                          {config.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(invoice)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
         {allowedBillingOptions.length > 0 && (
           <Card><CardContent className="p-0">
             <PatientBillingTable
