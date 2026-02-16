@@ -31,6 +31,8 @@ import RadiologyDashboard from './pages/RadiologyDashboard';
 import PharmacyDashboard from './pages/PharmacyDashboard';
 import OTDashboard from './pages/OTDashboard';
 import PrescriptionPreview from "./pages/PrescriptionPreview";
+import LabReportPreview from "./pages/LabReportPreview";
+import RadiologyReportPreview from "./pages/RadiologyReportPreview";
 
 const queryClient = new QueryClient();
 
@@ -105,6 +107,12 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/prescriptions/:id/preview" element={<PrescriptionPreview />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="lab" />}>
+                  <Route path="/lab/:id/preview" element={<LabReportPreview />} />
+                </Route>
+                <Route element={<AuthorizedRoute module="radiology" />}>
+                  <Route path="/radiology/:id/preview" element={<RadiologyReportPreview />} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<Settings />} />

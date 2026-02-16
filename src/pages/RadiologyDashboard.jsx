@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getRadiologyOrders, getRadiologyStats, deleteRadiologyOrder, scheduleOrder, startStudy, completeStudy, deliverRadiologyReport, generateRadiologyInvoice } from "@/lib/radiology";
 import { getPatients } from "@/lib/patients";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, Clock, Eye, Trash2, FileText, Receipt, Activity, Play, Calendar, CheckCircle2, Send } from "lucide-react";
+import { Search, Plus, Clock, Eye, Trash2, FileText, Receipt, Activity, Play, Calendar, CheckCircle2, Send, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import OrderRadiologyDialog from "@/components/radiology/OrderRadiologyDialog";
 import RadiologyReportDialog from "@/components/radiology/RadiologyReportDialog";
@@ -36,6 +37,7 @@ const studyTypeLabels = {
 const priorityVariant = { routine: "secondary", urgent: "default", stat: "destructive" };
 
 export default function RadiologyDashboard() {
+  const navigate = useNavigate();
   const { getModulePermissions } = useVisualAuth();
   const permissions = getModulePermissions("radiology");
 
@@ -212,9 +214,14 @@ export default function RadiologyDashboard() {
                           </Button>
                         )}
                         {["completed", "reported", "verified"].includes(o.status) && (
-                          <Button variant="ghost" size="icon" title="Report" onClick={() => { setSelectedOrder(o); setReportDialogOpen(true); }}>
-                            <FileText className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button variant="ghost" size="icon" title="Report" onClick={() => { setSelectedOrder(o); setReportDialogOpen(true); }}>
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Preview & Edit Report" onClick={() => navigate(`/radiology/${o._id}/preview`)}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                         {["verified", "delivered"].includes(o.status) && !o.billed && permissions.canCreate && (
                           <Button variant="ghost" size="icon" title="Generate Invoice" onClick={() => handleGenerateInvoice([o._id])}>
