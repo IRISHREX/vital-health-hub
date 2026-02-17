@@ -747,7 +747,7 @@ export default function Billing() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-x-hidden min-w-0">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Billing Center</h1>
@@ -805,29 +805,29 @@ export default function Billing() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
+          <Card className="min-w-0">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Billing Options</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+            <CardContent className="min-w-0">
+              <div className="grid min-w-0 gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
                 <button
                   type="button"
                   onClick={() => setBillingOptionFilter("all")}
-                  className={`rounded-lg border p-3 text-left ${effectiveBillingOptionFilter === "all" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                  className={`rounded-lg border p-3 text-left min-w-0 ${effectiveBillingOptionFilter === "all" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
                 >
                   <p className="text-xs text-muted-foreground">All Allowed</p>
-                  <p className="text-sm font-semibold">{baseFilteredInvoices.length} invoices</p>
+                  <p className="text-sm font-semibold break-words">{baseFilteredInvoices.length} invoices</p>
                 </button>
                 {allowedBillingOptions.map((option) => (
                   <button
                     key={option}
                     type="button"
                     onClick={() => setBillingOptionFilter(option)}
-                    className={`rounded-lg border p-3 text-left ${effectiveBillingOptionFilter === option ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                    className={`rounded-lg border p-3 text-left min-w-0 ${effectiveBillingOptionFilter === option ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
                   >
-                    <p className="text-xs text-muted-foreground">{billingOptionConfig[option].label}</p>
-                    <p className="text-sm font-semibold">{billingOptionCounts[option] || 0} invoices</p>
+                    <p className="text-xs text-muted-foreground break-words">{billingOptionConfig[option].label}</p>
+                    <p className="text-sm font-semibold break-words">{billingOptionCounts[option] || 0} invoices</p>
                   </button>
                 ))}
               </div>
@@ -867,10 +867,10 @@ export default function Billing() {
         setPatientDialogOpen(open);
         if (!open) setSelectedPatientId("");
       }}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[98vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader><DialogTitle>Patient Billing - {selectedPatientRow?.patientName || "-"}</DialogTitle></DialogHeader>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Subtotal</p><p className="font-bold">Rs {Number(selectedPatientRow?.total || 0).toLocaleString()}</p></CardContent></Card>
             <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Paid</p><p className="font-bold text-status-available">Rs {Number(selectedPatientRow?.paid || 0).toLocaleString()}</p></CardContent></Card>
             <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Due</p><p className="font-bold text-status-occupied">Rs {Number(selectedPatientRow?.due || 0).toLocaleString()}</p></CardContent></Card>
@@ -955,10 +955,10 @@ export default function Billing() {
               <CardHeader className="pb-2"><CardTitle className="text-base">Add/Adjust Bills (key/value + discount)</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {adjustmentRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2">
-                    <Input className="col-span-7" placeholder="Charge key (e.g. Procedure, Service, Consumable)" value={row.key} onChange={(e) => updateAdjustmentRow(index, "key", e.target.value)} />
-                    <Input className="col-span-3" type="number" min="0" placeholder="Amount" value={row.value} onChange={(e) => updateAdjustmentRow(index, "value", e.target.value)} />
-                    <Button className="col-span-2" variant="outline" onClick={() => removeAdjustmentRow(index)}>Remove</Button>
+                  <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-12">
+                    <Input className="sm:col-span-7" placeholder="Charge key (e.g. Procedure, Service, Consumable)" value={row.key} onChange={(e) => updateAdjustmentRow(index, "key", e.target.value)} />
+                    <Input className="sm:col-span-3" type="number" min="0" placeholder="Amount" value={row.value} onChange={(e) => updateAdjustmentRow(index, "value", e.target.value)} />
+                    <Button className="sm:col-span-2" variant="outline" onClick={() => removeAdjustmentRow(index)}>Remove</Button>
                   </div>
                 ))}
                 <div className="flex flex-wrap items-center gap-2">
@@ -968,7 +968,7 @@ export default function Billing() {
                   <Label>Discount</Label>
                   <Input className="w-44" type="number" min="0" value={adjustmentDiscount} onChange={(e) => setAdjustmentDiscount(e.target.value)} />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Rows Subtotal</p><p className="font-semibold">Rs {adjustmentSubtotal.toLocaleString()}</p></CardContent></Card>
                   <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Discount</p><p className="font-semibold">Rs {discountAmount.toLocaleString()}</p></CardContent></Card>
                   <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Net New Bill</p><p className="font-bold">Rs {adjustmentTotal.toLocaleString()}</p></CardContent></Card>

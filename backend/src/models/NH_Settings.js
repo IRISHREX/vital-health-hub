@@ -233,16 +233,40 @@ const visualAccessSettingsSchema = new mongoose.Schema({
   timestamps: true
 });
 
+const dataManagementSettingsSchema = new mongoose.Schema({
+  autoExport: {
+    enabled: { type: Boolean, default: false },
+    frequency: { type: String, enum: ['daily', 'weekly', 'monthly'], default: 'weekly' },
+    time: { type: String, default: '02:00' }, // HH:mm
+    dayOfWeek: { type: Number, min: 0, max: 6, default: 0 },
+    dayOfMonth: { type: Number, min: 1, max: 31, default: 1 },
+    format: { type: String, enum: ['csv', 'json'], default: 'csv' },
+    entities: [{
+      type: String,
+      enum: ['beds', 'doctors', 'nurses', 'medicines', 'tests', 'patients', 'patient_history', 'billings']
+    }],
+    recipients: [{ type: String, trim: true, lowercase: true }]
+  },
+  lastRunAt: { type: Date, default: null },
+  lastRunStatus: { type: String, default: '' },
+  lastRunMessage: { type: String, default: '' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, {
+  timestamps: true
+});
+
 const HospitalSettings = mongoose.model('HospitalSettings', hospitalSettingsSchema);
 const SecuritySettings = mongoose.model('SecuritySettings', securitySettingsSchema);
 const NotificationSettings = mongoose.model('NotificationSettings', notificationSettingsSchema);
 const UserPreferences = mongoose.model('UserPreferences', userPreferencesSchema);
 const VisualAccessSettings = mongoose.model('VisualAccessSettings', visualAccessSettingsSchema);
+const DataManagementSettings = mongoose.model('DataManagementSettings', dataManagementSettingsSchema);
 
 module.exports = {
   HospitalSettings,
   SecuritySettings,
   NotificationSettings,
   UserPreferences,
-  VisualAccessSettings
+  VisualAccessSettings,
+  DataManagementSettings
 };
