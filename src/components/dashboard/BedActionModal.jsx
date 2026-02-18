@@ -573,7 +573,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Destination Bed *</label>
-                  <Select value={newBedId} onValueChange={setNewBedId}>
+                  <Select value={newBedId} onValueChange={(e) => setNewBedId(e)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select destination bed" />
                     </SelectTrigger>
@@ -686,7 +686,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                         <SelectValue placeholder="Select discharging doctor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not specified</SelectItem>
+                        <SelectItem value="Not specified">Not specified</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

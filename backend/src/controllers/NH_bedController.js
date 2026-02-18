@@ -48,6 +48,7 @@ exports.getBeds = async (req, res, next) => {
     const total = await Bed.countDocuments(query);
     const beds = await Bed.find(query)
       .populate('currentPatient', 'firstName lastName patientId')
+      .populate('currentAdmission')
       .populate('nurseInCharge', 'firstName lastName email')
       .skip((page - 1) * limit)
       .limit(parseInt(limit))

@@ -97,7 +97,6 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
             <Select value={form.schedule} onValueChange={set('schedule')}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
                 <SelectItem value="H">H</SelectItem>
                 <SelectItem value="H1">H1</SelectItem>
                 <SelectItem value="X">X</SelectItem>
