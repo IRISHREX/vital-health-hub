@@ -207,7 +207,7 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
   return (
     admission && admission.status === 'ADMITTED' ? (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>
             {mode === 'view' && `Admission Details - ${admission.admissionId}`}
