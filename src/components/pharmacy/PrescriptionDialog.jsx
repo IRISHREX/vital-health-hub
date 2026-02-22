@@ -488,6 +488,8 @@ export default function PrescriptionDialog({
     }
   };
 
+  const canUseSavedActions = !!savedPrescription?._id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[98vw] sm:max-w-[96vw] xl:max-w-[92vw] h-[92vh] sm:h-[90vh] overflow-hidden p-3 sm:p-6">
@@ -530,6 +532,7 @@ export default function PrescriptionDialog({
             </Button>
             <Button
               variant="outline"
+              disabled={!canUseSavedActions}
               onClick={() =>
                 navigate(
                   `/prescriptions/${savedPrescription?._id || "draft"}/preview`,
@@ -539,13 +542,13 @@ export default function PrescriptionDialog({
             >
               <Eye className="mr-2 h-4 w-4" />Preview
             </Button>
-            <Button variant="outline" onClick={() => printPrescription(draftPreviewRx, { hospitalSettings })}>
+            <Button variant="outline" disabled={!canUseSavedActions} onClick={() => printPrescription(draftPreviewRx, { hospitalSettings })}>
               <Printer className="mr-2 h-4 w-4" />Print
             </Button>
-            <Button variant="outline" onClick={() => downloadPrescriptionPdf(draftPreviewRx, { hospitalSettings })}>
+            <Button variant="outline" disabled={!canUseSavedActions} onClick={() => downloadPrescriptionPdf(draftPreviewRx, { hospitalSettings })}>
               <Download className="mr-2 h-4 w-4" />Download
             </Button>
-            <Button variant="outline" onClick={handleSend} disabled={!savedPrescription?._id || sharing}>
+            <Button variant="outline" onClick={handleSend} disabled={!canUseSavedActions || sharing}>
               <Send className="mr-2 h-4 w-4" />{sharing ? "Sending..." : "Send"}
             </Button>
           </div>

@@ -22,7 +22,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['opd', 'ipd', 'pharmacy', 'lab', 'radiology', 'other'],
+    enum: ['opd', 'ipd', 'pharmacy', 'lab', 'radiology', 'ot', 'other'],
     required: true
   },
   items: [{

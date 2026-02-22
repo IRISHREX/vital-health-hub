@@ -42,6 +42,13 @@ import {
   X,
   BellRing,
   LayoutPanelTop,
+  Upload,
+  Download,
+  Play,
+  FileSpreadsheet,
+  CalendarClock,
+  Copy,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -55,6 +62,12 @@ import {
   createAccessRequest,
   getPendingAccessRequests,
   respondToAccessRequest,
+  getDataManagementSettings,
+  updateDataManagementSettings,
+  getDataImportTemplate,
+  bulkImportData,
+  exportDataByEntity,
+  runAutoExportNow,
 } from "@/lib/settings";
 import { getNotifications } from "@/lib/notifications";
 import { updateProfile } from "@/lib/auth";
@@ -99,14 +112,76 @@ const moduleIconMap = {
   radiology: Database,
 };
 
+const dataEntityOptions = [
+  { key: "beds", label: "Beds" },
+  { key: "doctors", label: "Doctors" },
+  { key: "nurses", label: "Nurses" },
+  { key: "medicines", label: "Medicines" },
+  { key: "tests", label: "Tests" },
+  { key: "patients", label: "Patients" },
+  { key: "patient_history", label: "Patient History" },
+  { key: "billings", label: "Billings" },
+];
+
+const parseSpreadsheetText = (text) => {
+  const source = String(text || "").replace(/\r\n/g, "\n").trim();
+  if (!source) return [];
+  const lines = source.split("\n").filter((line) => line.trim());
+  if (!lines.length) return [];
+
+  const delimiter = lines[0].includes("\t") ? "\t" : ",";
+  const parseLine = (line) => {
+    if (delimiter === "\t") return line.split("\t").map((cell) => cell.trim());
+    const out = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === "," && !inQuotes) {
+        out.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    out.push(current.trim());
+    return out;
+  };
+
+  const headers = parseLine(lines[0]).map((h) => h.trim());
+  return lines.slice(1).map((line) => {
+    const values = parseLine(line);
+    return headers.reduce((acc, header, index) => {
+      acc[header] = values[index] ?? "";
+      return acc;
+    }, {});
+  });
+};
+
+const toCsv = (headers, rows) => [
+  headers.join(","),
+  ...rows.map((row) =>
+    headers.map((header) => `"${String(row?.[header] ?? "").replace(/"/g, '""')}"`).join(",")
+  ),
+].join("\n");
+
 export default function Settings() {
   const { user, logout } = useAuth();
   const { canManageVisualPermissions, canCreate } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
+  const isSuperAdmin = user?.role === "super_admin";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
+  const importFileInputRef = useRef(null);
   
   // Profile state
   const [profile, setProfile] = useState({
@@ -169,6 +244,30 @@ export default function Settings() {
   const [permissionNotifications, setPermissionNotifications] = useState([]);
   const [requestActionLoadingId, setRequestActionLoadingId] = useState("");
 
+  // Data management (Super Admin)
+  const [dataManagementSettings, setDataManagementSettings] = useState({
+    autoExport: {
+      enabled: false,
+      frequency: "weekly",
+      time: "02:00",
+      dayOfWeek: 0,
+      dayOfMonth: 1,
+      format: "csv",
+      entities: ["beds", "doctors", "nurses", "medicines", "tests"],
+      recipients: [],
+    },
+    lastRunAt: "",
+    lastRunStatus: "",
+    lastRunMessage: "",
+  });
+  const [selectedImportEntity, setSelectedImportEntity] = useState("beds");
+  const [selectedExportEntity, setSelectedExportEntity] = useState("beds");
+  const [importText, setImportText] = useState("");
+  const [importRowsPreview, setImportRowsPreview] = useState([]);
+  const [templateHeaders, setTemplateHeaders] = useState([]);
+  const [recipientsInput, setRecipientsInput] = useState("");
+  const [runningAutoExport, setRunningAutoExport] = useState(false);
+
   // Fetch user stats using react-query (v5 object syntax)
   useQuery({
     queryKey: ["user-stats"],
@@ -199,11 +298,12 @@ export default function Settings() {
           setAvatarPreview(user.avatar || "");
         }
         
-        const [settingsRes, statsRes, visualAccessRes, usersRes] = await Promise.all([
+        const [settingsRes, statsRes, visualAccessRes, usersRes, dataManagementRes] = await Promise.all([
           adminUser ? getAllSettings() : Promise.resolve(null),
           adminUser ? getUserStats() : Promise.resolve(null),
           getVisualAccessSettings(),
           (adminUser || canManageVisualPermissions) ? getUsers() : Promise.resolve(null),
+          isSuperAdmin ? getDataManagementSettings().catch(() => null) : Promise.resolve(null),
         ]);
         const [pendingRes, permissionNotifRes] = await Promise.all([
           user?.role === "super_admin" ? getPendingAccessRequests().catch(() => null) : Promise.resolve(null),
@@ -211,7 +311,7 @@ export default function Settings() {
         ]);
 
         if (settingsRes?.success && settingsRes?.data) {
-          const { hospital, security, notifications } = settingsRes.data;
+          const { hospital, security, notifications, dataManagement } = settingsRes.data;
           
           setHospitalSettings({
             hospitalName: hospital?.hospitalName || "",
@@ -235,6 +335,47 @@ export default function Settings() {
             smsAlerts: notifications?.smsAlerts ?? false,
             pushNotifications: notifications?.pushNotifications ?? true,
           });
+
+          if (isSuperAdmin && dataManagement) {
+            const nextDataSettings = {
+              autoExport: {
+                enabled: !!dataManagement?.autoExport?.enabled,
+                frequency: dataManagement?.autoExport?.frequency || "weekly",
+                time: dataManagement?.autoExport?.time || "02:00",
+                dayOfWeek: Number(dataManagement?.autoExport?.dayOfWeek ?? 0),
+                dayOfMonth: Number(dataManagement?.autoExport?.dayOfMonth ?? 1),
+                format: dataManagement?.autoExport?.format || "csv",
+                entities: dataManagement?.autoExport?.entities || ["beds", "doctors", "nurses", "medicines", "tests"],
+                recipients: dataManagement?.autoExport?.recipients || [],
+              },
+              lastRunAt: dataManagement?.lastRunAt || "",
+              lastRunStatus: dataManagement?.lastRunStatus || "",
+              lastRunMessage: dataManagement?.lastRunMessage || "",
+            };
+            setDataManagementSettings(nextDataSettings);
+            setRecipientsInput((nextDataSettings.autoExport.recipients || []).join(", "));
+          }
+        }
+
+        if (isSuperAdmin && dataManagementRes?.success && dataManagementRes?.data) {
+          const dm = dataManagementRes.data;
+          const nextDataSettings = {
+            autoExport: {
+              enabled: !!dm?.autoExport?.enabled,
+              frequency: dm?.autoExport?.frequency || "weekly",
+              time: dm?.autoExport?.time || "02:00",
+              dayOfWeek: Number(dm?.autoExport?.dayOfWeek ?? 0),
+              dayOfMonth: Number(dm?.autoExport?.dayOfMonth ?? 1),
+              format: dm?.autoExport?.format || "csv",
+              entities: dm?.autoExport?.entities || ["beds", "doctors", "nurses", "medicines", "tests"],
+              recipients: dm?.autoExport?.recipients || [],
+            },
+            lastRunAt: dm?.lastRunAt || "",
+            lastRunStatus: dm?.lastRunStatus || "",
+            lastRunMessage: dm?.lastRunMessage || "",
+          };
+          setDataManagementSettings(nextDataSettings);
+          setRecipientsInput((nextDataSettings.autoExport.recipients || []).join(", "));
         }
 
         if (statsRes?.success && statsRes?.data) {
@@ -288,7 +429,7 @@ export default function Settings() {
     };
 
     loadSettings();
-  }, [user, isAdmin, canManageVisualPermissions]);
+  }, [user, isAdmin, isSuperAdmin, canManageVisualPermissions]);
 
   // Handle avatar file selection
   const handleAvatarChange = (e) => {
@@ -533,6 +674,158 @@ export default function Settings() {
       toast.error(error.message || "Failed to submit request");
     } finally {
       setSubmittingRequest(false);
+    }
+  };
+
+  const handleLoadImportTemplate = async (entity = selectedImportEntity) => {
+    try {
+      const res = await getDataImportTemplate(entity);
+      const headers = res?.data?.headers || [];
+      setTemplateHeaders(headers);
+      if (headers.length) {
+        const headerLine = headers.join(",");
+        setImportText((prev) => (prev.trim() ? prev : `${headerLine}\n`));
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to load import template");
+    }
+  };
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    handleLoadImportTemplate(selectedImportEntity);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin, selectedImportEntity]);
+
+  const handleImportTextChange = (value) => {
+    setImportText(value);
+    const rows = parseSpreadsheetText(value);
+    setImportRowsPreview(rows.slice(0, 5));
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      handleImportTextChange(text);
+      toast.success(`Loaded ${file.name}`);
+    } catch (error) {
+      toast.error(error.message || "Failed to read file");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const handleBulkImportSubmit = async () => {
+    try {
+      const rows = parseSpreadsheetText(importText);
+      if (!rows.length) {
+        toast.error("Provide spreadsheet data with header row");
+        return;
+      }
+      setSaving(true);
+      const response = await bulkImportData({ entity: selectedImportEntity, rows });
+      const summary = response?.data || {};
+      toast.success(`Import complete. Created: ${summary.created || 0}, Updated: ${summary.updated || 0}, Skipped: ${summary.skipped || 0}`);
+      if ((summary.errors || []).length) {
+        toast.warning(`${summary.errors.length} row(s) had errors`);
+      }
+    } catch (error) {
+      toast.error(error.message || "Bulk import failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExportEntity = async (entity) => {
+    try {
+      const response = await exportDataByEntity(entity);
+      const headers = response?.data?.headers || [];
+      const rows = response?.data?.rows || [];
+      const csv = toCsv(headers, rows);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${entity}_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${rows.length} ${entity} record(s)`);
+    } catch (error) {
+      toast.error(error.message || "Export failed");
+    }
+  };
+
+  const toggleAutoExportEntity = (entity, checked) => {
+    setDataManagementSettings((prev) => {
+      const existing = prev.autoExport?.entities || [];
+      const nextEntities = checked
+        ? Array.from(new Set([...existing, entity]))
+        : existing.filter((item) => item !== entity);
+      return {
+        ...prev,
+        autoExport: {
+          ...prev.autoExport,
+          entities: nextEntities,
+        },
+      };
+    });
+  };
+
+  const handleSaveDataManagement = async () => {
+    try {
+      setSaving(true);
+      const recipients = recipientsInput
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean);
+      const payload = {
+        autoExport: {
+          ...dataManagementSettings.autoExport,
+          recipients,
+        },
+      };
+      const response = await updateDataManagementSettings(payload);
+      const next = response?.data || null;
+      if (next) {
+        setDataManagementSettings((prev) => ({
+          ...prev,
+          autoExport: {
+            ...prev.autoExport,
+            ...next.autoExport,
+          },
+          lastRunAt: next.lastRunAt || prev.lastRunAt,
+          lastRunStatus: next.lastRunStatus || prev.lastRunStatus,
+          lastRunMessage: next.lastRunMessage || prev.lastRunMessage,
+        }));
+      }
+      toast.success("Data management settings updated");
+    } catch (error) {
+      toast.error(error.message || "Failed to save data management settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRunAutoExport = async () => {
+    try {
+      setRunningAutoExport(true);
+      const response = await runAutoExportNow();
+      const runAt = response?.data?.runAt || new Date().toISOString();
+      setDataManagementSettings((prev) => ({
+        ...prev,
+        lastRunAt: runAt,
+        lastRunStatus: "success",
+        lastRunMessage: response?.message || "Auto export run completed",
+      }));
+      toast.success(response?.message || "Auto export run completed");
+    } catch (error) {
+      toast.error(error.message || "Failed to run auto export");
+    } finally {
+      setRunningAutoExport(false);
     }
   };
 
@@ -1185,50 +1478,211 @@ export default function Settings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="rounded-lg border p-4">
-                    <h3 className="font-medium">Automatic Backups</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Last backup: January 15, 2026 at 02:00 AM
-                    </p>
-                    <div className="mt-4 flex gap-2">
-                      <Button variant="outline" size="sm">
-                        Backup Now
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Configure Schedule
-                      </Button>
+                  {!isSuperAdmin ? (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                      Data Management (bulk import/export and scheduler) is restricted to Super Admin.
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="rounded-lg border p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-medium flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" />Bulk Import (Excel / Google Sheet)</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Upload CSV exported from Excel/Google Sheets, or paste tabular data directly.
+                            </p>
+                          </div>
+                          <div className="w-52">
+                            <Select value={selectedImportEntity} onValueChange={setSelectedImportEntity}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {dataEntityOptions.filter((item) => ["beds", "doctors", "nurses", "medicines", "tests"].includes(item.key)).map((item) => (
+                                  <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
 
-                  <div className="rounded-lg border p-4">
-                    <h3 className="font-medium">Export Data</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Export hospital data in various formats
-                    </p>
-                    <div className="mt-4 flex gap-2">
-                      <Button variant="outline" size="sm">
-                        Export CSV
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Export Excel
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Export PDF
-                      </Button>
-                    </div>
-                  </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleLoadImportTemplate(selectedImportEntity)}>
+                            <Copy className="mr-2 h-4 w-4" />Load Template Headers
+                          </Button>
+                          <input
+                            ref={importFileInputRef}
+                            type="file"
+                            accept=".csv,.txt"
+                            className="hidden"
+                            onChange={handleImportFile}
+                          />
+                          <Button variant="outline" size="sm" onClick={() => importFileInputRef.current?.click()}>
+                            <Upload className="mr-2 h-4 w-4" />Upload CSV
+                          </Button>
+                          <Button size="sm" onClick={handleBulkImportSubmit} disabled={saving}>
+                            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                            Import {selectedImportEntity}
+                          </Button>
+                        </div>
 
-                  <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
-                    <h3 className="font-medium text-destructive">Danger Zone</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Irreversible actions - proceed with caution
-                    </p>
-                    <div className="mt-4">
-                      <Button variant="destructive" size="sm">
-                        Clear All Logs
-                      </Button>
-                    </div>
-                  </div>
+                        {templateHeaders.length > 0 && (
+                          <div className="rounded-md border bg-muted/20 p-3">
+                            <p className="text-xs text-muted-foreground">Template headers</p>
+                            <p className="text-xs mt-1 break-all">{templateHeaders.join(", ")}</p>
+                          </div>
+                        )}
+
+                        <div>
+                          <Label>Spreadsheet Data</Label>
+                          <textarea
+                            value={importText}
+                            onChange={(e) => handleImportTextChange(e.target.value)}
+                            className="mt-1 h-40 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            placeholder="Paste rows from Google Sheet / Excel (with header row)"
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">Preview rows: {importRowsPreview.length}</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border p-4 space-y-4">
+                        <h3 className="font-medium flex items-center gap-2"><Download className="h-4 w-4" />Export Data</h3>
+                        <p className="text-sm text-muted-foreground">Export master and operational datasets as CSV.</p>
+                        <div className="flex flex-wrap gap-2">
+                          <Select value={selectedExportEntity} onValueChange={setSelectedExportEntity}>
+                            <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {dataEntityOptions.map((item) => (
+                                <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button variant="outline" onClick={() => handleExportEntity(selectedExportEntity)}>
+                            <Download className="mr-2 h-4 w-4" />Export Selected
+                          </Button>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          {dataEntityOptions.map((item) => (
+                            <Button key={item.key} variant="ghost" className="justify-start border" onClick={() => handleExportEntity(item.key)}>
+                              <Download className="mr-2 h-4 w-4" />{item.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border p-4 space-y-4">
+                        <h3 className="font-medium flex items-center gap-2"><CalendarClock className="h-4 w-4" />Auto Export Scheduler</h3>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                            <Label>Enable Scheduler</Label>
+                            <Switch
+                              checked={!!dataManagementSettings.autoExport.enabled}
+                              onCheckedChange={(checked) =>
+                                setDataManagementSettings((prev) => ({
+                                  ...prev,
+                                  autoExport: { ...prev.autoExport, enabled: checked },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Frequency</Label>
+                            <Select
+                              value={dataManagementSettings.autoExport.frequency}
+                              onValueChange={(value) =>
+                                setDataManagementSettings((prev) => ({
+                                  ...prev,
+                                  autoExport: { ...prev.autoExport, frequency: value },
+                                }))
+                              }
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Run Time</Label>
+                            <Input
+                              type="time"
+                              value={dataManagementSettings.autoExport.time}
+                              onChange={(e) =>
+                                setDataManagementSettings((prev) => ({
+                                  ...prev,
+                                  autoExport: { ...prev.autoExport, time: e.target.value },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label>Format</Label>
+                            <Select
+                              value={dataManagementSettings.autoExport.format}
+                              onValueChange={(value) =>
+                                setDataManagementSettings((prev) => ({
+                                  ...prev,
+                                  autoExport: { ...prev.autoExport, format: value },
+                                }))
+                              }
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="csv">CSV</SelectItem>
+                                <SelectItem value="json">JSON</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Datasets</Label>
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            {dataEntityOptions.map((item) => (
+                              <label key={`auto-${item.key}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                                <span>{item.label}</span>
+                                <Switch
+                                  checked={dataManagementSettings.autoExport.entities.includes(item.key)}
+                                  onCheckedChange={(checked) => toggleAutoExportEntity(item.key, checked)}
+                                />
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label>Recipients (comma separated emails)</Label>
+                          <Input
+                            value={recipientsInput}
+                            onChange={(e) => setRecipientsInput(e.target.value)}
+                            placeholder="admin@hospital.com, audit@hospital.com"
+                          />
+                        </div>
+
+                        <div className="rounded-md border bg-muted/20 p-3 text-sm">
+                          <p><strong>Last Run:</strong> {dataManagementSettings.lastRunAt ? new Date(dataManagementSettings.lastRunAt).toLocaleString() : "Never"}</p>
+                          <p><strong>Status:</strong> {dataManagementSettings.lastRunStatus || "N/A"}</p>
+                          {dataManagementSettings.lastRunMessage ? <p><strong>Message:</strong> {dataManagementSettings.lastRunMessage}</p> : null}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          <Button variant="outline" onClick={handleRunAutoExport} disabled={runningAutoExport}>
+                            {runningAutoExport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                            Run Export Now
+                          </Button>
+                          <Button onClick={handleSaveDataManagement} disabled={saving}>
+                            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save Scheduler
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex gap-2">
+                        <AlertCircle className="h-4 w-4 mt-0.5" />
+                        Only CSV/TXT parsing is supported directly. For Excel/Google Sheets, export/download as CSV, or paste sheet rows directly.
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAppointments, updateAppointment } from "@/lib/appointments";
+import { deleteAppointment, getAppointments, updateAppointment } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { useAuth } from "@/lib/AuthContext";
@@ -87,6 +87,18 @@ export default function Appointments() {
       fetchData();
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: err.message });
+    }
+  };
+
+  const handleDelete = async (appointmentId) => {
+    const ok = window.confirm("Delete this appointment?");
+    if (!ok) return;
+    try {
+      await deleteAppointment(appointmentId);
+      toast({ title: "Success", description: "Appointment deleted" });
+      fetchData();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to delete appointment" });
     }
   };
 
@@ -435,6 +447,7 @@ export default function Appointments() {
                           size="icon"
                           title="Delete"
                           className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(apt._id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

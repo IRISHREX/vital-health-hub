@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
+import { updateUser } from "@/lib/users";
 
 const departments = [
   "Cardiac Care",
@@ -29,8 +30,9 @@ const departments = [
   "General Medicine",
 ];
 
-export default function AddNurseDialog({ isOpen, onClose, onSuccess }) {
+export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = null, mode = "create" }) {
   const { toast } = useToast();
+  const isEdit = mode === "edit" && !!nurse?._id;
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -41,6 +43,31 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess }) {
     role: "nurse",
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isEdit) {
+      setFormData({
+        firstName: nurse?.firstName || "",
+        lastName: nurse?.lastName || "",
+        email: nurse?.email || "",
+        password: "",
+        phone: nurse?.phone || "",
+        department: nurse?.department || "",
+        role: nurse?.role || "nurse",
+      });
+      return;
+    }
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      phone: "",
+      department: "",
+      role: "nurse",
+    });
+  }, [isOpen, isEdit, nurse]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,15 +82,27 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await apiClient.post("/auth/register", formData);
-      toast({ title: "Success", description: "Nurse created successfully." });
+      if (isEdit) {
+        const payload = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role: formData.role,
+          phone: formData.phone,
+          department: formData.department,
+        };
+        await updateUser(nurse._id, payload);
+        toast({ title: "Success", description: "Nurse updated successfully." });
+      } else {
+        await apiClient.post("/auth/register", formData);
+        toast({ title: "Success", description: "Nurse created successfully." });
+      }
       onSuccess();
       onClose();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error?.message || "Failed to create nurse.",
+        description: error?.message || (isEdit ? "Failed to update nurse." : "Failed to create nurse."),
       });
     } finally {
       setLoading(false);
@@ -74,7 +113,7 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess }) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Nurse</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Nurse" : "Add New Nurse"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -116,22 +155,25 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess }) {
                 onChange={handleChange}
                 className="col-span-3"
                 required
+                disabled={isEdit}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Password
-              </Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="col-span-3"
-                required
-              />
-            </div>
+            {!isEdit && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+            )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="phone" className="text-right">
                 Phone
@@ -184,7 +226,7 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess }) {
           </div>
           <DialogFooter>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Nurse"}
+              {loading ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create Nurse")}
             </Button>
           </DialogFooter>
         </form>

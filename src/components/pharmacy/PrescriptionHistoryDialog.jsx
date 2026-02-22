@@ -68,7 +68,7 @@ export default function PrescriptionHistoryDialog({
 
         {showCreate && (
           <div className="flex justify-end">
-            <Button onClick={onCreateNew} disabled={!!currentAppointmentPrescription || appointmentStatus === "completed"}>
+            <Button onClick={onCreateNew}>
               <Plus className="mr-2 h-4 w-4" />
               {appointmentStatus === "completed" || currentAppointmentPrescription ? "Use Current Prescription" : "New Prescription"}
             </Button>

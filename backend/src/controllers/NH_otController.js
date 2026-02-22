@@ -2,6 +2,7 @@ const Surgery = require('../models/NH_Surgery');
 const OTRoom = require('../models/NH_OTRoom');
 const Invoice = require('../models/NH_Invoice');
 const BillingLedger = require('../models/NH_BillingLedger');
+const { Admission, Doctor } = require('../models');
 const asyncHandler = require('express-async-handler');
 
 // ==================== OT ROOMS ====================
@@ -81,8 +82,41 @@ const getSurgeryById = asyncHandler(async (req, res) => {
 });
 
 const createSurgery = asyncHandler(async (req, res) => {
+  if (!req.body?.patient) {
+    res.status(400);
+    throw new Error('Patient is required');
+  }
+  if (!req.body?.primarySurgeon) {
+    res.status(400);
+    throw new Error('Primary surgeon is required');
+  }
+
+  const activeAdmission = await Admission.findOne({
+    patient: req.body.patient,
+    status: 'ADMITTED'
+  }).select('_id');
+
+  if (!activeAdmission) {
+    res.status(400);
+    throw new Error('Only admitted patients can be selected for surgery request');
+  }
+
+  const primarySurgeon = await Doctor.findById(req.body.primarySurgeon).select('_id');
+  if (!primarySurgeon) {
+    res.status(400);
+    throw new Error('Primary surgeon must be a valid doctor');
+  }
+  if (req.body.anesthetist) {
+    const anesthetist = await Doctor.findById(req.body.anesthetist).select('_id');
+    if (!anesthetist) {
+      res.status(400);
+      throw new Error('Anesthetist must be a valid doctor');
+    }
+  }
+
   const data = {
     ...req.body,
+    admission: req.body.admission || activeAdmission._id,
     requestedBy: req.user._id,
     preOpChecklist: req.body.preOpChecklist || [
       { label: 'Lab tests completed' },
@@ -382,7 +416,7 @@ const generateOTInvoice = asyncHandler(async (req, res) => {
   const invoice = await Invoice.create({
     patient: surgery.patient._id,
     admission: surgery.admission,
-    type: 'other',
+    type: 'ot',
     items,
     subtotal,
     totalAmount: subtotal,

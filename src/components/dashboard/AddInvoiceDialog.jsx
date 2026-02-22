@@ -49,12 +49,12 @@ const invoiceSchema = z.object({
   dueDate: z.date({
     required_error: "A due date is required.",
   }),
-  invoiceType: z.enum(["opd", "ipd", "lab", "radiology", "pharmacy", "other"]),
+  invoiceType: z.enum(["opd", "ipd", "lab", "radiology", "pharmacy", "ot", "other"]),
   status: z.enum(["draft", "pending", "partial", "paid", "overdue", "cancelled"]),
   notes: z.string().optional(),
 });
 
-const allInvoiceTypes = ["opd", "ipd", "lab", "radiology", "pharmacy", "other"];
+const allInvoiceTypes = ["opd", "ipd", "lab", "radiology", "pharmacy", "ot", "other"];
 
 export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "create", allowedBillingTypes = allInvoiceTypes }) {
   const { toast } = useToast();
@@ -271,6 +271,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
                       {allowedBillingTypes.includes("lab") && <SelectItem value="lab">Lab</SelectItem>}
                       {allowedBillingTypes.includes("radiology") && <SelectItem value="radiology">Radiology</SelectItem>}
                       {allowedBillingTypes.includes("pharmacy") && <SelectItem value="pharmacy">Pharmacy</SelectItem>}
+                      {allowedBillingTypes.includes("ot") && <SelectItem value="ot">OT</SelectItem>}
                       {allowedBillingTypes.includes("other") && <SelectItem value="other">Other</SelectItem>}
                   </SelectContent>
                 </Select>

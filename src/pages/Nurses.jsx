@@ -11,6 +11,8 @@ import AddNurseDialog from "@/components/dashboard/AddNurseDialog";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
 import { useNavigate } from "react-router-dom";
+import { deleteUser } from "@/lib/users";
+import { toast } from "sonner";
 
 export default function Nurses() {
   const { canCreate, canEdit, canDelete } = useVisualAuth();
@@ -19,13 +21,15 @@ export default function Nurses() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState("create");
+  const [selectedNurse, setSelectedNurse] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const res = await apiClient.get("/users/nurses");
-      setNurses(res.data.users || []);
+      setNurses(res.data?.users || []);
     } catch (err) { setError(err); } finally { setLoading(false); }
   };
 
@@ -39,6 +43,37 @@ export default function Nurses() {
   const headNurses = nurses.filter(n => n.role === 'head_nurse');
   const staffNurses = nurses.filter(n => n.role === 'nurse');
 
+  const openCreateDialog = () => {
+    setDialogMode("create");
+    setSelectedNurse(null);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (nurse) => {
+    setDialogMode("edit");
+    setSelectedNurse(nurse);
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setSelectedNurse(null);
+    setDialogMode("create");
+  };
+
+  const handleDeleteNurse = async (nurse) => {
+    const label = `${nurse?.firstName || ""} ${nurse?.lastName || ""}`.trim() || "this nurse";
+    const ok = window.confirm(`Delete ${label}?`);
+    if (!ok) return;
+    try {
+      await deleteUser(nurse._id);
+      toast.success("Nurse deleted");
+      fetchData();
+    } catch (err) {
+      toast.error(err?.message || "Failed to delete nurse");
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-pulse text-muted-foreground">Loading nurses...</div></div>;
   if (error) return <div>Error: {error.message}</div>;
 
@@ -51,12 +86,12 @@ export default function Nurses() {
         </div>
         {canCreate("nurses") && (
           <RestrictedAction module="nurses" feature="create">
-            <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Add Nurse</Button>
+            <Button onClick={openCreateDialog}><Plus className="mr-2 h-4 w-4" />Add Nurse</Button>
           </RestrictedAction>
         )}
       </div>
 
-      <AddNurseDialog isOpen={dialogOpen} onClose={() => setDialogOpen(false)} onSuccess={fetchData} />
+      <AddNurseDialog isOpen={dialogOpen} onClose={closeDialog} onSuccess={fetchData} nurse={selectedNurse} mode={dialogMode} />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -124,9 +159,9 @@ export default function Nurses() {
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-1.5 pt-2 border-t">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="View" onClick={() => navigate('/nurse')}><Eye className="h-4 w-4" /></Button>
-                  {canEdit("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit"><Pencil className="h-4 w-4" /></Button>}
-                  {canDelete("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete"><Trash2 className="h-4 w-4" /></Button>}
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title="View Nurse" aria-label="View nurse details" onClick={() => navigate('/nurse', { state: { selectedNurseId: nurse._id } })}><Eye className="h-4 w-4" /></Button>
+                  {canEdit("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit Nurse" aria-label="Edit nurse" onClick={() => openEditDialog(nurse)}><Pencil className="h-4 w-4" /></Button>}
+                  {canDelete("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete Nurse" aria-label="Delete nurse" onClick={() => handleDeleteNurse(nurse)}><Trash2 className="h-4 w-4" /></Button>}
                 </div>
               </CardContent>
             </Card>

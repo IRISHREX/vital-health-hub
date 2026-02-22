@@ -408,7 +408,7 @@ exports.deleteAppointment = async (req, res, next) => {
       throw new AppError('Appointment not found', 404);
     }
 
-    await appointment.remove();
+    await appointment.deleteOne();
 
     res.json({
       success: true,

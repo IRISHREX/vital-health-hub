@@ -9,6 +9,7 @@ import { createMedicine, updateMedicine } from "@/lib/pharmacy";
 import { toast } from "sonner";
 
 const categories = ['tablet', 'capsule', 'syrup', 'injection', 'ointment', 'drops', 'inhaler', 'powder', 'other'];
+const NONE_SCHEDULE = "__none__";
 
 export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
   const qc = useQueryClient();
@@ -33,10 +34,10 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
         purchasePrice: String(medicine.purchasePrice || ''), stock: String(medicine.stock || ''),
         reorderLevel: String(medicine.reorderLevel || '10'), unit: medicine.unit || 'pcs',
         rackLocation: medicine.rackLocation || '', hsnCode: medicine.hsnCode || '',
-        gstPercent: String(medicine.gstPercent || '12'), schedule: medicine.schedule || ''
+        gstPercent: String(medicine.gstPercent || '12'), schedule: medicine.schedule || NONE_SCHEDULE
       });
     } else {
-      setForm({ name: '', genericName: '', composition: '', category: 'tablet', manufacturer: '', batchNumber: '', expiryDate: '', mrp: '', sellingPrice: '', purchasePrice: '', stock: '', reorderLevel: '10', unit: 'pcs', rackLocation: '', hsnCode: '', gstPercent: '12', schedule: '' });
+      setForm({ name: '', genericName: '', composition: '', category: 'tablet', manufacturer: '', batchNumber: '', expiryDate: '', mrp: '', sellingPrice: '', purchasePrice: '', stock: '', reorderLevel: '10', unit: 'pcs', rackLocation: '', hsnCode: '', gstPercent: '12', schedule: NONE_SCHEDULE });
     }
   }, [medicine, open]);
 
@@ -53,7 +54,8 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
         ...form,
         mrp: +form.mrp, sellingPrice: +form.sellingPrice, purchasePrice: +form.purchasePrice || 0,
         stock: +form.stock || 0, reorderLevel: +form.reorderLevel || 10, gstPercent: +form.gstPercent || 12,
-        expiryDate: form.expiryDate || undefined
+        expiryDate: form.expiryDate || undefined,
+        schedule: form.schedule === NONE_SCHEDULE ? undefined : form.schedule
       };
       if (isEdit) await updateMedicine(medicine._id, payload);
       else await createMedicine(payload);
@@ -95,8 +97,9 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
           <div>
             <Label>Schedule</Label>
             <Select value={form.schedule} onValueChange={set('schedule')}>
-              <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
+                <SelectItem value={NONE_SCHEDULE}>None</SelectItem>
                 <SelectItem value="H">H</SelectItem>
                 <SelectItem value="H1">H1</SelectItem>
                 <SelectItem value="X">X</SelectItem>

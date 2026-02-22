@@ -141,6 +141,17 @@ exports.createDoctor = async (req, res, next) => {
       throw new AppError('Please provide all required fields', 400);
     }
     
+    const parsedOpdFee =
+      typeof consultationFee === 'object' && consultationFee !== null
+        ? Number(consultationFee.opd)
+        : Number(consultationFee);
+    const parsedIpdFee =
+      typeof consultationFee === 'object' && consultationFee !== null
+        ? Number(consultationFee.ipd)
+        : Number.isFinite(parsedOpdFee) ? parsedOpdFee * 2 : NaN;
+    const safeOpdFee = Number.isFinite(parsedOpdFee) ? parsedOpdFee : 500;
+    const safeIpdFee = Number.isFinite(parsedIpdFee) ? parsedIpdFee : safeOpdFee * 2;
+
     // Create doctor without user initially (will be linked later)
     const doctor = await Doctor.create({
       name,
@@ -151,8 +162,8 @@ exports.createDoctor = async (req, res, next) => {
       qualification,
       experience: experience || 0,
       consultationFee: {
-        opd: consultationFee || 500,
-        ipd: (consultationFee || 500) * 2
+        opd: safeOpdFee,
+        ipd: safeIpdFee
       },
       availabilityStatus: availabilityStatus || 'available'
     });
@@ -172,9 +183,24 @@ exports.createDoctor = async (req, res, next) => {
 // @access  Admin/Doctor (own profile)
 exports.updateDoctor = async (req, res, next) => {
   try {
+    const payload = { ...req.body };
+    if (payload.consultationFee !== undefined) {
+      const parsedOpdFee =
+        typeof payload.consultationFee === 'object' && payload.consultationFee !== null
+          ? Number(payload.consultationFee.opd)
+          : Number(payload.consultationFee);
+      const parsedIpdFee =
+        typeof payload.consultationFee === 'object' && payload.consultationFee !== null
+          ? Number(payload.consultationFee.ipd)
+          : Number.isFinite(parsedOpdFee) ? parsedOpdFee * 2 : NaN;
+      const safeOpdFee = Number.isFinite(parsedOpdFee) ? parsedOpdFee : 500;
+      const safeIpdFee = Number.isFinite(parsedIpdFee) ? parsedIpdFee : safeOpdFee * 2;
+      payload.consultationFee = { opd: safeOpdFee, ipd: safeIpdFee };
+    }
+
     const doctor = await Doctor.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      payload,
       { new: true, runValidators: true }
     ).populate('user', 'firstName lastName email phone avatar');
 
@@ -203,7 +229,7 @@ exports.deleteDoctor = async (req, res, next) => {
       throw new AppError('Doctor not found', 404);
     }
 
-    await doctor.remove();
+    await doctor.deleteOne();
 
     res.json({
       success: true,

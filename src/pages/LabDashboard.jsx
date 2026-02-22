@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getLabTests, getLabStats, collectSample, startProcessing, deleteLabTest, generateLabInvoice } from "@/lib/labTests";
 import { getPatients } from "@/lib/patients";
@@ -17,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Search, Plus, FlaskConical, TestTubes, ClipboardCheck, Clock, Eye, Trash2, FileText, Receipt,
-  Activity, AlertTriangle, Play
+  Activity, AlertTriangle, Play, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import OrderLabTestDialog from "@/components/lab/OrderLabTestDialog";
@@ -44,6 +45,7 @@ const priorityColors = {
 };
 
 export default function LabDashboard() {
+  const navigate = useNavigate();
   const { getModulePermissions } = useVisualAuth();
   const permissions = getModulePermissions("lab");
 
@@ -554,18 +556,28 @@ export default function LabDashboard() {
                         </Button>
                       )}
                       {(test.status === "completed" || test.status === "verified" || test.status === "delivered") && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="View Report"
-                          onClick={() => {
-                            setSelectedTest(test);
-                            setSelectedReportTests([test]);
-                            setReportDialogOpen(true);
-                          }}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View Report"
+                            onClick={() => {
+                              setSelectedTest(test);
+                              setSelectedReportTests([test]);
+                              setReportDialogOpen(true);
+                            }}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Preview & Edit Report"
+                            onClick={() => navigate(`/lab/${test._id}/preview`)}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                       {!test.billed && test.status !== "cancelled" && permissions.canCreate && (
                         <Button variant="ghost" size="icon" title="Generate Invoice" onClick={() => handleGenerateInvoice([test._id])}>

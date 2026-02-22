@@ -28,3 +28,11 @@ export const updateVisualAccessSettings = (data) => apiClient.put('/settings/vis
 export const createAccessRequest = (data) => apiClient.post('/settings/access-requests', data);
 export const getPendingAccessRequests = () => apiClient.get('/settings/access-requests/pending');
 export const respondToAccessRequest = (id, data) => apiClient.patch(`/settings/access-requests/${id}/respond`, data);
+
+// Data management (super admin)
+export const getDataManagementSettings = () => apiClient.get('/settings/data-management');
+export const updateDataManagementSettings = (data) => apiClient.put('/settings/data-management', data);
+export const getDataImportTemplate = (entity) => apiClient.get(`/settings/data-management/template?entity=${encodeURIComponent(entity)}`);
+export const bulkImportData = (data) => apiClient.post('/settings/data-management/import', data);
+export const exportDataByEntity = (entity) => apiClient.get(`/settings/data-management/export?entity=${encodeURIComponent(entity)}`);
+export const runAutoExportNow = () => apiClient.post('/settings/data-management/run-auto-export', {});

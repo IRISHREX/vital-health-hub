@@ -1,6 +1,6 @@
-const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings } = require('../models/NH_Settings');
+const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings, DataManagementSettings } = require('../models/NH_Settings');
 const { AppError } = require('../middleware/errorHandler');
-const { User, Notification, AccessRequest } = require('../models');
+const { User, Notification, AccessRequest, Bed, Doctor, Medicine, LabTestCatalog, Patient, Invoice } = require('../models');
 const { DEFAULT_ASSIGNMENT_POLICIES, normalizeAssignmentPolicies } = require('../utils/assignmentPermissions');
 
 // ============ HOSPITAL SETTINGS ============
@@ -401,6 +401,7 @@ exports.updateVisualAccessSettings = async (req, res, next) => {
                 'billing_lab',
                 'billing_radiology',
                 'billing_pharmacy',
+                'billing_ot',
                 'billing_other'
               ].includes(feature))
           }))
@@ -604,6 +605,495 @@ exports.respondToAccessRequest = async (req, res, next) => {
   }
 };
 
+// ============ DATA MANAGEMENT ============
+
+const DATA_ENTITIES = ['beds', 'doctors', 'nurses', 'medicines', 'tests', 'patients', 'patient_history', 'billings'];
+
+const toBool = (value, fallback = false) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value).trim().toLowerCase();
+  return ['true', '1', 'yes', 'y'].includes(normalized);
+};
+
+const toNum = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeEntity = (entity) => String(entity || '').trim().toLowerCase();
+
+const getTemplateDefinition = (entity) => {
+  const templates = {
+    beds: ['bedNumber', 'bedType', 'ward', 'floor', 'roomNumber', 'status', 'pricePerDay', 'amenities', 'notes', 'isActive'],
+    doctors: ['name', 'email', 'phone', 'specialization', 'department', 'qualification', 'experience', 'consultation_opd', 'consultation_ipd', 'availabilityStatus'],
+    nurses: ['firstName', 'lastName', 'email', 'phone', 'role', 'department', 'isActive'],
+    medicines: ['name', 'genericName', 'composition', 'category', 'manufacturer', 'batchNumber', 'expiryDate', 'mrp', 'sellingPrice', 'purchasePrice', 'stock', 'reorderLevel', 'unit', 'rackLocation', 'hsnCode', 'gstPercent', 'schedule', 'isActive'],
+    tests: ['testName', 'testCode', 'category', 'sampleType', 'price', 'turnaroundTime', 'department', 'description', 'instructions', 'isActive']
+  };
+  return templates[entity] || [];
+};
+
+const buildExportPayload = async (entity) => {
+  if (entity === 'beds') {
+    const beds = await Bed.find({}).lean();
+    const headers = ['bedNumber', 'bedType', 'ward', 'floor', 'roomNumber', 'status', 'pricePerDay', 'isActive', 'notes', 'createdAt', 'updatedAt'];
+    const rows = beds.map((b) => ({
+      bedNumber: b.bedNumber || '',
+      bedType: b.bedType || '',
+      ward: b.ward || '',
+      floor: b.floor ?? '',
+      roomNumber: b.roomNumber || '',
+      status: b.status || '',
+      pricePerDay: b.pricePerDay ?? 0,
+      isActive: b.isActive !== false,
+      notes: b.notes || '',
+      createdAt: b.createdAt || '',
+      updatedAt: b.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  if (entity === 'doctors') {
+    const doctors = await Doctor.find({}).populate('user', 'firstName lastName email phone').lean();
+    const headers = ['doctorId', 'name', 'email', 'phone', 'specialization', 'department', 'qualification', 'experience', 'consultation_opd', 'consultation_ipd', 'availabilityStatus', 'createdAt', 'updatedAt'];
+    const rows = doctors.map((d) => ({
+      doctorId: d.doctorId || '',
+      name: d.name || `${d?.user?.firstName || ''} ${d?.user?.lastName || ''}`.trim(),
+      email: d.email || d?.user?.email || '',
+      phone: d.phone || d?.user?.phone || '',
+      specialization: d.specialization || '',
+      department: d.department || '',
+      qualification: d.qualification || '',
+      experience: d.experience ?? 0,
+      consultation_opd: d?.consultationFee?.opd ?? 0,
+      consultation_ipd: d?.consultationFee?.ipd ?? 0,
+      availabilityStatus: d.availabilityStatus || 'available',
+      createdAt: d.createdAt || '',
+      updatedAt: d.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  if (entity === 'nurses') {
+    const nurses = await User.find({ role: { $in: ['nurse', 'head_nurse'] } }).select('firstName lastName email phone role department isActive createdAt updatedAt').lean();
+    const headers = ['firstName', 'lastName', 'email', 'phone', 'role', 'department', 'isActive', 'createdAt', 'updatedAt'];
+    const rows = nurses.map((n) => ({
+      firstName: n.firstName || '',
+      lastName: n.lastName || '',
+      email: n.email || '',
+      phone: n.phone || '',
+      role: n.role || 'nurse',
+      department: n.department || '',
+      isActive: n.isActive !== false,
+      createdAt: n.createdAt || '',
+      updatedAt: n.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  if (entity === 'medicines') {
+    const medicines = await Medicine.find({}).lean();
+    const headers = ['name', 'genericName', 'composition', 'category', 'manufacturer', 'batchNumber', 'expiryDate', 'mrp', 'sellingPrice', 'purchasePrice', 'stock', 'reorderLevel', 'unit', 'rackLocation', 'hsnCode', 'gstPercent', 'schedule', 'isActive', 'createdAt', 'updatedAt'];
+    const rows = medicines.map((m) => ({
+      name: m.name || '',
+      genericName: m.genericName || '',
+      composition: m.composition || '',
+      category: m.category || 'tablet',
+      manufacturer: m.manufacturer || '',
+      batchNumber: m.batchNumber || '',
+      expiryDate: m.expiryDate || '',
+      mrp: m.mrp ?? 0,
+      sellingPrice: m.sellingPrice ?? 0,
+      purchasePrice: m.purchasePrice ?? 0,
+      stock: m.stock ?? 0,
+      reorderLevel: m.reorderLevel ?? 10,
+      unit: m.unit || 'pcs',
+      rackLocation: m.rackLocation || '',
+      hsnCode: m.hsnCode || '',
+      gstPercent: m.gstPercent ?? 12,
+      schedule: m.schedule || '',
+      isActive: m.isActive !== false,
+      createdAt: m.createdAt || '',
+      updatedAt: m.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  if (entity === 'tests') {
+    const tests = await LabTestCatalog.find({}).lean();
+    const headers = ['testName', 'testCode', 'category', 'sampleType', 'price', 'turnaroundTime', 'department', 'description', 'instructions', 'isActive', 'createdAt', 'updatedAt'];
+    const rows = tests.map((t) => ({
+      testName: t.testName || '',
+      testCode: t.testCode || '',
+      category: t.category || '',
+      sampleType: t.sampleType || '',
+      price: t.price ?? 0,
+      turnaroundTime: t.turnaroundTime ?? 24,
+      department: t.department || '',
+      description: t.description || '',
+      instructions: t.instructions || '',
+      isActive: t.isActive !== false,
+      createdAt: t.createdAt || '',
+      updatedAt: t.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  if (entity === 'patients') {
+    const patients = await Patient.find({}).select('patientId firstName lastName email phone dateOfBirth gender bloodGroup address status registrationType admissionStatus createdAt updatedAt').lean();
+    const headers = ['patientId', 'firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'gender', 'bloodGroup', 'address', 'status', 'registrationType', 'admissionStatus', 'createdAt', 'updatedAt'];
+    const rows = patients.map((p) => ({
+      patientId: p.patientId || '',
+      firstName: p.firstName || '',
+      lastName: p.lastName || '',
+      email: p.email || '',
+      phone: p.phone || '',
+      dateOfBirth: p.dateOfBirth || '',
+      gender: p.gender || '',
+      bloodGroup: p.bloodGroup || '',
+      address: p.address || '',
+      status: p.status || '',
+      registrationType: p.registrationType || '',
+      admissionStatus: p.admissionStatus || '',
+      createdAt: p.createdAt || '',
+      updatedAt: p.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  if (entity === 'patient_history') {
+    const patients = await Patient.find({}).select('patientId firstName lastName medicalHistory allergies currentMedications createdAt updatedAt').lean();
+    const headers = ['patientId', 'patientName', 'medicalHistory', 'allergies', 'currentMedications', 'createdAt', 'updatedAt'];
+    const rows = patients.map((p) => ({
+      patientId: p.patientId || '',
+      patientName: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+      medicalHistory: JSON.stringify(p.medicalHistory || []),
+      allergies: JSON.stringify(p.allergies || []),
+      currentMedications: JSON.stringify(p.currentMedications || []),
+      createdAt: p.createdAt || '',
+      updatedAt: p.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  if (entity === 'billings') {
+    const invoices = await Invoice.find({}).populate('patient', 'patientId firstName lastName').lean();
+    const headers = ['invoiceNumber', 'patientId', 'patientName', 'type', 'totalAmount', 'paidAmount', 'dueAmount', 'status', 'dueDate', 'createdAt', 'updatedAt'];
+    const rows = invoices.map((i) => ({
+      invoiceNumber: i.invoiceNumber || '',
+      patientId: i?.patient?.patientId || '',
+      patientName: `${i?.patient?.firstName || ''} ${i?.patient?.lastName || ''}`.trim(),
+      type: i.type || '',
+      totalAmount: i.totalAmount ?? 0,
+      paidAmount: i.paidAmount ?? 0,
+      dueAmount: i.dueAmount ?? 0,
+      status: i.status || '',
+      dueDate: i.dueDate || '',
+      createdAt: i.createdAt || '',
+      updatedAt: i.updatedAt || ''
+    }));
+    return { headers, rows };
+  }
+
+  throw new AppError('Unsupported entity for export', 400);
+};
+
+const importRowsForEntity = async (entity, rows = []) => {
+  const result = { created: 0, updated: 0, skipped: 0, errors: [] };
+
+  for (let idx = 0; idx < rows.length; idx += 1) {
+    const row = rows[idx] || {};
+    try {
+      if (entity === 'beds') {
+        const bedNumber = String(row.bedNumber || '').trim();
+        if (!bedNumber) { result.skipped += 1; continue; }
+        const payload = {
+          bedNumber,
+          bedType: String(row.bedType || 'general').trim().toLowerCase(),
+          ward: String(row.ward || 'General').trim(),
+          floor: toNum(row.floor, 1),
+          roomNumber: String(row.roomNumber || '').trim() || undefined,
+          status: String(row.status || 'available').trim().toLowerCase(),
+          pricePerDay: toNum(row.pricePerDay, 0),
+          amenities: String(row.amenities || '').split(',').map((x) => x.trim()).filter(Boolean),
+          notes: String(row.notes || '').trim() || undefined,
+          isActive: toBool(row.isActive, true)
+        };
+        const existing = await Bed.findOne({ bedNumber });
+        if (existing) {
+          await Bed.findByIdAndUpdate(existing._id, payload, { runValidators: true });
+          result.updated += 1;
+        } else {
+          await Bed.create(payload);
+          result.created += 1;
+        }
+        continue;
+      }
+
+      if (entity === 'doctors') {
+        const email = String(row.email || '').trim().toLowerCase();
+        const name = String(row.name || '').trim();
+        if (!email && !name) { result.skipped += 1; continue; }
+        const payload = {
+          name: name || 'Doctor',
+          email,
+          phone: String(row.phone || '').trim(),
+          specialization: String(row.specialization || 'General').trim(),
+          department: String(row.department || 'General Medicine').trim(),
+          qualification: String(row.qualification || 'MBBS').trim(),
+          experience: toNum(row.experience, 0),
+          consultationFee: {
+            opd: toNum(row.consultation_opd, 500),
+            ipd: toNum(row.consultation_ipd, toNum(row.consultation_opd, 500) * 2)
+          },
+          availabilityStatus: String(row.availabilityStatus || 'available').trim()
+        };
+        const existing = email ? await Doctor.findOne({ email }) : await Doctor.findOne({ name: payload.name });
+        if (existing) {
+          await Doctor.findByIdAndUpdate(existing._id, payload, { runValidators: true });
+          result.updated += 1;
+        } else {
+          await Doctor.create(payload);
+          result.created += 1;
+        }
+        continue;
+      }
+
+      if (entity === 'nurses') {
+        const email = String(row.email || '').trim().toLowerCase();
+        if (!email) { result.skipped += 1; continue; }
+        const payload = {
+          firstName: String(row.firstName || 'Nurse').trim(),
+          lastName: String(row.lastName || '').trim() || 'User',
+          email,
+          phone: String(row.phone || '').trim() || undefined,
+          role: String(row.role || 'nurse').trim().toLowerCase() === 'head_nurse' ? 'head_nurse' : 'nurse',
+          department: String(row.department || '').trim() || undefined,
+          isActive: toBool(row.isActive, true)
+        };
+        const existing = await User.findOne({ email });
+        if (existing) {
+          await User.findByIdAndUpdate(existing._id, payload, { runValidators: true });
+          result.updated += 1;
+        } else {
+          await User.create({
+            ...payload,
+            password: 'ChangeMe@123'
+          });
+          result.created += 1;
+        }
+        continue;
+      }
+
+      if (entity === 'medicines') {
+        const name = String(row.name || '').trim();
+        if (!name) { result.skipped += 1; continue; }
+        const payload = {
+          name,
+          genericName: String(row.genericName || '').trim() || undefined,
+          composition: String(row.composition || '').trim() || undefined,
+          category: String(row.category || 'tablet').trim().toLowerCase(),
+          manufacturer: String(row.manufacturer || '').trim() || undefined,
+          batchNumber: String(row.batchNumber || '').trim() || undefined,
+          expiryDate: row.expiryDate ? new Date(row.expiryDate) : undefined,
+          mrp: toNum(row.mrp, 0),
+          sellingPrice: toNum(row.sellingPrice, 0),
+          purchasePrice: toNum(row.purchasePrice, 0),
+          stock: toNum(row.stock, 0),
+          reorderLevel: toNum(row.reorderLevel, 10),
+          unit: String(row.unit || 'pcs').trim(),
+          rackLocation: String(row.rackLocation || '').trim() || undefined,
+          hsnCode: String(row.hsnCode || '').trim() || undefined,
+          gstPercent: toNum(row.gstPercent, 12),
+          schedule: String(row.schedule || '').trim(),
+          isActive: toBool(row.isActive, true)
+        };
+        const existing = await Medicine.findOne({ name: payload.name, batchNumber: payload.batchNumber || null });
+        if (existing) {
+          await Medicine.findByIdAndUpdate(existing._id, payload, { runValidators: true });
+          result.updated += 1;
+        } else {
+          await Medicine.create(payload);
+          result.created += 1;
+        }
+        continue;
+      }
+
+      if (entity === 'tests') {
+        const testCode = String(row.testCode || '').trim().toUpperCase();
+        const testName = String(row.testName || '').trim();
+        if (!testCode || !testName) { result.skipped += 1; continue; }
+        const payload = {
+          testName,
+          testCode,
+          category: String(row.category || 'pathology').trim().toLowerCase(),
+          sampleType: String(row.sampleType || 'blood').trim().toLowerCase(),
+          price: toNum(row.price, 0),
+          turnaroundTime: toNum(row.turnaroundTime, 24),
+          department: String(row.department || '').trim() || undefined,
+          description: String(row.description || '').trim() || undefined,
+          instructions: String(row.instructions || '').trim() || undefined,
+          isActive: toBool(row.isActive, true)
+        };
+        const existing = await LabTestCatalog.findOne({ testCode });
+        if (existing) {
+          await LabTestCatalog.findByIdAndUpdate(existing._id, payload, { runValidators: true });
+          result.updated += 1;
+        } else {
+          await LabTestCatalog.create(payload);
+          result.created += 1;
+        }
+        continue;
+      }
+
+      result.skipped += 1;
+    } catch (error) {
+      result.errors.push({ row: idx + 1, message: error.message });
+    }
+  }
+
+  return result;
+};
+
+// @desc    Get data management settings
+// @route   GET /api/settings/data-management
+// @access  Private (Super Admin)
+exports.getDataManagementSettings = async (req, res, next) => {
+  try {
+    let settings = await DataManagementSettings.findOne();
+    if (!settings) {
+      settings = await DataManagementSettings.create({
+        autoExport: { enabled: false, frequency: 'weekly', time: '02:00', dayOfWeek: 0, dayOfMonth: 1, format: 'csv', entities: ['beds', 'doctors', 'nurses', 'medicines', 'tests'] }
+      });
+    }
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update data management settings
+// @route   PUT /api/settings/data-management
+// @access  Private (Super Admin)
+exports.updateDataManagementSettings = async (req, res, next) => {
+  try {
+    const incoming = req.body || {};
+    const autoExport = incoming.autoExport || {};
+    const entities = Array.isArray(autoExport.entities)
+      ? autoExport.entities.map(normalizeEntity).filter((entity) => DATA_ENTITIES.includes(entity))
+      : [];
+    const payload = {
+      autoExport: {
+        enabled: !!autoExport.enabled,
+        frequency: ['daily', 'weekly', 'monthly'].includes(autoExport.frequency) ? autoExport.frequency : 'weekly',
+        time: String(autoExport.time || '02:00'),
+        dayOfWeek: Math.min(6, Math.max(0, toNum(autoExport.dayOfWeek, 0))),
+        dayOfMonth: Math.min(31, Math.max(1, toNum(autoExport.dayOfMonth, 1))),
+        format: ['csv', 'json'].includes(autoExport.format) ? autoExport.format : 'csv',
+        entities,
+        recipients: Array.isArray(autoExport.recipients)
+          ? autoExport.recipients.map((email) => String(email || '').trim().toLowerCase()).filter(Boolean)
+          : []
+      },
+      updatedBy: req.user?._id
+    };
+
+    const settings = await DataManagementSettings.findOneAndUpdate({}, payload, { new: true, upsert: true, runValidators: true });
+    res.json({ success: true, message: 'Data management settings updated', data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get bulk import template
+// @route   GET /api/settings/data-management/template
+// @access  Private (Super Admin)
+exports.getDataImportTemplate = async (req, res, next) => {
+  try {
+    const entity = normalizeEntity(req.query.entity);
+    if (!['beds', 'doctors', 'nurses', 'medicines', 'tests'].includes(entity)) {
+      throw new AppError('Unsupported import template entity', 400);
+    }
+    const headers = getTemplateDefinition(entity);
+    res.json({ success: true, data: { entity, headers, sample: [Object.fromEntries(headers.map((h) => [h, '']))] } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Bulk import master data
+// @route   POST /api/settings/data-management/import
+// @access  Private (Super Admin)
+exports.bulkImportData = async (req, res, next) => {
+  try {
+    const entity = normalizeEntity(req.body?.entity);
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    if (!['beds', 'doctors', 'nurses', 'medicines', 'tests'].includes(entity)) {
+      throw new AppError('Unsupported import entity', 400);
+    }
+    if (!rows.length) {
+      throw new AppError('rows array is required', 400);
+    }
+    const summary = await importRowsForEntity(entity, rows);
+    res.json({ success: true, message: `Bulk import completed for ${entity}`, data: { entity, ...summary } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Export data
+// @route   GET /api/settings/data-management/export
+// @access  Private (Super Admin)
+exports.exportDataByEntity = async (req, res, next) => {
+  try {
+    const entity = normalizeEntity(req.query.entity);
+    if (!DATA_ENTITIES.includes(entity)) {
+      throw new AppError('Unsupported export entity', 400);
+    }
+    const payload = await buildExportPayload(entity);
+    res.json({ success: true, data: { entity, ...payload } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Trigger auto-export run
+// @route   POST /api/settings/data-management/run-auto-export
+// @access  Private (Super Admin)
+exports.runAutoExportNow = async (req, res, next) => {
+  try {
+    let settings = await DataManagementSettings.findOne();
+    if (!settings) {
+      settings = await DataManagementSettings.create({
+        autoExport: { enabled: false, frequency: 'weekly', time: '02:00', dayOfWeek: 0, dayOfMonth: 1, format: 'csv', entities: ['beds', 'doctors', 'nurses', 'medicines', 'tests'] }
+      });
+    }
+    const entities = (settings.autoExport?.entities || []).filter((entity) => DATA_ENTITIES.includes(entity));
+    const exportSummary = [];
+    for (const entity of entities) {
+      const payload = await buildExportPayload(entity);
+      exportSummary.push({ entity, records: payload.rows.length });
+    }
+    settings.lastRunAt = new Date();
+    settings.lastRunStatus = 'success';
+    settings.lastRunMessage = `Exported ${exportSummary.length} dataset(s)`;
+    settings.updatedBy = req.user?._id;
+    await settings.save();
+
+    res.json({
+      success: true,
+      message: 'Auto export run completed',
+      data: {
+        runAt: settings.lastRunAt,
+        summary: exportSummary
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ============ ALL SETTINGS ============
 
 // @desc    Get all settings
@@ -616,6 +1106,7 @@ exports.getAllSettings = async (req, res, next) => {
     let notifications = await NotificationSettings.findOne();
     let preferences = await UserPreferences.findOne({ userId: req.user._id });
     let visualAccess = await VisualAccessSettings.findOne();
+    let dataManagement = null;
     
     // Create defaults if needed
     if (!hospital) hospital = await HospitalSettings.create({});
@@ -627,6 +1118,22 @@ exports.getAllSettings = async (req, res, next) => {
       permissionManagers: [],
       assignmentPolicies: DEFAULT_ASSIGNMENT_POLICIES
     });
+    if (req.user?.role === 'super_admin') {
+      dataManagement = await DataManagementSettings.findOne();
+      if (!dataManagement) {
+        dataManagement = await DataManagementSettings.create({
+          autoExport: {
+            enabled: false,
+            frequency: 'weekly',
+            time: '02:00',
+            dayOfWeek: 0,
+            dayOfMonth: 1,
+            format: 'csv',
+            entities: ['beds', 'doctors', 'nurses', 'medicines', 'tests']
+          }
+        });
+      }
+    }
 
     res.json({
       success: true,
@@ -635,7 +1142,8 @@ exports.getAllSettings = async (req, res, next) => {
         security,
         notifications,
         preferences,
-        visualAccess
+        visualAccess,
+        dataManagement
       }
     });
   } catch (error) {
