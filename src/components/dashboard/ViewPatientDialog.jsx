@@ -30,6 +30,17 @@ import {
   CartesianGrid,
 } from "recharts";
 
+const getPatientDisplayId = (patient) =>
+  patient?.patientId ||
+  patient?.uhid ||
+  patient?.mrn ||
+  patient?.medicalRecordNumber ||
+  patient?.registrationNumber ||
+  patient?.patientCode ||
+  patient?._id ||
+  patient?.id ||
+  "";
+
 const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
   if (!patient) return null;
 
@@ -46,7 +57,17 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
   });
   const nurses = nursesData?.data?.users || [];
   const nursesById = new Map(nurses.map((n) => [n._id || n.id, n]));
-  const patientData = patientDetails?.data?.patient || patient;
+  const patientDataSource =
+    patientDetails?.data?.patient ||
+    patientDetails?.patient ||
+    patientDetails?.data ||
+    patientDetails ||
+    patient;
+  const patientData =
+    patientDataSource && typeof patientDataSource === "object"
+      ? patientDataSource
+      : patient || {};
+  const displayPatientId = getPatientDisplayId(patientData) || patientId || "N/A";
   const formatFullName = (entity) =>
     `${entity?.firstName || ""} ${entity?.lastName || ""}`.trim();
 
@@ -133,7 +154,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `patient-history-${patientData?.patientId || patientId || "export"}.csv`;
+    link.download = `patient-history-${displayPatientId || "export"}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -149,7 +170,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
     doc.setFontSize(14);
     doc.text(`Patient History: ${patientName}`, 40, 40);
     doc.setFontSize(10);
-    doc.text(`Patient ID: ${patientData?.patientId || patientId || "N/A"}`, 40, 58);
+    doc.text(`Patient ID: ${displayPatientId}`, 40, 58);
 
     autoTable(doc, {
       startY: 72,
@@ -166,7 +187,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
       margin: { left: 30, right: 30 },
     });
 
-    doc.save(`patient-history-${patientData?.patientId || patientId || "export"}.pdf`);
+    doc.save(`patient-history-${displayPatientId || "export"}.pdf`);
   };
 
   return (
@@ -179,7 +200,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
                 {`${patientData.firstName?.[0] || ''}${patientData.lastName?.[0] || ''}`}
               </AvatarFallback>
             </Avatar>
-            Patient Details - {patientData.patientId || 'N/A'}
+            Patient Details - {displayPatientId}
           </DialogTitle>
         </DialogHeader>
 
@@ -199,7 +220,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Patient ID</label>
-                <p className="text-lg font-semibold">{patientData.patientId || 'N/A'}</p>
+                <p className="text-lg font-semibold">{displayPatientId}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Age & Gender</label>

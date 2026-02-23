@@ -759,6 +759,10 @@ exports.updatePatient = async (req, res, next) => {
 
     // If bed assignment is changing
     if (assignedBed && assignedBed !== patient.assignedBed?.toString()) {
+      if (patient.admissionStatus === 'DISCHARGED') {
+        throw new AppError('Cannot assign bed to a discharged patient', 400);
+      }
+
       // Release old bed if it exists
       if (patient.assignedBed) {
         await Bed.findByIdAndUpdate(
@@ -786,6 +790,7 @@ exports.updatePatient = async (req, res, next) => {
       // Update patient status to admitted when assigning a bed
       req.body.status = 'admitted';
       req.body.admissionStatus = 'ADMITTED';
+      req.body.registrationType = 'ipd';
     }
 
     // If a nurse is making the update, restrict to nurse assignment fields only

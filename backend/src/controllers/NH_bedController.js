@@ -421,6 +421,10 @@ exports.assignBed = async (req, res, next) => {
       throw new AppError('Patient not found', 404);
     }
 
+    if (patient.admissionStatus === 'DISCHARGED') {
+      throw new AppError('Cannot assign bed to a discharged patient', 400);
+    }
+
     // Check if patient is not already admitted
     const activeAdmission = await Admission.findOne({
       patient: patientId,
@@ -440,11 +444,15 @@ exports.assignBed = async (req, res, next) => {
       await ensurePatientAssignedToNurse(patientId, bed.nurseInCharge);
     }
 
-    // Update patient's assignedBed but DO NOT change admission status
-    // Admission status should only be updated when an actual admission record is created
+    // Bed assignment implies active IPD care.
     await Patient.findByIdAndUpdate(
       patientId,
-      { assignedBed: bed._id },
+      {
+        assignedBed: bed._id,
+        status: 'admitted',
+        admissionStatus: 'ADMITTED',
+        registrationType: 'ipd'
+      },
       { new: true }
     );
 

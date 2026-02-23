@@ -99,8 +99,8 @@ const patientSchema = new mongoose.Schema({
   },
   admissionStatus: {
     type: String,
-    enum: ['ADMITTED', 'DISCHARGED', 'TRANSFERRED'],
-    default: 'DISCHARGED'
+    enum: ['ADMITTED', 'DISCHARGED', 'TRANSFERRED','NOT_ADMITTED'],
+    default: 'NOT_ADMITTED'
   }
 }, {
   timestamps: true,

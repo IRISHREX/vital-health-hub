@@ -5,33 +5,48 @@ const User = require('../models/NH_User');
 const Doctor = require('../models/NH_Doctor');
 const Patient = require('../models/NH_Patient');
 const Bed = require('../models/NH_Bed');
+const Admission = require('../models/NH_Admission');
 const Facility = require('../models/NH_Facility');
+
+const SEED_PASSWORD = 'Sohel@34892';
 
 const seed = async () => {
   try {
     await connectDB();
 
-    // Clear existing data
-    await User.deleteMany({});
-    await Doctor.deleteMany({});
-    await Patient.deleteMany({});
-    await Bed.deleteMany({});
-    await Facility.deleteMany({});
+    // Clear existing data (if any)
+    const purgeModel = async (label, model) => {
+      const existingCount = await model.countDocuments({});
+      if (existingCount > 0) {
+        await model.deleteMany({});
+      }
+      console.log(`${label}: removed ${existingCount} existing records.`);
+    };
+
+    await purgeModel('Users', User);
+    await purgeModel('Doctors', Doctor);
+    await purgeModel('Patients', Patient);
+    await purgeModel('Beds', Bed);
+    await purgeModel('Admissions', Admission);
+    await purgeModel('Facilities', Facility);
 
     console.log('Cleared existing data.');
 
     // --- Seed Non-Doctor Users ---
     const roles = ['super_admin', 'hospital_admin', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'];
     const usersToCreate = [];
+    const seedCredentials = [];
+    const commonHashedPassword = await bcrypt.hash(SEED_PASSWORD, 10);
     for (const role of roles) {
-      const hashedPassword = await bcrypt.hash('Sohel@34892', 10);
+      const email = `${role.replace('_', '')}@example.com`;
       usersToCreate.push({
-        email: `${role.replace('_', '')}@example.com`,
-        password: hashedPassword,
+        email,
+        password: commonHashedPassword,
         firstName: role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
         lastName: 'User',
         role: role,
       });
+      seedCredentials.push({ role, email, password: SEED_PASSWORD });
     }
 
     // --- Seed Doctors and their User accounts ---
@@ -43,7 +58,7 @@ const seed = async () => {
         { firstName: 'Khairul', lastName: 'Alam', email: 'khairulalam@bms.com', phone: '9609436104', specialization: 'Orthopedics' }
     ];
 
-    const doctorPassword = await bcrypt.hash('Sohel@34892', 10);
+    const doctorPassword = await bcrypt.hash(SEED_PASSWORD, 10);
 
     for (const doc of doctorsData) {
         usersToCreate.push({
@@ -54,6 +69,7 @@ const seed = async () => {
             role: 'doctor',
             phone: doc.phone
         });
+        seedCredentials.push({ role: 'doctor', email: doc.email, password: SEED_PASSWORD });
     }
 
     const createdUsers = await User.insertMany(usersToCreate);
@@ -98,17 +114,17 @@ const seed = async () => {
     console.log(`${createdFacilities.length} facilities created.`);
     
     // --- Seed Patients ---
-    const patientDepartments = ['OPD', 'Emergency'];
     const patientsToCreate = [];
     for (let i = 0; i < 20; i++) {
       patientsToCreate.push({
-        firstName: `${patientDepartments[i % 2]}_Patient`,
+        firstName: 'OPD_Patient',
         lastName: `${i + 1}`,
-        age: Math.floor(Math.random() * 60) + 18,
         gender: i % 2 === 0 ? 'male' : 'female',
-        department: patientDepartments[i % 2],
         phone: `123456789${i.toString().padStart(2, '0')}`,
         dateOfBirth: new Date(1990 + i, i % 12, (i % 28) + 1),
+        registrationType: 'opd',
+        admissionStatus: 'NOT_ADMITTED',
+        status: 'active',
       });
     }
     const createdPatients = await Patient.insertMany(patientsToCreate);
@@ -159,6 +175,10 @@ const seed = async () => {
 
 
     console.log('✅ Seeding complete.');
+    console.log('--- Seed Credentials ---');
+    seedCredentials.forEach((cred) => {
+      console.log(`${cred.role} | ${cred.email} | ${cred.password}`);
+    });
     process.exit(0);
   } catch (err) {
     console.error('❌ Seeding error', err);

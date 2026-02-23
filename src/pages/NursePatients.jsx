@@ -25,6 +25,17 @@ const readViewState = () => {
   }
 };
 
+const getPatientDisplayId = (patient) =>
+  patient?.patientId ||
+  patient?.uhid ||
+  patient?.mrn ||
+  patient?.medicalRecordNumber ||
+  patient?.registrationNumber ||
+  patient?.patientCode ||
+  patient?._id ||
+  patient?.id ||
+  "";
+
 export default function NursePatients() {
   const savedState = readViewState();
   const [patients, setPatients] = useState([]);
@@ -87,7 +98,7 @@ export default function NursePatients() {
     if (!q) return patients;
     return patients.filter((p) =>
       `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) ||
-      String(p.patientId || "").toLowerCase().includes(q) ||
+      String(getPatientDisplayId(p) || "").toLowerCase().includes(q) ||
       String(p.phone || "").toLowerCase().includes(q)
     );
   }, [patients, query]);
@@ -190,7 +201,7 @@ export default function NursePatients() {
                         <div className="text-sm font-semibold">{p.firstName} {p.lastName}</div>
                         <Badge variant="outline" className="text-[10px] uppercase">{p.status || "active"}</Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground">{p.patientId || "N/A"}</div>
+                      <div className="text-xs text-muted-foreground">{getPatientDisplayId(p) || "N/A"}</div>
                     </button>
                   );
                 })}
@@ -209,11 +220,19 @@ export default function NursePatients() {
                     {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : "Select a patient"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {selectedPatient?.patientId || "N/A"}
+                    {getPatientDisplayId(selectedPatient) || "N/A"}
                   </div>
                 </div>
                 <Button
-                  onClick={() => selectedPatient?._id && navigate(`/patients/${selectedPatient._id}`)}
+                  onClick={() =>
+                    selectedPatient?._id &&
+                    navigate(`/patients/${selectedPatient._id}`, {
+                      state: {
+                        from: "/nurse/patients",
+                        patient: selectedPatient,
+                      },
+                    })
+                  }
                   size="sm"
                   disabled={!selectedPatient?._id}
                 >
@@ -235,7 +254,7 @@ export default function NursePatients() {
                 <div className="flex items-center gap-2 text-sm">
                   <Hash className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Patient ID:</span>
-                  <span className="font-medium">{selectedPatient?.patientId || "N/A"}</span>
+                  <span className="font-medium">{getPatientDisplayId(selectedPatient) || "N/A"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Activity className="h-4 w-4 text-muted-foreground" />
