@@ -234,8 +234,8 @@ export default function RadiologyDashboard() {
                           </Button>
                         )}
                         {o.status === "ordered" && permissions.canDelete && (
-                          <Button variant="ghost" size="icon" title="Cancel" onClick={() => handleDelete(o._id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                          <Button variant="ghost" size="icon" title="Cancel" className="text-destructive hover:bg-destructive" onClick={() => handleDelete(o._id)}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>

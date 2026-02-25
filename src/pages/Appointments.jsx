@@ -417,7 +417,7 @@ export default function Appointments() {
                           variant="ghost"
                           size="icon"
                           title="Prescription"
-                          className="text-primary hover:bg-primary/10"
+                          className="text-primary hover:bg-primary"
                           onClick={() => openPrescriptionDialog(apt)}
                         >
                           <ClipboardPlus className="h-4 w-4" />
@@ -428,17 +428,19 @@ export default function Appointments() {
                               variant="ghost"
                               size="icon"
                               title="Complete"
+                              className="text-status-available hover:bg-status-available"
                               onClick={() => handleStatusUpdate(apt._id, "completed")}
                             >
-                              <CheckCircle2 className="h-4 w-4 text-status-available" />
+                              <CheckCircle2 className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               title="Cancel"
+                              className="text-status-occupied hover:bg-status-occupied"
                               onClick={() => handleStatusUpdate(apt._id, "cancelled")}
                             >
-                              <XCircle className="h-4 w-4 text-status-occupied" />
+                              <XCircle className="h-4 w-4" />
                             </Button>
                           </>
                         )}
@@ -446,7 +448,7 @@ export default function Appointments() {
                           variant="ghost"
                           size="icon"
                           title="Delete"
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:bg-destructive"
                           onClick={() => handleDelete(apt._id)}
                         >
                           <Trash2 className="h-4 w-4" />

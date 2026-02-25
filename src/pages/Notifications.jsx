@@ -425,13 +425,13 @@ export default function Notifications() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-8 w-8 text-muted-foreground hover:bg-destructive/80"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDelete(notification._id);
                               }}
                             >
-                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>

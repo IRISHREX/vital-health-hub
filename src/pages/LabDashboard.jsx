@@ -585,7 +585,7 @@ export default function LabDashboard() {
                         </Button>
                       )}
                       {test.status === "ordered" && permissions.canDelete && (
-                        <Button variant="ghost" size="icon" title="Cancel" className="text-destructive" onClick={() => handleDelete(test._id)}>
+                        <Button variant="ghost" size="icon" title="Cancel" className="text-destructive hover:bg-destructive" onClick={() => handleDelete(test._id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}

@@ -161,7 +161,7 @@ export default function Nurses() {
                 <div className="mt-3 flex items-center gap-1.5 pt-2 border-t">
                   <Button variant="ghost" size="icon" className="h-8 w-8" title="View Nurse" aria-label="View nurse details" onClick={() => navigate('/nurse', { state: { selectedNurseId: nurse._id } })}><Eye className="h-4 w-4" /></Button>
                   {canEdit("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit Nurse" aria-label="Edit nurse" onClick={() => openEditDialog(nurse)}><Pencil className="h-4 w-4" /></Button>}
-                  {canDelete("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete Nurse" aria-label="Delete nurse" onClick={() => handleDeleteNurse(nurse)}><Trash2 className="h-4 w-4" /></Button>}
+                  {canDelete("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive" title="Delete Nurse" aria-label="Delete nurse" onClick={() => handleDeleteNurse(nurse)}><Trash2 className="h-4 w-4" /></Button>}
                 </div>
               </CardContent>
             </Card>

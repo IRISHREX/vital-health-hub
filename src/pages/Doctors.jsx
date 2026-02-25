@@ -339,7 +339,7 @@ export default function Doctors() {
                 <div className="mt-4 flex items-center gap-1.5">
                   <Button variant="ghost" size="icon" className="h-8 w-8" title="View Profile" onClick={() => openProfile(doctor)}><Eye className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => openEditDialog(doctor)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete" onClick={() => handleDeleteDoctor(doctor)}><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive" title="Delete" onClick={() => handleDeleteDoctor(doctor)}><Trash2 className="h-4 w-4" /></Button>
                   <Button size="sm" variant="outline" className="flex-1 ml-1 text-xs" onClick={() => openProfile(doctor)}>
                     <Activity className="mr-1 h-3 w-3" />Profile & Stats
                   </Button>
