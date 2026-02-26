@@ -763,12 +763,30 @@ exports.updatePatient = async (req, res, next) => {
         throw new AppError('Cannot assign bed to a discharged patient', 400);
       }
 
+      const activeAdmission = await Admission.findOne({
+        patient: patient._id,
+        status: 'ADMITTED'
+      }).select('_id bed');
+
+      if (activeAdmission?.bed && activeAdmission.bed.toString() !== assignedBed) {
+        throw new AppError('Patient already has an active admission bed. Use admission transfer to change beds.', 400);
+      }
+
+      const newBed = await Bed.findById(assignedBed);
+      if (!newBed) {
+        throw new AppError('Selected bed not found', 404);
+      }
+      if (newBed.status !== 'available' && String(newBed.currentPatient || '') !== String(patient._id)) {
+        throw new AppError(`Selected bed is not available. Current status: ${newBed.status}`, 400);
+      }
+
       // Release old bed if it exists
       if (patient.assignedBed) {
         await Bed.findByIdAndUpdate(
           patient.assignedBed,
-          { 
+          {
             currentPatient: null,
+            currentAdmission: null,
             status: 'available',
             lastOccupied: new Date()
           },
@@ -776,11 +794,18 @@ exports.updatePatient = async (req, res, next) => {
         );
       }
 
+      // Defensive cleanup for inconsistent records where multiple beds point to same patient.
+      await Bed.updateMany(
+        { currentPatient: patient._id, _id: { $ne: assignedBed } },
+        { currentPatient: null, currentAdmission: null, status: 'available', lastOccupied: new Date() }
+      );
+
       // Assign new bed
       await Bed.findByIdAndUpdate(
         assignedBed,
-        { 
+        {
           currentPatient: patient._id,
+          currentAdmission: activeAdmission?._id || null,
           status: 'occupied',
           lastOccupied: new Date()
         },
