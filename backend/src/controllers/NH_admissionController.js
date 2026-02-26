@@ -57,6 +57,10 @@ exports.createAdmission = async (req, res, next) => {
     // Check if bed exists and is available (only for IPD/elective admissions)
     let bed = null;
     if (bedId) {
+      if (patient.assignedBed && patient.assignedBed.toString() !== bedId) {
+        throw new AppError('Patient already has a bed assigned. Please transfer instead of assigning a different bed here.', 400);
+      }
+
       bed = await Bed.findById(bedId);
       if (!bed) {
         throw new AppError('Bed not found', 404);
@@ -72,6 +76,11 @@ exports.createAdmission = async (req, res, next) => {
     const admissionId = `ADM${Date.now()}-${admissionCount + 1}`;
 
     // Create admission record - bed and doctor are optional for Emergency/OPD
+    const normalizedDiagnosis =
+      typeof diagnosis === 'string'
+        ? { primary: diagnosis }
+        : (diagnosis || {});
+
     const admission = new Admission({
       admissionId,
       patient: patientId,
@@ -81,7 +90,7 @@ exports.createAdmission = async (req, res, next) => {
       admissionDate: new Date(),
       expectedDischargeDate,
       admissionType,
-      diagnosis,
+      diagnosis: normalizedDiagnosis,
       symptoms,
       treatmentPlan,
       status: 'ADMITTED',
@@ -100,13 +109,14 @@ exports.createAdmission = async (req, res, next) => {
     }
 
     // Update patient's assigned bed and admission
-    const patientUpdateData = { 
+    const patientUpdateData = {
       currentAdmission: admission._id,
       admissionStatus: 'ADMITTED',
       status: 'admitted'
     };
     if (bedId) {
       patientUpdateData.assignedBed = bedId;
+      patientUpdateData.registrationType = 'ipd';
     }
     await Patient.findByIdAndUpdate(patientId, patientUpdateData, { new: true });
 
@@ -149,7 +159,8 @@ exports.createAdmission = async (req, res, next) => {
       invoice = new Invoice({
         patient: patientId,
         admission: admission._id,
-        type: admissionType === 'emergency' ? 'emergency' : 'opd',
+        // Invoice model does not support "emergency" type, so use OPD bucket for non-IPD admissions.
+        type: 'opd',
         status: 'draft',
         items: [],
         subtotal: 0,
@@ -169,18 +180,25 @@ exports.createAdmission = async (req, res, next) => {
     // Populate response
     const populatedAdmission = await Admission.findById(admission._id)
       .populate('patient', 'firstName lastName patientId phone email')
-      .populate('bed')
+      .populate('bed', 'bedNumber bedType ward floor roomNumber pricePerDay')
       .populate('admittingDoctor')
-      .populate('attendingDoctors');
+      .populate('attendingDoctors')
+      .populate('transferHistory.fromBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('transferHistory.toBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('bedAllocations.bed', 'bedNumber bedType ward floor roomNumber');
 
     // Emit bed update notification
-    emitBedUpdate(bed);
+    if (bed) {
+      emitBedUpdate(bed);
+    }
 
     // Send notification
     emitNotification({
       type: 'admission',
       title: 'Patient Admitted',
-      message: `${patient.firstName} ${patient.lastName} admitted to bed ${bed.bedNumber}`,
+      message: bed
+        ? `${patient.firstName} ${patient.lastName} admitted to bed ${bed.bedNumber}`
+        : `${patient.firstName} ${patient.lastName} admitted successfully`,
       data: { admissionId: admission._id, bedId, patientId }
     });
 
@@ -370,14 +388,22 @@ exports.transferPatient = async (req, res, next) => {
     // Update patient's assigned bed
     await Patient.findByIdAndUpdate(
       admission.patient,
-      { assignedBed: newBedId },
+      {
+        assignedBed: newBedId,
+        registrationType: 'ipd',
+        admissionStatus: 'ADMITTED',
+        status: 'admitted'
+      },
       { new: true }
     );
 
     // Populate response
     const updatedAdmission = await Admission.findById(admissionId)
       .populate('patient', 'firstName lastName patientId phone')
-      .populate('bed')
+      .populate('bed', 'bedNumber bedType ward floor roomNumber pricePerDay')
+      .populate('transferHistory.fromBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('transferHistory.toBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('bedAllocations.bed', 'bedNumber bedType ward floor roomNumber')
       .populate({
         path: 'transferHistory.transferredBy',
         select: 'firstName lastName email'
@@ -594,9 +620,12 @@ exports.getAdmissions = async (req, res, next) => {
     const total = await Admission.countDocuments(query);
     const admissions = await Admission.find(query)
       .populate('patient', 'firstName lastName patientId phone')
-      .populate('bed', 'bedNumber bedType ward')
+      .populate('bed', 'bedNumber bedType ward floor roomNumber pricePerDay')
       .populate('admittingDoctor')
       .populate('attendingDoctors')
+      .populate('transferHistory.fromBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('transferHistory.toBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('bedAllocations.bed', 'bedNumber bedType ward floor roomNumber')
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
       .sort({ admissionDate: -1 });
@@ -627,6 +656,9 @@ exports.getAdmission = async (req, res, next) => {
       .populate('bed')
       .populate('admittingDoctor')
       .populate('attendingDoctors')
+      .populate('transferHistory.fromBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('transferHistory.toBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('bedAllocations.bed', 'bedNumber bedType ward floor roomNumber')
       .populate({
         path: 'transferHistory.transferredBy',
         select: 'firstName lastName email'
