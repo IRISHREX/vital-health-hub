@@ -283,6 +283,11 @@ exports.createAppointment = async (req, res, next) => {
 // @access  Private
 exports.updateAppointment = async (req, res, next) => {
   try {
+    // if non-doctor user changes doctorId in body, propagate to `doctor` field
+    if (req.body?.doctorId) {
+      req.body.doctor = req.body.doctorId;
+    }
+
     if (req.user?.role === 'doctor') {
       const loggedInDoctor = await getLoggedInDoctorProfile(req.user);
       if (!loggedInDoctor) {

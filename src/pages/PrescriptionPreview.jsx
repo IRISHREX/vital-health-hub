@@ -434,7 +434,7 @@ export default function PrescriptionPreview() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
                 <p><strong>Patient:</strong> {patientName || "-"}</p>
-                <p><strong>Patient ID:</strong> {prescription.patient?.patientId || "-"}</p>
+                <p><strong>Patient ID:</strong> {prescription.patient?._id || "-"}</p>
                 {showDoctorDetails && <p><strong>Doctor:</strong> {formatDoctor(prescription.doctor)}</p>}
                 <p><strong>Encounter:</strong> {(prescription.encounterType || "opd").toUpperCase()}</p>
               </div>

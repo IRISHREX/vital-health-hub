@@ -23,6 +23,7 @@ import { useVisualAuth } from "@/hooks/useVisualAuth";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
 import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
+import ViewAppointmentDialog from "@/components/dashboard/ViewAppointmentDialog";
 
 const statusConfig = {
   scheduled: { label: "Pending", variant: "info" },
@@ -51,6 +52,8 @@ export default function Appointments() {
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] = useState("");
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedViewAppointment, setSelectedViewAppointment] = useState(null);
   const { toast } = useToast();
 
   const openCreateDialog = () => {
@@ -78,6 +81,11 @@ export default function Appointments() {
     setSelectedAppointmentId(apt?._id || "");
     setSelectedAppointmentStatus(apt?.status || "");
     setPrescriptionHistoryOpen(true);
+  };
+
+  const openViewDialog = (appointment) => {
+    setSelectedViewAppointment(appointment);
+    setViewDialogOpen(true);
   };
 
   const handleStatusUpdate = async (appointmentId, status) => {
@@ -244,6 +252,11 @@ export default function Appointments() {
           setPrescriptionOpen(true);
         }}
       />
+      <ViewAppointmentDialog
+        isOpen={viewDialogOpen}
+        onClose={() => setViewDialogOpen(false)}
+        appointment={selectedViewAppointment}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -402,6 +415,7 @@ export default function Appointments() {
                           variant="ghost"
                           size="icon"
                           title="View Details"
+                          onClick={() => openViewDialog(apt)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -410,6 +424,7 @@ export default function Appointments() {
                           size="icon"
                           title="Edit"
                           onClick={() => openEditDialog(apt)}
+                          disabled={apt.status === "completed"}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>

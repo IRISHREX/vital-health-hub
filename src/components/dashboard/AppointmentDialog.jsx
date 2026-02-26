@@ -126,7 +126,9 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
       return createAppointment({
         patientId: data.patientId,
+        // backend expects doctorId for creation but we also include doctor
         doctorId: selectedDoctorId,
+        doctor: selectedDoctorId,
         appointmentDate: combinedDateTime,
         reason: data.reason,
         notes: data.notes,
@@ -150,7 +152,9 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
       return updateAppointment(appointment._id, {
         patientId: data.patientId,
+        // include doctor field so backend updates the reference correctly
         doctorId: selectedDoctorId,
+        doctor: selectedDoctorId,
         appointmentDate: combinedDateTime,
         reason: data.reason,
         notes: data.notes,
