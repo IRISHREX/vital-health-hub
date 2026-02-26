@@ -14,14 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import {
   getAdmissions,
+  getAdmission,
   getAdmissionStats,
   formatAdmissionData,
-  getStatusColor,
-  calculateLengthOfStay,
 } from '@/lib/admissions';
 import AdmissionForm from '@/components/dashboard/AdmissionForm';
 import AdmissionActionModal from '@/components/dashboard/AdmissionActionModal';
-import AdmissionTimeline from '@/components/dashboard/AdmissionTimeline';
 import AdmissionDetailsModal from '@/components/dashboard/AdmissionDetailsModal';
 import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
@@ -43,7 +41,7 @@ import {
   ArrowRight,
   LogOut,
   Eye,
-  MoreVertical,
+  Pencil,
   ClipboardPlus,
 } from 'lucide-react';
 
@@ -67,7 +65,10 @@ export default function AdmissionsPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAdmissionForm, setShowAdmissionForm] = useState(false);
-  const [selectedAdmission, setSelectedAdmission] = useState(null);
+  const [selectedAdmissionId, setSelectedAdmissionId] = useState(null);
+  const [actionAdmission, setActionAdmission] = useState(null);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [detailsAdmission, setDetailsAdmission] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [prescriptionHistoryOpen, setPrescriptionHistoryOpen] = useState(false);
@@ -120,7 +121,8 @@ export default function AdmissionsPage() {
         a._id === updatedAdmission._id ? updatedAdmission : a
       )
     );
-    setSelectedAdmission(null);
+    setActionAdmission(null);
+    setShowActionModal(false);
     loadData();
     toast({
       title: 'Success',
@@ -134,6 +136,35 @@ export default function AdmissionsPage() {
       admission.patient?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       admission.admissionId?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const fetchAdmissionDetails = async (admission) => {
+    try {
+      const response = await getAdmission(admission._id);
+      return response?.data?.admission || admission;
+    } catch {
+      return admission;
+    }
+  };
+
+  const openDetailsModal = async (admission) => {
+    const fullAdmission = await fetchAdmissionDetails(admission);
+    setShowActionModal(false);
+    setActionAdmission(null);
+    setDetailsAdmission(fullAdmission);
+    setDetailsModalOpen(true);
+  };
+
+  const openActionModal = async (admission) => {
+    if (admission.status !== 'ADMITTED') {
+      openDetailsModal(admission);
+      return;
+    }
+    const fullAdmission = await fetchAdmissionDetails(admission);
+    setDetailsModalOpen(false);
+    setDetailsAdmission(null);
+    setActionAdmission(fullAdmission);
+    setShowActionModal(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -233,9 +264,13 @@ export default function AdmissionsPage() {
             admissions={filteredAdmissions.filter((a) => a.status === 'ADMITTED')}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            selectedAdmission={selectedAdmission}
-            setSelectedAdmission={setSelectedAdmission}
-            setDetailsModalOpen={setDetailsModalOpen}
+            selectedAdmissionId={selectedAdmissionId}
+            onSelectAdmission={setSelectedAdmissionId}
+            onOpenViewDetails={openActionModal}
+            onOpenViewHistory={openDetailsModal}
+            onOpenEdit={openDetailsModal}
+            onOpenTransfer={openActionModal}
+            onOpenDischarge={openActionModal}
             onOpenPrescription={(admission) => {
               setPrescriptionContext(admission);
               setPrescriptionHistoryOpen(true);
@@ -249,9 +284,13 @@ export default function AdmissionsPage() {
             admissions={filteredAdmissions.filter((a) => a.status === 'DISCHARGED')}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            selectedAdmission={selectedAdmission}
-            setSelectedAdmission={setSelectedAdmission}
-            setDetailsModalOpen={setDetailsModalOpen}
+            selectedAdmissionId={selectedAdmissionId}
+            onSelectAdmission={setSelectedAdmissionId}
+            onOpenViewDetails={openActionModal}
+            onOpenViewHistory={openDetailsModal}
+            onOpenEdit={openDetailsModal}
+            onOpenTransfer={openActionModal}
+            onOpenDischarge={openActionModal}
             onOpenPrescription={(admission) => {
               setPrescriptionContext(admission);
               setPrescriptionHistoryOpen(true);
@@ -265,9 +304,13 @@ export default function AdmissionsPage() {
             admissions={filteredAdmissions}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            selectedAdmission={selectedAdmission}
-            setSelectedAdmission={setSelectedAdmission}
-            setDetailsModalOpen={setDetailsModalOpen}
+            selectedAdmissionId={selectedAdmissionId}
+            onSelectAdmission={setSelectedAdmissionId}
+            onOpenViewDetails={openActionModal}
+            onOpenViewHistory={openDetailsModal}
+            onOpenEdit={openDetailsModal}
+            onOpenTransfer={openActionModal}
+            onOpenDischarge={openActionModal}
             onOpenPrescription={(admission) => {
               setPrescriptionContext(admission);
               setPrescriptionHistoryOpen(true);
@@ -290,16 +333,22 @@ export default function AdmissionsPage() {
       )}
 
       <AdmissionActionModal
-        admission={selectedAdmission}
-        isOpen={selectedAdmission}
-        onClose={() => setSelectedAdmission(null)}
+        admission={actionAdmission}
+        isOpen={showActionModal}
+        onClose={() => {
+          setShowActionModal(false);
+          setActionAdmission(null);
+        }}
         onActionComplete={handleActionComplete}
       />
 
       <AdmissionDetailsModal
-        admission={selectedAdmission}
+        admission={detailsAdmission}
         isOpen={detailsModalOpen}
-        onClose={() => setDetailsModalOpen(false)}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setDetailsAdmission(null);
+        }}
       />
       <PrescriptionDialog
         open={prescriptionOpen}
@@ -326,9 +375,13 @@ function AdmissionsList({
   admissions,
   searchTerm,
   setSearchTerm,
-  selectedAdmission,
-  setSelectedAdmission,
-  setDetailsModalOpen,
+  selectedAdmissionId,
+  onSelectAdmission,
+  onOpenViewDetails,
+  onOpenViewHistory,
+  onOpenEdit,
+  onOpenTransfer,
+  onOpenDischarge,
   onOpenPrescription,
   loading,
 }) {
@@ -371,14 +424,13 @@ function AdmissionsList({
             <AdmissionCard
               key={admission._id}
               admission={admission}
-              isSelected={selectedAdmission?._id === admission._id}
-              onSelect={() => setSelectedAdmission(admission)}
-              onViewDetails={() => {
-                setSelectedAdmission(admission);
-                setDetailsModalOpen(true);
-              }}
-              onTransfer={() => setSelectedAdmission(admission)}
-              onDischarge={() => setSelectedAdmission(admission)}
+              isSelected={selectedAdmissionId === admission._id}
+              onSelect={() => onSelectAdmission(admission._id)}
+              onViewDetails={() => onOpenViewDetails(admission)}
+              onViewHistory={() => onOpenViewHistory(admission)}
+              onEdit={() => onOpenEdit(admission)}
+              onTransfer={() => onOpenTransfer(admission)}
+              onDischarge={() => onOpenDischarge(admission)}
               onPrescription={() => onOpenPrescription(admission)}
             />
           ))}
@@ -388,7 +440,17 @@ function AdmissionsList({
   );
 }
 
-function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTransfer, onDischarge, onPrescription }) {
+function AdmissionCard({
+  admission,
+  isSelected,
+  onSelect,
+  onViewDetails,
+  onViewHistory,
+  onEdit,
+  onTransfer,
+  onDischarge,
+  onPrescription
+}) {
   const formattedData = formatAdmissionData(admission);
   const statusColor = statusColors[admission.status];
   const statusIcon = statusIcons[admission.status];
@@ -396,6 +458,14 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
   const handleViewDetails = (e) => {
     e.stopPropagation();
     onViewDetails();
+  };
+  const handleViewHistory = (e) => {
+    e.stopPropagation();
+    onViewHistory();
+  };
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    onEdit();
   };
 
   const handleTransfer = (e) => {
@@ -491,9 +561,9 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
           </div>
           <div className="flex items-center justify-end gap-2">
             <button
-              onClick={handleViewDetails}
+              onClick={handleViewHistory}
               className="p-2 hover:bg-gray-100 rounded-lg transition"
-              title="View Full Details & History"
+              title="View History"
             >
               <History className="h-4 w-4 text-blue-600" />
             </button>
@@ -503,6 +573,13 @@ function AdmissionCard({ admission, isSelected, onSelect, onViewDetails, onTrans
               title="View Details"
             >
               <Eye className="h-4 w-4 text-green-600" />
+            </button>
+            <button
+              onClick={handleEdit}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              title="Edit Admission"
+            >
+              <Pencil className="h-4 w-4 text-indigo-600" />
             </button>
             {admission.status === 'ADMITTED' && (
               <>

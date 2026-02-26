@@ -287,7 +287,10 @@ export default function AdmissionActionModal({ admission, isOpen, onClose, onAct
               <CardContent className="space-y-2">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Primary Diagnosis</p>
-                  <p className="text-sm">{admission.diagnosis?.primary || 'Not specified'}</p>
+                  <p className="text-sm">
+                    {admission.diagnosis?.primary ||
+                      (typeof admission.diagnosis === 'string' ? admission.diagnosis : 'Not specified')}
+                  </p>
                 </div>
                 {admission.symptoms?.length > 0 && (
                   <div>

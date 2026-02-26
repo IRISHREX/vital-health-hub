@@ -523,14 +523,16 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
                             <div>
                               <p className="font-medium text-gray-600">From</p>
                               <p>
-                                {new Date(allocation.allocatedAt).toLocaleDateString()}
+                                {allocation.allocatedFrom
+                                  ? new Date(allocation.allocatedFrom).toLocaleDateString()
+                                  : 'N/A'}
                               </p>
                             </div>
                             <div>
                               <p className="font-medium text-gray-600">To</p>
                               <p>
-                                {allocation.releasedAt
-                                  ? new Date(allocation.releasedAt).toLocaleDateString()
+                                {allocation.allocatedTo
+                                  ? new Date(allocation.allocatedTo).toLocaleDateString()
                                   : 'Current'}
                               </p>
                             </div>
@@ -538,8 +540,8 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
                               <p className="font-medium text-gray-600">Duration</p>
                               <p>
                                 {calculateDays(
-                                  allocation.allocatedAt,
-                                  allocation.releasedAt
+                                  allocation.allocatedFrom || admission.admissionDate,
+                                  allocation.allocatedTo || new Date()
                                 )}{' '}
                                 days
                               </p>
@@ -591,12 +593,14 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
                             <div>
                               <p className="font-medium text-gray-600">Transfer Date</p>
                               <p>
-                                {new Date(transfer.transferredAt).toLocaleDateString()}
+                                {transfer.transferDate
+                                  ? new Date(transfer.transferDate).toLocaleDateString()
+                                  : 'N/A'}
                               </p>
                             </div>
                             <div>
                               <p className="font-medium text-gray-600">Reason</p>
-                              <p>{transfer.reason || 'Not specified'}</p>
+                              <p>{transfer.transferReason || 'Not specified'}</p>
                             </div>
                           </div>
                         </CardContent>
