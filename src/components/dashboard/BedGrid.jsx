@@ -130,12 +130,12 @@ export default function BedGrid({ beds, onBedSelect, loading }) {
             {/* Floor Header - Collapsible */}
             <button
               onClick={() => toggleFloor(floor)}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-3 flex items-center justify-between transition-colors"
+              className="w-full bg-slate-200 hover:bg-slate-300 text-gray-700 p-3 flex items-center justify-between transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
                 <span className="text-lg font-bold">Floor {floor}</span>
-                <Badge variant="secondary" className="ml-2 bg-blue-500 text-white border-0">
+                <Badge variant="secondary" className="ml-2 bg-blue-500 text-white border-0 hover:bg-blue-600 hover:text-white">
                   {Object.keys(bedsByFloor[floor]).length} room{Object.keys(bedsByFloor[floor]).length !== 1 ? 's' : ''}
                 </Badge>
               </div>
@@ -169,7 +169,7 @@ export default function BedGrid({ beds, onBedSelect, loading }) {
                           <div className="flex items-center gap-2">
                             <DoorOpen className="h-4 w-4 text-gray-700" />
                             <span className="font-semibold text-gray-700">Room {room}</span>
-                            <Badge variant="outline" className="ml-2">
+                            <Badge variant="outline" className="ml-2 bg-status-available/80 text-white border-0 hover:bg-status-available hover:text-white">
                               {roomBeds.length} bed{roomBeds.length !== 1 ? 's' : ''}
                             </Badge>
                           </div>

@@ -296,7 +296,7 @@ export default function OpdDashboard() {
                               variant="ghost"
                               size="icon"
                               title="Prescription"
-                              className="text-primary hover:bg-primary/10"
+                              className="text-primary hover:bg-primary"
                               onClick={() => openPrescriptionDialog(apt)}
                             >
                               <ClipboardPlus className="h-4 w-4" />

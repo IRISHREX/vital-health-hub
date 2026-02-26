@@ -291,7 +291,7 @@ export default function AdmissionsPage() {
 
       <AdmissionActionModal
         admission={selectedAdmission}
-        isOpen={!!selectedAdmission}
+        isOpen={selectedAdmission}
         onClose={() => setSelectedAdmission(null)}
         onActionComplete={handleActionComplete}
       />

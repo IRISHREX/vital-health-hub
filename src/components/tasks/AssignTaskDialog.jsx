@@ -97,7 +97,7 @@ export default function AssignTaskDialog({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assign New Task</DialogTitle>
           <DialogDescription>Create and assign a task to a nurse or staff member</DialogDescription>

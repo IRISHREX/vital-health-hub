@@ -12,6 +12,13 @@ import { Button } from '@/components/ui/button';
 import { ClipboardList, Pill, Activity, FileText, CheckCircle2, Clock } from 'lucide-react';
 import StatsCard from '@/components/dashboard/StatsCard';
 import RestrictedAction from '@/components/permissions/RestrictedAction';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -152,23 +159,33 @@ export default function Tasks() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="border px-2 py-1 rounded">
-            <option value="all">All Types</option>
-            <option value="medication">Medication</option>
-            <option value="vitals">Vitals</option>
-            <option value="documentation">Documentation</option>
-            <option value="procedure">Procedure</option>
-            <option value="discharge">Discharge</option>
-            <option value="other">Other</option>
-          </select>
+          <Select value={filterType} onValueChange={(e) => setFilterType(e)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="medication">Medication</SelectItem>
+              <SelectItem value="vitals">Vitals</SelectItem>
+              <SelectItem value="documentation">Documentation</SelectItem>
+              <SelectItem value="procedure">Procedure</SelectItem>
+              <SelectItem value="discharge">Discharge</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className="border px-2 py-1 rounded">
-          <option value="all">All Priorities</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="critical">Critical</option>
-        </select>
+        <Select value={filterPriority} onValueChange={(e) => setFilterPriority(e)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priorities</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs defaultValue="pending" className="space-y-4">

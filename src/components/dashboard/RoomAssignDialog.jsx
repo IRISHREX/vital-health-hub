@@ -110,7 +110,7 @@ export default function RoomAssignDialog({ isOpen, onClose, rooms = [] }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-[420px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assign Room to Nurse</DialogTitle>
           <DialogDescription>

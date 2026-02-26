@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -111,14 +112,17 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[420px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Nurse" : "Add New Nurse"}</DialogTitle>
+          <DialogDescription>
+            Enter nurse details below.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="firstName" className="text-right">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="firstName" className="text-sm font-medium">
                 First Name
               </Label>
               <Input
@@ -126,12 +130,12 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className="col-span-3"
+                className="mt-2"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="lastName" className="text-right">
+            <div>
+              <Label htmlFor="lastName" className="text-sm font-medium">
                 Last Name
               </Label>
               <Input
@@ -139,12 +143,12 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className="col-span-3"
+                className="mt-2"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium">
                 Email
               </Label>
               <Input
@@ -153,14 +157,14 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="col-span-3"
+                className="mt-2"
                 required
                 disabled={isEdit}
               />
             </div>
             {!isEdit && (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="password" className="text-right">
+              <div>
+                <Label htmlFor="password" className="text-sm font-medium">
                   Password
                 </Label>
                 <Input
@@ -169,13 +173,13 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="col-span-3"
+                  className="mt-2"
                   required
                 />
               </div>
             )}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
+            <div>
+              <Label htmlFor="phone" className="text-sm font-medium">
                 Phone
               </Label>
               <Input
@@ -183,18 +187,18 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="col-span-3"
+                className="mt-2"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="department" className="text-right">
+            <div>
+              <Label htmlFor="department" className="text-sm font-medium">
                 Department
               </Label>
               <Select
                 onValueChange={(value) => handleSelectChange("department", value)}
                 defaultValue={formData.department}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Select a department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -206,15 +210,15 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 </SelectContent>
               </Select>
             </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
+             <div>
+              <Label htmlFor="role" className="text-sm font-medium">
                 Role
               </Label>
               <Select
                 onValueChange={(value) => handleSelectChange("role", value)}
                 defaultValue={formData.role}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,12 +227,12 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 </SelectContent>
               </Select>
             </div>
+            <DialogFooter>
+              <Button type="submit" disabled={loading}>
+                {loading ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create Nurse")}
+              </Button>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={loading}>
-              {loading ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create Nurse")}
-            </Button>
-          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
