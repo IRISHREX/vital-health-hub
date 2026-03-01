@@ -17,7 +17,7 @@ import { getBeds } from '@/lib/beds';
 import { getFacilities } from '@/lib/facilities';
 import { getPatients } from '@/lib/patients';
 import { getDoctors } from '@/lib/doctors';
-import { Loader2, User, Bed, Stethoscope, FileText, Building2, X } from 'lucide-react';
+import { Loader2, User, Bed, Stethoscope, FileText, Building2, Hospital, Siren } from 'lucide-react';
 
 export default function AdmissionForm({ onAdmissionCreated, onClose }) {
   const [loading, setLoading] = useState(false);
@@ -77,7 +77,7 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
 
   // Filter patients by registration type
   const filteredPatients = patients.filter(
-    (patient) => patient.registrationType === registrationType
+    (patient) => patient.registrationType !== registrationType
   );
 
   const handleSubmit = async (e) => {
@@ -171,28 +171,23 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex items-center justify-between border-b pb-4">
-        <div>
-          <h2 className="text-2xl font-bold">Quick Admission</h2>
-          <p className="text-sm text-gray-500 mt-1">Complete admission in one step</p>
-        </div>
-        <Button variant="ghost" size="icon" onClick={onClose} disabled={loading}>
-          <X className="h-5 w-5" />
-        </Button>
+      <div>
+        <h2 className="text-2xl font-bold">Quick Admission</h2>
+        <p className="text-sm text-gray-500 mt-1">Complete admission in one step</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Registration Type Selection */}
-        <Card className="border-2 border-blue-200 bg-blue-50">
+        <Card className="border-2 border-primary/30 bg-primary/10">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Select Patient Type</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { value: 'emergency', label: 'Emergency', icon: '🚨' },
-                { value: 'opd', label: 'OPD (Out-Patient)', icon: '🏥' },
-                { value: 'ipd', label: 'IPD (In-Patient)', icon: '🛏️' },
+                { value: 'emergency', label: 'Emergency', icon: <Siren className="h-5 w-5" /> },
+                { value: 'opd', label: 'OPD (Out-Patient)', icon: <Hospital className="h-5 w-5" /> },
+                { value: 'ipd', label: 'IPD (In-Patient)', icon: <Bed className="h-5 w-5" /> },
               ].map((type) => (
                 <button
                   key={type.value}
@@ -201,13 +196,18 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
                     setRegistrationType(type.value);
                     setFormData({ ...formData, patientId: '', bedId: '' });
                   }}
-                  className={`p-4 rounded-lg border-2 transition ${
-                    registrationType === type.value
-                      ? 'border-blue-600 bg-white shadow-lg'
-                      : 'border-gray-200 hover:border-gray-300'
+                  className={`flex items-center justify-center gap-2 p-4 rounded-lg border-[1px] bg-secondary transition ${
+                    registrationType === type.value && type.value === 'emergency' ? 'border-red-600 shadow-lg' :
+                    registrationType === type.value && type.value === 'opd' ? 'border-blue-600 shadow-lg' :
+                      registrationType === type.value && type.value === 'ipd' ? 'border-green-600 shadow-lg' :
+                      'border-secondary/00'
                   }`}
                 >
-                  <div className="text-2xl mb-2">{type.icon}</div>
+                  <div className={`text-2xl p-2 rounded-md ${type.value === 'emergency' ? 
+                    'bg-red-100 text-red-600' : type.value === 'opd' ? 
+                    'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                      {type.icon}
+                  </div>
                   <p className="font-semibold text-sm">{type.label}</p>
                 </button>
               ))}
@@ -234,8 +234,8 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
                   <SelectValue placeholder={`Choose a ${registrationType} patient...`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredPatients.length > 0 ? (
-                    filteredPatients.map((patient) => (
+                  {patients.length > 0 ? (
+                    patients.map((patient) => (
                       <SelectItem key={patient._id} value={patient._id}>
                         {patient.firstName} {patient.lastName} ({patient.patientId})
                       </SelectItem>
@@ -449,7 +449,7 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
         </Card>
 
         {/* Summary */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
+        <Card className="border-2 border-primary/30 bg-primary/5">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Admission Summary</CardTitle>
           </CardHeader>

@@ -19,6 +19,10 @@ import {
   formatAdmissionData,
 } from '@/lib/admissions';
 import AdmissionForm from '@/components/dashboard/AdmissionForm';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 import AdmissionActionModal from '@/components/dashboard/AdmissionActionModal';
 import AdmissionDetailsModal from '@/components/dashboard/AdmissionDetailsModal';
 import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
@@ -321,16 +325,14 @@ export default function AdmissionsPage() {
       </Tabs>
 
       {/* Modals */}
-      {showAdmissionForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <AdmissionForm
-              onAdmissionCreated={handleAdmissionCreated}
-              onClose={() => setShowAdmissionForm(false)}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={showAdmissionForm} onOpenChange={(open) => { if (!open) setShowAdmissionForm(false); }}>
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <AdmissionForm
+            onAdmissionCreated={handleAdmissionCreated}
+            onClose={() => setShowAdmissionForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AdmissionActionModal
         admission={actionAdmission}
