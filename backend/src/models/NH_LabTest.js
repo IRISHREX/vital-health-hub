@@ -12,11 +12,9 @@ const generateUniqueTestIdForDoc = async (model) => {
     const ms = String(now.getMilliseconds()).padStart(3, '0');
     const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
     const testId = `LAB${yy}${mm}${dd}${hh}${min}${sec}${ms}${rand}`;
-
     const exists = await model.exists({ testId });
     if (!exists) return testId;
   }
-
   throw new Error('Unable to generate unique test ID');
 };
 
@@ -32,55 +30,56 @@ const generateUniqueSampleIdForDoc = async (model) => {
     const ms = String(now.getMilliseconds()).padStart(3, '0');
     const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
     const sampleId = `SMP${yy}${mm}${dd}${hh}${min}${sec}${ms}${rand}`;
-
     const exists = await model.exists({ sampleId });
     if (!exists) return sampleId;
   }
-
   throw new Error('Unable to generate unique sample ID');
 };
 
-const parameterSchema = new mongoose.Schema({
+// Sub-parameter result
+const subParameterSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  unit: { type: String },
-  normalRange: { type: String },
   value: { type: String },
+  unit: { type: String },
+  referenceRange: { type: mongoose.Schema.Types.Mixed, default: null },
   status: { type: String, enum: ['normal', 'abnormal', 'critical', 'pending'], default: 'pending' }
 }, { _id: true });
 
+// Parameter result
+const parameterSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  value: { type: String },
+  unit: { type: String },
+  referenceRange: { type: mongoose.Schema.Types.Mixed, default: null },
+  // Legacy flat normalRange kept for backward compat
+  normalRange: { type: String },
+  status: { type: String, enum: ['normal', 'abnormal', 'critical', 'pending'], default: 'pending' },
+  subParameters: [subParameterSchema]
+}, { _id: true });
+
+// Test result within a section
+const testResultSchema = new mongoose.Schema({
+  testName: { type: String, required: true },
+  testCode: { type: String },
+  price: { type: Number, default: 0 },
+  parameters: [parameterSchema]
+}, { _id: true });
+
+// Section result
+const sectionResultSchema = new mongoose.Schema({
+  sectionName: { type: String, required: true },
+  tests: [testResultSchema]
+}, { _id: true });
+
 const labTestSchema = new mongoose.Schema({
-  testId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  patient: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Patient',
-    required: true
-  },
-  doctor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Doctor',
-    required: true
-  },
-  admission: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admission'
-  },
-  appointment: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Appointment'
-  },
+  testId: { type: String, unique: true, sparse: true },
+  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
+  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true },
+  admission: { type: mongoose.Schema.Types.ObjectId, ref: 'Admission' },
+  appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
   // Test catalog info
-  testName: {
-    type: String,
-    required: true
-  },
-  testCode: {
-    type: String,
-    required: true
-  },
+  testName: { type: String, required: true },
+  testCode: { type: String, required: true },
   category: {
     type: String,
     enum: ['hematology', 'biochemistry', 'microbiology', 'pathology', 'radiology', 'immunology', 'urine', 'serology', 'other'],
@@ -95,10 +94,7 @@ const labTestSchema = new mongoose.Schema({
   },
   sampleId: String,
   sampleCollectedAt: Date,
-  sampleCollectedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
+  sampleCollectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   sampleStatus: {
     type: String,
     enum: ['pending_collection', 'collected', 'in_transit', 'received', 'processing', 'rejected'],
@@ -116,58 +112,33 @@ const labTestSchema = new mongoose.Schema({
     enum: ['routine', 'urgent', 'stat'],
     default: 'routine'
   },
-  // Results
+  // NEW: Hierarchical results (sections → tests → parameters → subParameters)
+  sections: [sectionResultSchema],
+  // Legacy flat parameters (kept for backward compat)
   parameters: [parameterSchema],
   interpretation: String,
   remarks: String,
   // Report
   reportGeneratedAt: Date,
-  reportGeneratedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  verifiedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
+  reportGeneratedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedAt: Date,
   // Pricing
-  price: {
-    type: Number,
-    required: true
-  },
-  discount: {
-    type: Number,
-    default: 0
-  },
-  totalAmount: {
-    type: Number,
-    required: true
-  },
+  price: { type: Number, required: true },
+  discount: { type: Number, default: 0 },
+  totalAmount: { type: Number, required: true },
   // Billing
-  invoiceId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Invoice'
-  },
-  billed: {
-    type: Boolean,
-    default: false
-  },
+  invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+  billed: { type: Boolean, default: false },
   // Ordered by
-  orderedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
+  orderedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   notes: String,
-  // For tracking turnaround time
   expectedCompletionAt: Date,
   completedAt: Date
 }, {
   timestamps: true
 });
 
-// Auto-generate test ID
 labTestSchema.pre('save', async function(next) {
   if (!this.testId) {
     this.testId = await generateUniqueTestIdForDoc(this.constructor);

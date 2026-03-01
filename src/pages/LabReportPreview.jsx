@@ -19,6 +19,14 @@ import {
 
 const defaultHospital = { hospitalName: "Hospital", registrationNumber: "", address: "", phone: "", email: "", website: "" };
 
+const formatRefRange = (ref, gender) => {
+  if (!ref) return "-";
+  const g = gender || "all";
+  const range = ref[g] || ref.all;
+  if (!range) return "-";
+  return `${range.min ?? ""} - ${range.max ?? ""}`;
+};
+
 export default function LabReportPreview() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -87,8 +95,12 @@ export default function LabReportPreview() {
       body{font-family:'Segoe UI',sans-serif;padding:20px;color:#1a1a2e}
       .header{text-align:center;border-bottom:2px solid #1565c0;padding-bottom:16px;margin-bottom:16px}
       .header h1{color:#1565c0;margin:0;font-size:24px}.header p{margin:4px 0;color:#555;font-size:12px}
-      table{width:100%;border-collapse:collapse;margin:16px 0}th{background:#f0f4f8;padding:8px 12px;text-align:left;border:1px solid #ddd;font-size:12px}
-      td{padding:8px 12px;border:1px solid #ddd;font-size:13px}.footer{margin-top:32px;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:8px}
+      .section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1565c0;border-bottom:1px solid #ddd;padding-bottom:4px;margin:12px 0 8px}
+      table{width:100%;border-collapse:collapse;margin:8px 0}th{background:#f0f4f8;padding:6px 10px;text-align:left;border:1px solid #ddd;font-size:11px}
+      td{padding:6px 10px;border:1px solid #ddd;font-size:12px}
+      .group-header td{background:#f8f9fa;font-weight:600}
+      .sub-param td:first-child{padding-left:24px}
+      .footer{margin-top:32px;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:8px}
     </style></head><body>${el.innerHTML}</body></html>`);
     w.document.close();
     w.print();
@@ -100,6 +112,7 @@ export default function LabReportPreview() {
     const pw = doc.internal.pageSize.getWidth();
     const patient = test.patient || {};
     const patientName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
+    const patientGender = patient.gender?.toLowerCase() || "all";
 
     doc.setFontSize(16);
     doc.text(hospitalSettings.hospitalName, 14, 14);
@@ -111,20 +124,59 @@ export default function LabReportPreview() {
     let y = 32;
     doc.setFontSize(10);
     doc.text(`Test ID: ${test.testId || "-"}`, 14, y); y += 6;
-    doc.text(`Patient: ${patientName}`, 14, y); y += 6;
+    doc.text(`Patient: ${patientName} | Gender: ${patient.gender || "-"}`, 14, y); y += 6;
     doc.text(`Patient ID: ${patient.patientId || "-"}`, 14, y); y += 6;
     doc.text(`Test: ${test.testName || "-"} (${test.testCode || "-"})`, 14, y); y += 6;
     doc.text(`Category: ${test.category || "-"}`, 14, y); y += 6;
     doc.text(`Sample ID: ${test.sampleId || "-"}`, 14, y); y += 10;
 
-    doc.setFontSize(11);
-    doc.text("Results:", 14, y); y += 6;
-    doc.setFontSize(9);
-    (test.parameters || []).forEach((p) => {
-      doc.text(`${p.name}: ${p.value || "-"} ${p.unit || ""} (Ref: ${p.normalRange || "-"}) [${p.status || "-"}]`, 14, y);
-      y += 5;
-      if (y > 270) { doc.addPage(); y = 14; }
-    });
+    const hasSections = test.sections?.length > 0;
+
+    if (hasSections) {
+      test.sections.forEach(sec => {
+        doc.setFontSize(11);
+        doc.text(sec.sectionName, 14, y); y += 6;
+        sec.tests.forEach(t => {
+          doc.setFontSize(10);
+          doc.text(t.testName, 14, y); y += 5;
+          doc.setFontSize(9);
+          t.parameters.forEach(p => {
+            if (p.subParameters?.length > 0) {
+              doc.text(`  ${p.name}:`, 14, y); y += 4;
+              p.subParameters.forEach(sp => {
+                doc.text(`    ${sp.name}: ${sp.value || "-"} ${sp.unit || ""} (${formatRefRange(sp.referenceRange, patientGender)}) [${sp.status || "-"}]`, 14, y);
+                y += 4;
+                if (y > 270) { doc.addPage(); y = 14; }
+              });
+            } else {
+              doc.text(`  ${p.name}: ${p.value || "-"} ${p.unit || ""} (${formatRefRange(p.referenceRange, patientGender)}) [${p.status || "-"}]`, 14, y);
+              y += 4;
+              if (y > 270) { doc.addPage(); y = 14; }
+            }
+          });
+          y += 2;
+        });
+        y += 4;
+      });
+    } else {
+      doc.setFontSize(11);
+      doc.text("Results:", 14, y); y += 6;
+      doc.setFontSize(9);
+      (test.parameters || []).forEach((p) => {
+        if (p.subParameters?.length > 0) {
+          doc.text(`${p.name}:`, 14, y); y += 4;
+          p.subParameters.forEach(sp => {
+            doc.text(`  ${sp.name}: ${sp.value || "-"} ${sp.unit || ""} (${formatRefRange(sp.referenceRange, patientGender)}) [${sp.status || "-"}]`, 14, y);
+            y += 4;
+            if (y > 270) { doc.addPage(); y = 14; }
+          });
+        } else {
+          doc.text(`${p.name}: ${p.value || "-"} ${p.unit || ""} (${formatRefRange(p.referenceRange, patientGender) || p.normalRange || "-"}) [${p.status || "-"}]`, 14, y);
+          y += 5;
+          if (y > 270) { doc.addPage(); y = 14; }
+        }
+      });
+    }
 
     y += 4;
     if (test.interpretation) {
@@ -148,16 +200,112 @@ export default function LabReportPreview() {
 
   const patient = test.patient || {};
   const patientName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim() || "Unknown";
+  const patientGender = patient.gender?.toLowerCase() || "all";
   const reportDate = test.reportGeneratedAt ? new Date(test.reportGeneratedAt).toLocaleString() : "-";
+  const hasSections = test.sections?.length > 0;
+
+  const renderSectionsPreview = () => {
+    return test.sections.map((sec, si) => (
+      <div key={si}>
+        <div className="text-xs font-bold uppercase tracking-widest mt-3 mb-2 pb-1 border-b" style={{ color: textColor, borderColor: textColor }}>{sec.sectionName}</div>
+        {sec.tests.map((t, ti) => (
+          <div key={ti} className="mb-3">
+            <p className="text-sm font-semibold mb-1">{t.testName}</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="border p-1.5 text-left bg-muted">Parameter</th>
+                  <th className="border p-1.5 text-left bg-muted">Value</th>
+                  <th className="border p-1.5 text-left bg-muted">Unit</th>
+                  <th className="border p-1.5 text-left bg-muted">Ref. Range</th>
+                  <th className="border p-1.5 text-left bg-muted">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {t.parameters.map((p, pi) =>
+                  p.subParameters?.length > 0 ? (
+                    <>
+                      <tr key={`${pi}-h`} className="bg-muted/30"><td className="border p-1.5 font-semibold" colSpan={5}>{p.name}</td></tr>
+                      {p.subParameters.map((sp, spi) => (
+                        <tr key={`${pi}-${spi}`}>
+                          <td className="border p-1.5 pl-6">{sp.name}</td>
+                          <td className={`border p-1.5 ${sp.status === "critical" ? "text-destructive font-bold" : sp.status === "abnormal" ? "text-destructive" : ""}`}>{sp.value || "-"}</td>
+                          <td className="border p-1.5 text-muted-foreground">{sp.unit || "-"}</td>
+                          <td className="border p-1.5 text-muted-foreground">{formatRefRange(sp.referenceRange, patientGender)}</td>
+                          <td className="border p-1.5">
+                            <Badge variant={sp.status === "normal" ? "secondary" : sp.status === "critical" ? "destructive" : "default"} className="capitalize text-xs">{sp.status}</Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  ) : (
+                    <tr key={pi}>
+                      <td className="border p-1.5 font-medium">{p.name}</td>
+                      <td className={`border p-1.5 ${p.status === "critical" ? "text-destructive font-bold" : p.status === "abnormal" ? "text-destructive" : ""}`}>{p.value || "-"}</td>
+                      <td className="border p-1.5 text-muted-foreground">{p.unit || "-"}</td>
+                      <td className="border p-1.5 text-muted-foreground">{formatRefRange(p.referenceRange, patientGender)}</td>
+                      <td className="border p-1.5">
+                        <Badge variant={p.status === "normal" ? "secondary" : p.status === "critical" ? "destructive" : "default"} className="capitalize text-xs">{p.status}</Badge>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    ));
+  };
+
+  const renderFlatParamsPreview = () => (
+    <table className="w-full text-sm">
+      <thead>
+        <tr>
+          <th className="border p-2 text-left bg-muted">Parameter</th>
+          <th className="border p-2 text-left bg-muted">Value</th>
+          <th className="border p-2 text-left bg-muted">Unit</th>
+          <th className="border p-2 text-left bg-muted">Ref. Range</th>
+          <th className="border p-2 text-left bg-muted">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(test.parameters || []).map((p, i) => (
+          <>
+            {p.subParameters?.length > 0 ? (
+              <>
+                <tr key={`${i}-h`} className="bg-muted/30"><td className="border p-2 font-semibold" colSpan={5}>{p.name}</td></tr>
+                {p.subParameters.map((sp, spi) => (
+                  <tr key={`${i}-${spi}`}>
+                    <td className="border p-2 pl-6">{sp.name}</td>
+                    <td className={`border p-2 ${sp.status === "critical" ? "text-destructive font-bold" : sp.status === "abnormal" ? "text-destructive" : ""}`}>{sp.value || "-"}</td>
+                    <td className="border p-2 text-muted-foreground">{sp.unit || "-"}</td>
+                    <td className="border p-2 text-muted-foreground">{formatRefRange(sp.referenceRange, patientGender)}</td>
+                    <td className="border p-2"><Badge variant={sp.status === "normal" ? "secondary" : sp.status === "critical" ? "destructive" : "default"} className="capitalize">{sp.status}</Badge></td>
+                  </tr>
+                ))}
+              </>
+            ) : (
+              <tr key={i}>
+                <td className="border p-2 font-medium">{p.name}</td>
+                <td className={`border p-2 ${p.status === "critical" ? "text-destructive font-bold" : p.status === "abnormal" ? "text-destructive" : ""}`}>{p.value || "-"}</td>
+                <td className="border p-2 text-muted-foreground">{p.unit}</td>
+                <td className="border p-2 text-muted-foreground">{formatRefRange(p.referenceRange, patientGender) || p.normalRange || "-"}</td>
+                <td className="border p-2"><Badge variant={p.status === "normal" ? "secondary" : p.status === "critical" ? "destructive" : "default"} className="capitalize">{p.status}</Badge></td>
+              </tr>
+            )}
+          </>
+        ))}
+      </tbody>
+    </table>
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Lab Report Preview</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setEditorOpen(true)}>
-            <SlidersHorizontal className="mr-2 h-4 w-4" />Editor
-          </Button>
+          <Button variant="outline" onClick={() => setEditorOpen(true)}><SlidersHorizontal className="mr-2 h-4 w-4" />Editor</Button>
           <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
           <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" />Print</Button>
           <Button variant="outline" onClick={handleDownloadPdf}><Download className="mr-2 h-4 w-4" />Download PDF</Button>
@@ -187,9 +335,7 @@ export default function LabReportPreview() {
                   <Label>Font Size</Label>
                   <Select value={fontSizePx} onValueChange={setFontSizePx}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {["12","14","16","18","20"].map(s => <SelectItem key={s} value={s}>{s} px</SelectItem>)}
-                    </SelectContent>
+                    <SelectContent>{["12","14","16","18","20"].map(s => <SelectItem key={s} value={s}>{s} px</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2 rounded-md border bg-background p-3">
@@ -268,6 +414,7 @@ export default function LabReportPreview() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
                 <p><strong>Patient:</strong> {patientName}</p>
                 <p><strong>Patient ID:</strong> {patient.patientId || "-"}</p>
+                <p><strong>Gender:</strong> {patient.gender || "-"}</p>
                 <p><strong>Test ID:</strong> {test.testId || "-"}</p>
                 <p><strong>Sample ID:</strong> {test.sampleId || "-"}</p>
               </div>
@@ -280,30 +427,7 @@ export default function LabReportPreview() {
                 <Badge variant={test.status === "verified" ? "default" : "secondary"} className="capitalize">{test.status}</Badge>
               </div>
 
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="border p-2 text-left bg-muted">Parameter</th>
-                    <th className="border p-2 text-left bg-muted">Value</th>
-                    <th className="border p-2 text-left bg-muted">Unit</th>
-                    <th className="border p-2 text-left bg-muted">Normal Range</th>
-                    <th className="border p-2 text-left bg-muted">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(test.parameters || []).map((p, i) => (
-                    <tr key={i}>
-                      <td className="border p-2 font-medium">{p.name}</td>
-                      <td className={`border p-2 ${p.status === "critical" ? "text-destructive font-bold" : p.status === "abnormal" ? "text-destructive" : ""}`}>{p.value || "-"}</td>
-                      <td className="border p-2 text-muted-foreground">{p.unit}</td>
-                      <td className="border p-2 text-muted-foreground">{p.normalRange}</td>
-                      <td className="border p-2">
-                        <Badge variant={p.status === "normal" ? "secondary" : p.status === "critical" ? "destructive" : "default"} className="capitalize">{p.status}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {hasSections ? renderSectionsPreview() : renderFlatParamsPreview()}
             </div>
 
             {showInterpretation && test.interpretation && (
