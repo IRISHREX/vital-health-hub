@@ -16,12 +16,55 @@ const generateUniqueSampleId = async () => {
     const ms = String(now.getMilliseconds()).padStart(3, '0');
     const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
     const sampleId = `SMP${yy}${mm}${dd}${hh}${min}${sec}${ms}${rand}`;
-
     const exists = await LabTest.exists({ sampleId });
     if (!exists) return sampleId;
   }
-
   throw new Error('Unable to generate unique sample ID');
+};
+
+// Helper: Build empty result structure from catalog sections
+const buildSectionsFromCatalog = (catalogItem) => {
+  if (catalogItem.sections && catalogItem.sections.length > 0) {
+    return catalogItem.sections.map(section => ({
+      sectionName: section.sectionName,
+      tests: (section.tests || []).map(test => ({
+        testName: test.testName,
+        testCode: test.testCode || '',
+        price: test.price || 0,
+        parameters: (test.parameters || []).map(param => ({
+          name: param.name,
+          unit: param.unit || '',
+          referenceRange: param.referenceRange || null,
+          value: '',
+          status: 'pending',
+          subParameters: (param.subParameters || []).map(sp => ({
+            name: sp.name,
+            unit: sp.unit || '',
+            referenceRange: sp.referenceRange || null,
+            value: '',
+            status: 'pending'
+          }))
+        }))
+      }))
+    }));
+  }
+  return [];
+};
+
+// Helper: Build legacy flat parameters from catalog (backward compat)
+const buildFlatParamsFromCatalog = (catalogItem) => {
+  if (catalogItem.parameters && catalogItem.parameters.length > 0) {
+    return catalogItem.parameters.map(p => ({
+      name: p.name,
+      unit: p.unit,
+      normalRange: p.normalRange,
+      referenceRange: p.referenceRange || null,
+      value: '',
+      status: 'pending',
+      subParameters: []
+    }));
+  }
+  return [];
 };
 
 // ====== CATALOG ======
@@ -75,7 +118,7 @@ const getLabTests = asyncHandler(async (req, res) => {
   }
 
   const tests = await LabTest.find(query)
-    .populate('patient', 'firstName lastName patientId phone')
+    .populate('patient', 'firstName lastName patientId phone gender dateOfBirth')
     .populate('doctor', 'name specialization')
     .populate('orderedBy', 'firstName lastName')
     .populate('sampleCollectedBy', 'firstName lastName')
@@ -104,7 +147,6 @@ const getLabTestById = asyncHandler(async (req, res) => {
 const createLabTest = asyncHandler(async (req, res) => {
   const { catalogTestId, catalogTestIds } = req.body;
 
-  // If catalog test IDs provided, create one lab test record per selected catalog test
   const selectedCatalogIds = Array.isArray(catalogTestIds) && catalogTestIds.length
     ? catalogTestIds
     : (catalogTestId ? [catalogTestId] : []);
@@ -127,13 +169,8 @@ const createLabTest = asyncHandler(async (req, res) => {
         category: catalogItem.category,
         description: catalogItem.description,
         sampleType: catalogItem.sampleType,
-        parameters: catalogItem.parameters.map(p => ({
-          name: p.name,
-          unit: p.unit,
-          normalRange: p.normalRange,
-          value: '',
-          status: 'pending'
-        })),
+        sections: buildSectionsFromCatalog(catalogItem),
+        parameters: buildFlatParamsFromCatalog(catalogItem),
         price: catalogItem.price,
         totalAmount: Math.max(0, catalogItem.price - (req.body.discount || 0)),
         expectedCompletionAt: new Date(Date.now() + catalogItem.turnaroundTime * 3600000)
@@ -143,7 +180,7 @@ const createLabTest = asyncHandler(async (req, res) => {
     const createdTests = await LabTest.insertMany(testsToCreate);
     const createdIds = createdTests.map((t) => t._id);
     const populatedTests = await LabTest.find({ _id: { $in: createdIds } })
-      .populate('patient', 'firstName lastName patientId')
+      .populate('patient', 'firstName lastName patientId gender dateOfBirth')
       .populate('doctor', 'name');
 
     if (populatedTests.length === 1) {
@@ -159,7 +196,6 @@ const createLabTest = asyncHandler(async (req, res) => {
     return;
   }
 
-  // Fallback: create a direct manual test order payload
   const testData = { ...req.body, orderedBy: req.user._id };
   const test = await LabTest.create(testData);
   const populated = await LabTest.findById(test._id)
@@ -245,10 +281,11 @@ const startProcessing = asyncHandler(async (req, res) => {
 // ====== RESULTS ======
 
 const enterResults = asyncHandler(async (req, res) => {
-  const { parameters, interpretation, remarks } = req.body;
+  const { sections, parameters, interpretation, remarks } = req.body;
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
 
+  if (sections) test.sections = sections;
   if (parameters) test.parameters = parameters;
   if (interpretation) test.interpretation = interpretation;
   if (remarks) test.remarks = remarks;
@@ -310,12 +347,7 @@ const getLabStats = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      total,
-      pending,
-      processing,
-      completed,
-      today,
-      categoryStats,
+      total, pending, processing, completed, today, categoryStats,
       totalRevenue: revenueResult[0]?.total || 0
     }
   });
@@ -338,7 +370,6 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
     throw new Error('No unbilled tests found');
   }
 
-  // Ensure all tests are for the same patient
   const patientId = tests[0].patient._id.toString();
   if (!tests.every(t => t.patient._id.toString() === patientId)) {
     res.status(400);
@@ -369,7 +400,6 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
     generatedBy: req.user._id
   });
 
-  // Mark tests as billed
   await LabTest.updateMany(
     { _id: { $in: testIds } },
     { billed: true, invoiceId: invoice._id }
@@ -379,23 +409,9 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  getCatalog,
-  getCatalogItem,
-  createCatalogItem,
-  updateCatalogItem,
-  deleteCatalogItem,
-  getLabTests,
-  getLabTestById,
-  createLabTest,
-  updateLabTest,
-  deleteLabTest,
-  collectSample,
-  receiveSample,
-  rejectSample,
-  startProcessing,
-  enterResults,
-  verifyResults,
-  deliverReport,
-  getLabStats,
-  generateLabInvoice
+  getCatalog, getCatalogItem, createCatalogItem, updateCatalogItem, deleteCatalogItem,
+  getLabTests, getLabTestById, createLabTest, updateLabTest, deleteLabTest,
+  collectSample, receiveSample, rejectSample, startProcessing,
+  enterResults, verifyResults, deliverReport,
+  getLabStats, generateLabInvoice
 };
