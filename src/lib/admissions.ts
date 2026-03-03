@@ -191,6 +191,19 @@ export const getPatientCurrentAdmission = async (patientId) => {
   }
 };
 
+// @desc Update admission details (diagnosis, doctor, notes, etc.)
+// @param admissionId
+// @param data partial admission object with allowed properties
+// @returns Promise with updated admission
+export const updateAdmission = async (admissionId, data) => {
+  try {
+    const response = await apiClient.put(`/admissions/${admissionId}`, data);
+    return response;
+  } catch (error) {
+    throw error?.message ? { message: error.message } : { message: 'Failed to update admission' };
+  }
+};
+
 // Get admission bed history for visualization
 export const getAdmissionBedHistory = (admission) => {
   return {

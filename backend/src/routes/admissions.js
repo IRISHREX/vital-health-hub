@@ -6,7 +6,8 @@ const {
   dischargePatient,
   getAdmissions,
   getAdmission,
-  getAdmissionStats
+  getAdmissionStats,
+  updateAdmission
 } = require('../controllers/NH_admissionController');
 const { authenticate, authorize } = require('../middleware/auth');
 
@@ -44,6 +45,15 @@ router.post(
   '/:admissionId/transfer',
   authorize('doctor', 'nurse', 'hospital_admin', 'super_admin'),
   transferPatient
+);
+
+// @route   PUT /api/admissions/:id
+// @desc    Update admission details
+// @access  Private - Doctor/Nurse/Admin
+router.put(
+  '/:id',
+  authorize('doctor', 'nurse', 'hospital_admin', 'super_admin'),
+  updateAdmission
 );
 
 // @route   POST /api/admissions/:admissionId/discharge

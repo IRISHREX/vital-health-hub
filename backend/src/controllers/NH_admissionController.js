@@ -215,6 +215,65 @@ exports.createAdmission = async (req, res, next) => {
   }
 };
 
+
+// @desc    Update basic admission details (diagnosis, doctors, notes, etc.)
+// @route   PUT /api/admissions/:id
+// @access  Private
+exports.updateAdmission = async (req, res, next) => {
+  try {
+    const admissionId = req.params.id;
+
+    // prevent bed changes through this endpoint; transfers have their own flow
+    const {
+      bedId,
+      ...updates
+    } = req.body;
+
+    // you could further restrict which fields are allowed to be modified
+    const allowedFields = [
+      'admittingDoctorId',
+      'attendingDoctors',
+      'diagnosis',
+      'treatmentPlan',
+      'notes',
+      'expectedDischargeDate',
+      'facility',
+      'ward'
+    ];
+    const sanitized = {};
+    Object.keys(updates).forEach((key) => {
+      if (allowedFields.includes(key)) {
+        sanitized[key] = updates[key];
+      }
+    });
+
+    const admission = await Admission.findByIdAndUpdate(
+      admissionId,
+      sanitized,
+      { new: true, runValidators: true }
+    )
+      .populate('patient', 'firstName lastName patientId phone email')
+      .populate('bed', 'bedNumber bedType ward floor roomNumber pricePerDay')
+      .populate('admittingDoctor')
+      .populate('attendingDoctors')
+      .populate('transferHistory.fromBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('transferHistory.toBed', 'bedNumber bedType ward floor roomNumber')
+      .populate('bedAllocations.bed', 'bedNumber bedType ward floor roomNumber');
+
+    if (!admission) {
+      throw new AppError('Admission not found', 404);
+    }
+
+    res.json({
+      success: true,
+      message: 'Admission updated',
+      data: { admission }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * PATIENT TRANSFER FLOW
  * - Validate new bed availability

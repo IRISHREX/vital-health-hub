@@ -146,6 +146,6 @@ invoiceSchema.pre('save', function(next) {
 // Indexes
 invoiceSchema.index({ patient: 1, createdAt: -1 });
 invoiceSchema.index({ status: 1, dueDate: 1 });
-invoiceSchema.index({ invoiceNumber: 1 });
+// invoiceNumber index is already created via unique: true on the field
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

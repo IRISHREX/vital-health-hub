@@ -41,6 +41,7 @@ const admissionSchema = new mongoose.Schema({
     icdCodes: [String]
   },
   symptoms: [String],
+  notes: String,
   treatmentPlan: String,
   vitals: [{
     recordedAt: { type: Date, default: Date.now },

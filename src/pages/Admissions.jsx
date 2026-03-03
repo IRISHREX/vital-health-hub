@@ -69,6 +69,7 @@ export default function AdmissionsPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAdmissionForm, setShowAdmissionForm] = useState(false);
+  const [editingAdmission, setEditingAdmission] = useState(null); // admission being edited
   const [selectedAdmissionId, setSelectedAdmissionId] = useState(null);
   const [actionAdmission, setActionAdmission] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
@@ -119,6 +120,20 @@ export default function AdmissionsPage() {
     });
   };
 
+  const handleAdmissionUpdated = (updatedAdmission) => {
+    setAdmissions(
+      admissions.map((a) => (a._id === updatedAdmission._id ? updatedAdmission : a))
+    );
+    setEditingAdmission(null);
+    setShowAdmissionForm(false);
+    // refresh stats in case something relevant changed
+    loadData();
+    toast({
+      title: 'Success',
+      description: `Admission ${updatedAdmission.admissionId} updated`,
+    });
+  };
+
   const handleActionComplete = (updatedAdmission) => {
     setAdmissions(
       admissions.map((a) =>
@@ -156,6 +171,12 @@ export default function AdmissionsPage() {
     setActionAdmission(null);
     setDetailsAdmission(fullAdmission);
     setDetailsModalOpen(true);
+  };
+
+  const openEditForm = async (admission) => {
+    const fullAdmission = await fetchAdmissionDetails(admission);
+    setEditingAdmission(fullAdmission);
+    setShowAdmissionForm(true);
   };
 
   const openActionModal = async (admission) => {
@@ -272,7 +293,7 @@ export default function AdmissionsPage() {
             onSelectAdmission={setSelectedAdmissionId}
             onOpenViewDetails={openActionModal}
             onOpenViewHistory={openDetailsModal}
-            onOpenEdit={openDetailsModal}
+            onOpenEdit={openEditForm}
             onOpenTransfer={openActionModal}
             onOpenDischarge={openActionModal}
             onOpenPrescription={(admission) => {
@@ -292,7 +313,7 @@ export default function AdmissionsPage() {
             onSelectAdmission={setSelectedAdmissionId}
             onOpenViewDetails={openActionModal}
             onOpenViewHistory={openDetailsModal}
-            onOpenEdit={openDetailsModal}
+            onOpenEdit={openEditForm}
             onOpenTransfer={openActionModal}
             onOpenDischarge={openActionModal}
             onOpenPrescription={(admission) => {
@@ -312,7 +333,7 @@ export default function AdmissionsPage() {
             onSelectAdmission={setSelectedAdmissionId}
             onOpenViewDetails={openActionModal}
             onOpenViewHistory={openDetailsModal}
-            onOpenEdit={openDetailsModal}
+            onOpenEdit={openEditForm}
             onOpenTransfer={openActionModal}
             onOpenDischarge={openActionModal}
             onOpenPrescription={(admission) => {
@@ -325,11 +346,19 @@ export default function AdmissionsPage() {
       </Tabs>
 
       {/* Modals */}
-      <Dialog open={showAdmissionForm} onOpenChange={(open) => { if (!open) setShowAdmissionForm(false); }}>
+      <Dialog open={showAdmissionForm} onOpenChange={(open) => { if (!open) {
+            setShowAdmissionForm(false);
+            setEditingAdmission(null);
+          } }}>
         <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <AdmissionForm
+            admission={editingAdmission}
             onAdmissionCreated={handleAdmissionCreated}
-            onClose={() => setShowAdmissionForm(false)}
+            onAdmissionUpdated={handleAdmissionUpdated}
+            onClose={() => {
+              setShowAdmissionForm(false);
+              setEditingAdmission(null);
+            }}
           />
         </DialogContent>
       </Dialog>

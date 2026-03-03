@@ -12,14 +12,17 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { createAdmission, getAvailableBeds } from '@/lib/admissions';
+import { createAdmission, getAvailableBeds, updateAdmission } from '@/lib/admissions';
 import { getBeds } from '@/lib/beds';
 import { getFacilities } from '@/lib/facilities';
 import { getPatients } from '@/lib/patients';
 import { getDoctors } from '@/lib/doctors';
 import { Loader2, User, Bed, Stethoscope, FileText, Building2, Hospital, Siren } from 'lucide-react';
 
-export default function AdmissionForm({ onAdmissionCreated, onClose }) {
+export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissionUpdated, onClose }) {
+  // determine if we are editing an existing record
+  const isEdit = !!admission;
+
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -39,6 +42,25 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
     treatmentPlan: '',
     notes: '',
   });
+
+  // when editing, pre-populate form data
+  useEffect(() => {
+    if (admission) {
+      setRegistrationType(
+        admission.admissionType === 'elective' ? 'ipd' : admission.admissionType
+      );
+      setFormData({
+        patientId: admission.patient?._id || '',
+        bedId: admission.bed?._id || '',
+        admittingDoctorId: admission.admittingDoctor?._id || '',
+        facility: admission.facility || '',
+        ward: admission.ward || '',
+        diagnosis: admission.diagnosis || '',
+        treatmentPlan: admission.treatmentPlan || '',
+        notes: admission.notes || '',
+      });
+    }
+  }, [admission]);
 
   // Load patients and doctors on mount
   useEffect(() => {
@@ -93,8 +115,8 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
       return;
     }
 
-    // For IPD admission, bed is required
-    if (registrationType === 'ipd' && !formData.bedId) {
+    // For IPD admission, bed is required when creating (not editable)
+    if (!isEdit && registrationType === 'ipd' && !formData.bedId) {
       toast({
         title: 'Validation Error',
         description: 'Please select a bed for IPD admission',
@@ -107,8 +129,8 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
     try {
       const admissionPayload = {
         patientId: formData.patientId,
-        // Only send bedId for IPD (elective) admissions
-        ...(registrationType === 'ipd' && formData.bedId && { bedId: formData.bedId }),
+        // Only send bedId for IPD (elective) admissions when creating
+        ...(!isEdit && registrationType === 'ipd' && formData.bedId && { bedId: formData.bedId }),
         // Doctor is optional
         ...(formData.admittingDoctorId && { admittingDoctorId: formData.admittingDoctorId }),
         // Map registrationType to admissionType: emergency/opd -> 'emergency', ipd -> 'elective'
@@ -120,14 +142,25 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
         notes: formData.notes,
       };
 
-      const response = await createAdmission(admissionPayload);
+      let response;
+      if (isEdit) {
+        response = await updateAdmission(admission._id, admissionPayload);
+        toast({
+          title: 'Success',
+          description: 'Admission updated successfully',
+        });
+      } else {
+        response = await createAdmission(admissionPayload);
+        toast({
+          title: 'Success',
+          description: `${registrationType.toUpperCase()} Patient admitted successfully - ID: ${response.data?.admission?.admissionId || 'Created'}`,
+        });
+      }
 
-      toast({
-        title: 'Success',
-        description: `${registrationType.toUpperCase()} Patient admitted successfully - ID: ${response.data?.admission?.admissionId || 'Created'}`,
-      });
-
-      if (onAdmissionCreated) {
+      if (isEdit && onAdmissionUpdated) {
+        onAdmissionUpdated(response.data?.admission);
+      }
+      if (!isEdit && onAdmissionCreated) {
         onAdmissionCreated(response.data?.admission);
       }
 
@@ -137,7 +170,7 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create admission',
+        description: error.message || (isEdit ? 'Failed to update admission' : 'Failed to create admission'),
         variant: 'destructive',
       });
     } finally {
@@ -172,8 +205,8 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
   return (
     <div className="w-full space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Quick Admission</h2>
-        <p className="text-sm text-gray-500 mt-1">Complete admission in one step</p>
+        <h2 className="text-2xl font-bold">{isEdit ? 'Edit Admission' : 'Quick Admission'}</h2>
+        <p className="text-sm text-gray-500 mt-1">{isEdit ? 'Update the details for this admission' : 'Complete admission in one step'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -193,15 +226,17 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
                   key={type.value}
                   type="button"
                   onClick={() => {
+                    if (isEdit) return; // cannot change registration type when editing
                     setRegistrationType(type.value);
                     setFormData({ ...formData, patientId: '', bedId: '' });
                   }}
+                  disabled={isEdit}
                   className={`flex items-center justify-center gap-2 p-4 rounded-lg border-[1px] bg-secondary transition ${
                     registrationType === type.value && type.value === 'emergency' ? 'border-red-600 shadow-lg' :
                     registrationType === type.value && type.value === 'opd' ? 'border-blue-600 shadow-lg' :
                       registrationType === type.value && type.value === 'ipd' ? 'border-green-600 shadow-lg' :
                       'border-secondary/00'
-                  }`}
+                  } ${isEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className={`text-2xl p-2 rounded-md ${type.value === 'emergency' ? 
                     'bg-red-100 text-red-600' : type.value === 'opd' ? 
@@ -229,9 +264,13 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
                   {registrationType === 'emergency' ? 'EMERGENCY' : registrationType === 'opd' ? 'OPD OUTPATIENT' : 'IPD PATIENTS'}
                 </Badge>
               </label>
-              <Select value={formData.patientId} onValueChange={(value) => handleInputChange('patientId', value)}>
+              <Select
+                value={formData.patientId}
+                onValueChange={(value) => handleInputChange('patientId', value)}
+                disabled={isEdit} // cannot change patient while editing
+              >
                 <SelectTrigger className="border-2">
-                  <SelectValue placeholder={`Choose a ${registrationType} patient...`} />
+                  <SelectValue placeholder={isEdit ? 'Patient cannot be changed' : `Choose a ${registrationType} patient...`} />
                 </SelectTrigger>
                 <SelectContent>
                   {patients.length > 0 ? (
@@ -357,16 +396,20 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
         </div>
 
         {/* Bed Selection (Only for IPD) */}
-        {registrationType === 'ipd' && (
+        {registrationType === 'ipd' || registrationType === 'emergency' ? 
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center gap-2">
               <Bed className="h-5 w-5 text-orange-600" />
               <CardTitle className="text-base">Bed Allocation</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Select value={formData.bedId} onValueChange={(value) => handleInputChange('bedId', value)}>
+              <Select
+                value={formData.bedId}
+                onValueChange={(value) => handleInputChange('bedId', value)}
+                disabled={isEdit} // cannot change bed when editing, use transfer flow instead
+              >
                 <SelectTrigger className="border-2">
-                  <SelectValue placeholder="Select available bed *" />
+                  <SelectValue placeholder={isEdit ? 'Bed cannot be changed' : 'Select available bed *'} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableBeds.length > 0 ? (
@@ -407,7 +450,7 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
               )}
             </CardContent>
           </Card>
-        )}
+          : null}
 
         {/* Medical Information */}
         <Card>
@@ -482,7 +525,11 @@ export default function AdmissionForm({ onAdmissionCreated, onClose }) {
           </Button>
           <Button type="submit" disabled={loading} size="lg" className="gap-2">
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {loading ? 'Admitting...' : `Admit ${registrationType.toUpperCase()} Patient`}
+            {loading
+              ? isEdit ? 'Updating...' : 'Admitting...'
+              : isEdit
+              ? 'Update Admission'
+              : `Admit ${registrationType.toUpperCase()} Patient`}
           </Button>
         </div>
       </form>
