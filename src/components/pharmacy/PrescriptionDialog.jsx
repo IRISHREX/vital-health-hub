@@ -218,6 +218,8 @@ export default function PrescriptionDialog({
     setShareNote("");
     setVitals({ ...emptyVitals });
     setFemaleHealth({ ...emptyFemaleHealth });
+    setRxMode("internal");
+    setExternalPatient({ ...emptyExternal });
   }, [open, initialAdmissionId, initialAppointmentId, initialAppointmentStatus, initialDoctorId, initialEncounterType, initialPatientId]);
 
   const applyPrescriptionToForm = (rx) => {
