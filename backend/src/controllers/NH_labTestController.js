@@ -3,6 +3,8 @@ const LabTestCatalog = require('../models/NH_LabTestCatalog');
 const Patient = require('../models/NH_Patient');
 const Invoice = require('../models/NH_Invoice');
 const asyncHandler = require('express-async-handler');
+const { AppError } = require('../middleware/errorHandler');
+const { getEffectiveModuleConfig } = require('../utils/moduleOperationsSettings');
 
 const generateUniqueSampleId = async () => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -147,10 +149,24 @@ const getLabTestById = asyncHandler(async (req, res) => {
 
 const createLabTest = asyncHandler(async (req, res) => {
   const { catalogTestId, catalogTestIds, mode = 'internal', externalPatient } = req.body;
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
+
+  if (!moduleConfig.enabled) {
+    throw new AppError('Pathology module is disabled by settings', 403);
+  }
 
   // Validate based on mode
   if (mode === 'internal' && !req.body.patient) {
     res.status(400); throw new Error('Patient is required for internal mode');
+  }
+  if (mode === 'internal' && !moduleConfig.integrateWithHospitalCore) {
+    throw new AppError('Pathology module is configured for standalone mode only', 403);
+  }
+  if (mode === 'external' && !moduleConfig.runIndependently) {
+    throw new AppError('Standalone pathology workflow is disabled', 403);
+  }
+  if (mode === 'external' && !moduleConfig.allowExternalWalkIns) {
+    throw new AppError('External walk-ins are disabled for pathology lab', 403);
   }
   if (mode === 'external' && (!externalPatient || !externalPatient.name)) {
     res.status(400); throw new Error('External patient name is required');
@@ -380,6 +396,11 @@ const getLabStats = asyncHandler(async (req, res) => {
 
 const generateLabInvoice = asyncHandler(async (req, res) => {
   const { testIds } = req.body;
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
+
+  if (!moduleConfig.enabled) {
+    throw new AppError('Pathology module is disabled by settings', 403);
+  }
   if (!testIds || !testIds.length) {
     res.status(400);
     throw new Error('Provide test IDs to generate invoice');
@@ -395,6 +416,10 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
 
   // Determine if external or internal
   const mode = tests[0].mode || 'internal';
+  if (!tests.every((test) => (test.mode || 'internal') === mode)) {
+    res.status(400);
+    throw new Error('All tests must belong to the same billing mode');
+  }
 
   // Verify all tests belong to same patient/external patient
   if (mode === 'internal') {
@@ -425,6 +450,7 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
 
   const invoiceData = {
     type: 'lab',
+    sourceModule: 'pathology',
     items,
     subtotal,
     totalAmount: subtotal,
@@ -437,18 +463,20 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
   if (mode === 'internal') {
     invoiceData.patient = tests[0].patient._id;
     invoiceData.admission = tests[0].admission;
+    invoiceData.billingScope = 'internal';
   } else {
-    // For external, we still need a patient ref for Invoice model constraint
-    // Store external info in notes; patient field uses a placeholder or first available
-    invoiceData.patient = tests[0].patient || undefined;
-  }
-
-  // Only create invoice if we have patient ref (internal) or handle external
-  if (!invoiceData.patient) {
-    // External patient without system patient - create invoice without patient ref
-    // We need to handle this: for now store external patient info in notes
-    res.status(400);
-    throw new Error('External invoices require manual billing. Use the billing module.');
+    if (!moduleConfig.externalBillingEnabled) {
+      throw new AppError('External billing is disabled for pathology lab', 403);
+    }
+    invoiceData.billingScope = 'external';
+    invoiceData.externalPatientInfo = {
+      name: tests[0].externalPatient?.name || 'Walk-in',
+      age: tests[0].externalPatient?.age,
+      gender: tests[0].externalPatient?.gender,
+      phone: tests[0].externalPatient?.phone,
+      address: tests[0].externalPatient?.address,
+      referredBy: tests[0].externalPatient?.referredBy
+    };
   }
 
   const invoice = await Invoice.create(invoiceData);

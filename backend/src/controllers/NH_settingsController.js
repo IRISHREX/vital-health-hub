@@ -1,7 +1,20 @@
-const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings, DataManagementSettings } = require('../models/NH_Settings');
+const {
+  HospitalSettings,
+  SecuritySettings,
+  NotificationSettings,
+  UserPreferences,
+  VisualAccessSettings,
+  DataManagementSettings,
+  ModuleOperationsSettings
+} = require('../models/NH_Settings');
 const { AppError } = require('../middleware/errorHandler');
 const { User, Notification, AccessRequest, Bed, Doctor, Medicine, LabTestCatalog, Patient, Invoice } = require('../models');
 const { DEFAULT_ASSIGNMENT_POLICIES, normalizeAssignmentPolicies } = require('../utils/assignmentPermissions');
+const {
+  DEFAULT_SETTINGS: DEFAULT_MODULE_OPERATION_SETTINGS,
+  sanitizeSettingsPayload,
+  getOrCreateModuleOperationsSettings
+} = require('../utils/moduleOperationsSettings');
 
 // ============ HOSPITAL SETTINGS ============
 
@@ -1094,6 +1107,51 @@ exports.runAutoExportNow = async (req, res, next) => {
   }
 };
 
+// ============ MODULE OPERATIONS SETTINGS ============
+
+// @desc    Get module operations settings
+// @route   GET /api/settings/module-operations
+// @access  Private
+exports.getModuleOperationsSettings = async (req, res, next) => {
+  try {
+    const settings = await getOrCreateModuleOperationsSettings();
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update module operations settings
+// @route   PUT /api/settings/module-operations
+// @access  Private (Super Admin, Hospital Admin)
+exports.updateModuleOperationsSettings = async (req, res, next) => {
+  try {
+    const existing = await getOrCreateModuleOperationsSettings();
+    const payload = sanitizeSettingsPayload(req.body, {
+      deploymentMode: existing.deploymentMode || DEFAULT_MODULE_OPERATION_SETTINGS.deploymentMode,
+      modules: existing.modules || DEFAULT_MODULE_OPERATION_SETTINGS.modules,
+      userOverrides: existing.userOverrides || []
+    });
+
+    const settings = await ModuleOperationsSettings.findOneAndUpdate(
+      {},
+      {
+        ...payload,
+        updatedBy: req.user?._id
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Module operations settings updated successfully',
+      data: settings
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ============ ALL SETTINGS ============
 
 // @desc    Get all settings
@@ -1106,6 +1164,7 @@ exports.getAllSettings = async (req, res, next) => {
     let notifications = await NotificationSettings.findOne();
     let preferences = await UserPreferences.findOne({ userId: req.user._id });
     let visualAccess = await VisualAccessSettings.findOne();
+    let moduleOperations = await ModuleOperationsSettings.findOne();
     let dataManagement = null;
     
     // Create defaults if needed
@@ -1118,6 +1177,9 @@ exports.getAllSettings = async (req, res, next) => {
       permissionManagers: [],
       assignmentPolicies: DEFAULT_ASSIGNMENT_POLICIES
     });
+    if (!moduleOperations) {
+      moduleOperations = await ModuleOperationsSettings.create(DEFAULT_MODULE_OPERATION_SETTINGS);
+    }
     if (req.user?.role === 'super_admin') {
       dataManagement = await DataManagementSettings.findOne();
       if (!dataManagement) {
@@ -1143,6 +1205,7 @@ exports.getAllSettings = async (req, res, next) => {
         notifications,
         preferences,
         visualAccess,
+        moduleOperations,
         dataManagement
       }
     });

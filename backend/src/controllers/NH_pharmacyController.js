@@ -3,6 +3,7 @@ const Prescription = require('../models/NH_Prescription');
 const StockAdjustment = require('../models/NH_StockAdjustment');
 const { BillingLedger, Invoice, User, Notification, Appointment } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
+const { getEffectiveModuleConfig } = require('../utils/moduleOperationsSettings');
 
 const getComputedInvoiceStatus = (invoice) => {
   if (!invoice) return 'pending';
@@ -20,23 +21,30 @@ const getComputedInvoiceStatus = (invoice) => {
   return 'pending';
 };
 
-const getOrCreatePharmacyInvoice = async ({ patientId, admissionId, userId }) => {
-  let invoice = await Invoice.findOne({
-    patient: patientId,
-    admission: admissionId || null,
+const getOrCreatePharmacyInvoice = async ({ patientId, admissionId, userId, mode = 'internal', externalPatient }) => {
+  const query = {
     type: 'pharmacy',
-    status: { $in: ['draft', 'pending', 'partial', 'overdue'] }
-  });
+    status: { $in: ['draft', 'pending', 'partial', 'overdue'] },
+    billingScope: mode === 'external' ? 'external' : 'internal'
+  };
+
+  if (mode === 'external') {
+    query['externalPatientInfo.name'] = String(externalPatient?.name || '').trim();
+  } else {
+    query.patient = patientId;
+    query.admission = admissionId || null;
+  }
+
+  let invoice = await Invoice.findOne(query);
 
   if (invoice) return invoice;
 
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
 
-  return Invoice.create({
-    patient: patientId,
-    admission: admissionId || undefined,
+  const invoicePayload = {
     type: 'pharmacy',
+    sourceModule: 'pharmacy',
     items: [],
     subtotal: 0,
     discountAmount: 0,
@@ -48,7 +56,25 @@ const getOrCreatePharmacyInvoice = async ({ patientId, admissionId, userId }) =>
     dueDate,
     notes: 'Auto-generated from pharmacy dispense',
     generatedBy: userId
-  });
+  };
+
+  if (mode === 'external') {
+    invoicePayload.billingScope = 'external';
+    invoicePayload.externalPatientInfo = {
+      name: externalPatient?.name || 'Walk-in',
+      age: externalPatient?.age,
+      gender: externalPatient?.gender,
+      phone: externalPatient?.phone,
+      address: externalPatient?.address,
+      referredBy: externalPatient?.referredBy
+    };
+  } else {
+    invoicePayload.billingScope = 'internal';
+    invoicePayload.patient = patientId;
+    invoicePayload.admission = admissionId || undefined;
+  }
+
+  return Invoice.create(invoicePayload);
 };
 
 const recalculateInvoiceTotals = (invoice) => {
@@ -182,9 +208,23 @@ exports.createPrescription = async (req, res, next) => {
     const payload = { ...req.body };
     const { mode = 'internal', externalPatient } = payload;
     const appointmentId = payload.appointment;
+    const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pharmacy', userId: req.user._id });
+
+    if (!moduleConfig.enabled) {
+      throw new AppError('Pharmacy module is disabled by settings', 403);
+    }
 
     if (mode === 'internal' && !payload.patient) {
       throw new AppError('Patient is required for internal mode', 400);
+    }
+    if (mode === 'internal' && !moduleConfig.integrateWithHospitalCore) {
+      throw new AppError('Pharmacy module is configured for standalone mode only', 403);
+    }
+    if (mode === 'external' && !moduleConfig.runIndependently) {
+      throw new AppError('Standalone pharmacy workflow is disabled', 403);
+    }
+    if (mode === 'external' && !moduleConfig.allowExternalWalkIns) {
+      throw new AppError('External walk-ins are disabled for pharmacy', 403);
     }
     if (mode === 'external' && (!externalPatient || !externalPatient.name)) {
       throw new AppError('External patient name is required', 400);
@@ -313,10 +353,11 @@ exports.getPrescription = async (req, res, next) => {
 
 exports.getPharmacyInvoices = async (req, res, next) => {
   try {
-    const { patientId, status, page = 1, limit = 30 } = req.query;
+    const { patientId, status, billingScope, page = 1, limit = 30 } = req.query;
     const pageSize = Number(limit) || 30;
     const query = { type: 'pharmacy' };
     if (patientId) query.patient = patientId;
+    if (billingScope) query.billingScope = billingScope;
 
     const total = await Invoice.countDocuments(query);
     const invoices = await Invoice.find(query)
@@ -350,6 +391,14 @@ exports.dispensePrescription = async (req, res, next) => {
   try {
     const rx = await Prescription.findById(req.params.id).populate('items.medicine');
     if (!rx) throw new AppError('Prescription not found', 404);
+    const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pharmacy', userId: req.user._id });
+
+    if (!moduleConfig.enabled) {
+      throw new AppError('Pharmacy module is disabled by settings', 403);
+    }
+    if (rx.mode === 'external' && !moduleConfig.externalBillingEnabled) {
+      throw new AppError('External billing is disabled for pharmacy', 403);
+    }
 
     const { items } = req.body;
     let allDispensed = true;
@@ -358,7 +407,9 @@ exports.dispensePrescription = async (req, res, next) => {
     const invoice = await getOrCreatePharmacyInvoice({
       patientId: rx.patient,
       admissionId: rx.admission || null,
-      userId: req.user._id
+      userId: req.user._id,
+      mode: rx.mode || 'internal',
+      externalPatient: rx.externalPatient
     });
 
     for (const dispenseItem of items) {
@@ -397,18 +448,20 @@ exports.dispensePrescription = async (req, res, next) => {
       const amount = qty * med.sellingPrice;
       const lineDescription = `${rxItem.medicineName} x${qty}`;
 
-      const ledgerEntry = await BillingLedger.create({
-        patient: rx.patient,
-        admission: rx.admission || undefined,
-        sourceType: 'pharmacy',
-        sourceId: rx._id,
-        category: 'medication',
-        description: lineDescription,
-        quantity: qty,
-        unitPrice: med.sellingPrice,
-        amount,
-        recordedBy: req.user._id
-      });
+      const ledgerEntry = (rx.mode === 'internal' && rx.patient)
+        ? await BillingLedger.create({
+          patient: rx.patient,
+          admission: rx.admission || undefined,
+          sourceType: 'pharmacy',
+          sourceId: rx._id,
+          category: 'medication',
+          description: lineDescription,
+          quantity: qty,
+          unitPrice: med.sellingPrice,
+          amount,
+          recordedBy: req.user._id
+        })
+        : null;
 
       invoice.items.push({
         description: lineDescription,
@@ -420,10 +473,12 @@ exports.dispensePrescription = async (req, res, next) => {
         amount
       });
 
-      ledgerEntry.billed = true;
-      ledgerEntry.billedAt = new Date();
-      ledgerEntry.invoice = invoice._id;
-      await ledgerEntry.save();
+      if (ledgerEntry) {
+        ledgerEntry.billed = true;
+        ledgerEntry.billedAt = new Date();
+        ledgerEntry.invoice = invoice._id;
+        await ledgerEntry.save();
+      }
 
       if (rxItem.dispensedQty < rxItem.quantity) allDispensed = false;
     }

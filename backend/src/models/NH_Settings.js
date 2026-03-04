@@ -255,12 +255,46 @@ const dataManagementSettingsSchema = new mongoose.Schema({
   timestamps: true
 });
 
+const moduleConfigSchema = new mongoose.Schema({
+  enabled: { type: Boolean, default: true },
+  runIndependently: { type: Boolean, default: true },
+  integrateWithHospitalCore: { type: Boolean, default: true },
+  allowExternalWalkIns: { type: Boolean, default: true },
+  externalBillingEnabled: { type: Boolean, default: true },
+  trackExternalBillingSeparately: { type: Boolean, default: true }
+}, { _id: false });
+
+const moduleOperationsSettingsSchema = new mongoose.Schema({
+  deploymentMode: {
+    type: String,
+    enum: ['integrated', 'independent', 'hybrid'],
+    default: 'hybrid'
+  },
+  modules: {
+    pathology: { type: moduleConfigSchema, default: () => ({}) },
+    radiology: { type: moduleConfigSchema, default: () => ({}) },
+    pharmacy: { type: moduleConfigSchema, default: () => ({}) }
+  },
+  userOverrides: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    modules: {
+      pathology: { type: moduleConfigSchema, default: undefined },
+      radiology: { type: moduleConfigSchema, default: undefined },
+      pharmacy: { type: moduleConfigSchema, default: undefined }
+    }
+  }],
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, {
+  timestamps: true
+});
+
 const HospitalSettings = mongoose.model('HospitalSettings', hospitalSettingsSchema);
 const SecuritySettings = mongoose.model('SecuritySettings', securitySettingsSchema);
 const NotificationSettings = mongoose.model('NotificationSettings', notificationSettingsSchema);
 const UserPreferences = mongoose.model('UserPreferences', userPreferencesSchema);
 const VisualAccessSettings = mongoose.model('VisualAccessSettings', visualAccessSettingsSchema);
 const DataManagementSettings = mongoose.model('DataManagementSettings', dataManagementSettingsSchema);
+const ModuleOperationsSettings = mongoose.model('ModuleOperationsSettings', moduleOperationsSettingsSchema);
 
 module.exports = {
   HospitalSettings,
@@ -268,5 +302,6 @@ module.exports = {
   NotificationSettings,
   UserPreferences,
   VisualAccessSettings,
-  DataManagementSettings
+  DataManagementSettings,
+  ModuleOperationsSettings
 };

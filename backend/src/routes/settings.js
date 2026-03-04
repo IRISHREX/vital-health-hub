@@ -35,6 +35,10 @@ router.post('/access-requests', settingsController.createAccessRequest);
 router.get('/access-requests/pending', settingsController.getPendingAccessRequests);
 router.patch('/access-requests/:id/respond', settingsController.respondToAccessRequest);
 
+// Module operations settings
+router.get('/module-operations', settingsController.getModuleOperationsSettings);
+router.put('/module-operations', authorize('super_admin', 'hospital_admin'), settingsController.updateModuleOperationsSettings);
+
 // Data management (bulk import/export & scheduler) - Super Admin only
 router.get('/data-management', authorize('super_admin'), settingsController.getDataManagementSettings);
 router.put('/data-management', authorize('super_admin'), settingsController.updateDataManagementSettings);
