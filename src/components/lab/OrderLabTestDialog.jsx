@@ -10,10 +10,16 @@ import {
 import { getLabCatalog, createLabTest } from "@/lib/labTests";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import ModeToggle from "@/components/shared/ModeToggle";
+import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
+
+const emptyExternal = { name: "", age: "", gender: "", phone: "", address: "", referredBy: "" };
 
 export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors }) {
   const [catalog, setCatalog] = useState([]);
   const [selectedCatalogTests, setSelectedCatalogTests] = useState([]);
+  const [mode, setMode] = useState("internal");
+  const [externalPatient, setExternalPatient] = useState({ ...emptyExternal });
   const [formData, setFormData] = useState({
     patient: "",
     doctor: "",
@@ -35,6 +41,8 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
     } else {
       setSelectedCatalogTests([]);
       setSearchCatalog("");
+      setMode("internal");
+      setExternalPatient({ ...emptyExternal });
     }
   }, [isOpen]);
 
@@ -52,8 +60,17 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.patient || !formData.doctor || selectedCatalogTests.length === 0) {
-      toast.error("Please fill all required fields");
+
+    if (mode === "internal" && (!formData.patient || !formData.doctor)) {
+      toast.error("Patient and doctor are required for internal mode");
+      return;
+    }
+    if (mode === "external" && !externalPatient.name?.trim()) {
+      toast.error("Patient name is required for external mode");
+      return;
+    }
+    if (selectedCatalogTests.length === 0) {
+      toast.error("Please select at least one test");
       return;
     }
 
@@ -61,8 +78,10 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
       setSubmitting(true);
       await createLabTest({
         catalogTestIds: selectedCatalogTests,
-        patient: formData.patient,
-        doctor: formData.doctor,
+        mode,
+        ...(mode === "internal"
+          ? { patient: formData.patient, doctor: formData.doctor }
+          : { externalPatient, doctor: formData.doctor || undefined }),
         priority: formData.priority,
         notes: formData.notes,
         discount: Number(formData.discount) || 0,
@@ -76,6 +95,8 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
 
       setFormData({ patient: "", doctor: "", priority: "routine", notes: "", discount: 0 });
       setSelectedCatalogTests([]);
+      setExternalPatient({ ...emptyExternal });
+      setMode("internal");
       onClose();
     } catch (err) {
       toast.error(err.message || "Failed to order test");
@@ -96,31 +117,54 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
           <DialogTitle>Order Lab Test(s)</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Patient *</Label>
-            <Select value={formData.patient} onValueChange={(v) => setFormData((p) => ({ ...p, patient: v }))}>
-              <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-              <SelectContent>
-                {patients.map((p) => (
-                  <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <ModeToggle mode={mode} onChange={setMode} />
 
-          <div className="space-y-2">
-            <Label>Referring Doctor *</Label>
-            <Select value={formData.doctor} onValueChange={(v) => setFormData((p) => ({ ...p, doctor: v }))}>
-              <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
-              <SelectContent>
-                {doctors.map((d) => (
-                  <SelectItem key={d._id} value={d._id}>
-                    {(d?.name || `${d?.user?.firstName || ""} ${d?.user?.lastName || ""}`.trim() || "Doctor")} - {d?.specialization || "General"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {mode === "internal" ? (
+            <>
+              <div className="space-y-2">
+                <Label>Patient *</Label>
+                <Select value={formData.patient} onValueChange={(v) => setFormData((p) => ({ ...p, patient: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
+                  <SelectContent>
+                    {patients.map((p) => (
+                      <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Referring Doctor *</Label>
+                <Select value={formData.doctor} onValueChange={(v) => setFormData((p) => ({ ...p, doctor: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
+                  <SelectContent>
+                    {doctors.map((d) => (
+                      <SelectItem key={d._id} value={d._id}>
+                        {(d?.name || `${d?.user?.firstName || ""} ${d?.user?.lastName || ""}`.trim() || "Doctor")} - {d?.specialization || "General"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          ) : (
+            <>
+              <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} />
+              <div className="space-y-2">
+                <Label>Referring Doctor (optional)</Label>
+                <Select value={formData.doctor} onValueChange={(v) => setFormData((p) => ({ ...p, doctor: v === "none" ? "" : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select doctor (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not specified</SelectItem>
+                    {doctors.map((d) => (
+                      <SelectItem key={d._id} value={d._id}>
+                        {(d?.name || `${d?.user?.firstName || ""} ${d?.user?.lastName || ""}`.trim() || "Doctor")} - {d?.specialization || "General"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <Label>Select Test(s) *</Label>
