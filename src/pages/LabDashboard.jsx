@@ -219,11 +219,15 @@ export default function LabDashboard() {
 
   const groupedTests = Object.values(
     filteredTests.reduce((acc, test) => {
-      const patientKey = test.patient?._id || `unknown-${test._id}`;
+      const patientKey = test.mode === 'external'
+        ? `ext-${test.externalPatient?.name || 'unknown'}-${test.externalPatient?.phone || ''}`
+        : (test.patient?._id || `unknown-${test._id}`);
       if (!acc[patientKey]) {
         acc[patientKey] = {
           patientKey,
           patient: test.patient || null,
+          externalPatient: test.externalPatient || null,
+          mode: test.mode || 'internal',
           tests: [],
         };
       }
