@@ -179,6 +179,14 @@ export default function RadiologyDashboard() {
                 {Object.entries(studyTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={modeFilter} onValueChange={setModeFilter}>
+              <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Mode" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Patients</SelectItem>
+                <SelectItem value="internal">Internal</SelectItem>
+                <SelectItem value="external">External / Walk-in</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Card><CardContent className="p-0">
@@ -200,7 +208,14 @@ export default function RadiologyDashboard() {
                   <TableRow key={o._id}>
                     <TableCell className="font-mono text-sm">{o.orderId || "-"}</TableCell>
                     <TableCell>
-                      <div><p className="font-medium">{o.patient?.firstName} {o.patient?.lastName}</p><p className="text-xs text-muted-foreground">{o.patient?.patientId}</p></div>
+                      <div>
+                        <p className="font-medium">{getPatientName(o)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {o.mode === 'external'
+                            ? <Badge variant="outline" className="text-[10px] px-1.5 py-0">Walk-in</Badge>
+                            : (o.patient?.patientId || '')}
+                        </p>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div><p className="font-medium">{o.studyName}</p><p className="text-xs text-muted-foreground">{o.bodyPart}</p></div>
