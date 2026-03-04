@@ -17,6 +17,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   Building2,
   Users,
   Shield,
@@ -49,6 +57,7 @@ import {
   CalendarClock,
   Copy,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -265,6 +274,7 @@ export default function Settings() {
   const [assignmentPolicies, setAssignmentPolicies] = useState(defaultAssignmentPolicies);
   const [permissionModuleSearch, setPermissionModuleSearch] = useState("");
   const [permissionModuleFilter, setPermissionModuleFilter] = useState("all");
+  const [permissionVisibleModules, setPermissionVisibleModules] = useState(rbacModules);
   const [permissionSubtab, setPermissionSubtab] = useState("matrix");
   const [requestForm, setRequestForm] = useState({ module: "billing", feature: "view", reason: "" });
   const [submittingRequest, setSubmittingRequest] = useState(false);
@@ -585,10 +595,21 @@ export default function Settings() {
     return selectedPermissionModules.filter((mod) => {
       const label = (moduleLabels[mod.module] || mod.module).toLowerCase();
       const byFilter = permissionModuleFilter === "all" || mod.module === permissionModuleFilter;
+      const byVisibility = permissionVisibleModules.includes(mod.module);
       const bySearch = !query || label.includes(query) || mod.module.toLowerCase().includes(query);
-      return byFilter && bySearch;
+      return byFilter && byVisibility && bySearch;
     });
-  }, [selectedPermissionModules, permissionModuleSearch, permissionModuleFilter]);
+  }, [selectedPermissionModules, permissionModuleSearch, permissionModuleFilter, permissionVisibleModules]);
+
+  const togglePermissionModuleVisibility = (module, checked) => {
+    setPermissionVisibleModules((prev) => {
+      if (!checked) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((item) => item !== module);
+      }
+      return prev.includes(module) ? prev : [...prev, module];
+    });
+  };
 
   const ensureEmailOverride = (email) => {
     const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -2089,7 +2110,7 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
@@ -2111,6 +2132,27 @@ export default function Settings() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="outline" className="justify-start">
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                          <DropdownMenuLabel>Show / Hide Permission Modules</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {rbacModules.map((module) => (
+                            <DropdownMenuCheckboxItem
+                              key={`permission-view-${module}`}
+                              checked={permissionVisibleModules.includes(module)}
+                              onCheckedChange={(checked) => togglePermissionModuleVisibility(module, checked)}
+                            >
+                              {moduleLabels[module] || module}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     <div className="grid gap-3 lg:grid-cols-2">
