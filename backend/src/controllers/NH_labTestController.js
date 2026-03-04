@@ -106,13 +106,14 @@ const deleteCatalogItem = asyncHandler(async (req, res) => {
 // ====== LAB TESTS (Orders) ======
 
 const getLabTests = asyncHandler(async (req, res) => {
-  const { patientId, status, category, priority, startDate, endDate, sampleStatus } = req.query;
+  const { patientId, status, category, priority, startDate, endDate, sampleStatus, mode } = req.query;
   const query = {};
   if (patientId) query.patient = patientId;
   if (status) query.status = status;
   if (category) query.category = category;
   if (priority) query.priority = priority;
   if (sampleStatus) query.sampleStatus = sampleStatus;
+  if (mode && mode !== 'all') query.mode = mode;
   if (startDate && endDate) {
     query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
@@ -145,7 +146,15 @@ const getLabTestById = asyncHandler(async (req, res) => {
 });
 
 const createLabTest = asyncHandler(async (req, res) => {
-  const { catalogTestId, catalogTestIds } = req.body;
+  const { catalogTestId, catalogTestIds, mode = 'internal', externalPatient } = req.body;
+
+  // Validate based on mode
+  if (mode === 'internal' && !req.body.patient) {
+    res.status(400); throw new Error('Patient is required for internal mode');
+  }
+  if (mode === 'external' && (!externalPatient || !externalPatient.name)) {
+    res.status(400); throw new Error('External patient name is required');
+  }
 
   const selectedCatalogIds = Array.isArray(catalogTestIds) && catalogTestIds.length
     ? catalogTestIds
@@ -158,7 +167,14 @@ const createLabTest = asyncHandler(async (req, res) => {
       throw new Error('One or more catalog tests not found');
     }
 
-    const sharedData = { ...req.body, orderedBy: req.user._id };
+    const sharedData = {
+      ...req.body,
+      orderedBy: req.user._id,
+      mode,
+      externalPatient: mode === 'external' ? externalPatient : undefined,
+      patient: mode === 'internal' ? req.body.patient : undefined,
+      doctor: req.body.doctor || undefined,
+    };
 
     const testsToCreate = selectedCatalogIds.map((id) => {
       const catalogItem = catalogItems.find((item) => item._id.toString() === id.toString());
@@ -196,7 +212,14 @@ const createLabTest = asyncHandler(async (req, res) => {
     return;
   }
 
-  const testData = { ...req.body, orderedBy: req.user._id };
+  const testData = {
+    ...req.body,
+    orderedBy: req.user._id,
+    mode,
+    externalPatient: mode === 'external' ? externalPatient : undefined,
+    patient: mode === 'internal' ? req.body.patient : undefined,
+    doctor: req.body.doctor || undefined,
+  };
   const test = await LabTest.create(testData);
   const populated = await LabTest.findById(test._id)
     .populate('patient', 'firstName lastName patientId')
