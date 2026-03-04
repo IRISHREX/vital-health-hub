@@ -1,16 +1,26 @@
 const mongoose = require('mongoose');
 
+const externalPatientSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  age: { type: String },
+  gender: { type: String, enum: ['male', 'female', 'other'] },
+  phone: { type: String },
+  address: { type: String },
+  referredBy: { type: String }
+}, { _id: false });
+
 const radiologyOrderSchema = new mongoose.Schema({
   orderId: {
     type: String,
     unique: true,
     sparse: true
   },
+  mode: { type: String, enum: ['internal', 'external'], default: 'internal' },
   patient: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Patient',
-    required: true
+    ref: 'Patient'
   },
+  externalPatient: { type: externalPatientSchema, default: null },
   doctor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Doctor'

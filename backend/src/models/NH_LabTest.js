@@ -71,10 +71,21 @@ const sectionResultSchema = new mongoose.Schema({
   tests: [testResultSchema]
 }, { _id: true });
 
+const externalPatientSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  age: { type: String },
+  gender: { type: String, enum: ['male', 'female', 'other'] },
+  phone: { type: String },
+  address: { type: String },
+  referredBy: { type: String }
+}, { _id: false });
+
 const labTestSchema = new mongoose.Schema({
   testId: { type: String, unique: true, sparse: true },
-  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true },
+  mode: { type: String, enum: ['internal', 'external'], default: 'internal' },
+  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient' },
+  externalPatient: { type: externalPatientSchema, default: null },
+  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   admission: { type: mongoose.Schema.Types.ObjectId, ref: 'Admission' },
   appointment: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
   // Test catalog info
