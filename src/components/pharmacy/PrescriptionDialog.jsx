@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { Plus, Trash2, Download, Printer, Eye, Send, Sparkles, LayoutTemplate } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/lib/AuthContext";
+import ModeToggle from "@/components/shared/ModeToggle";
+import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
 
 const emptyItem = {
   medicine: "",
@@ -33,6 +35,8 @@ const emptyItem = {
   instructions: "",
   stockRequestRaised: false,
 };
+
+const emptyExternal = { name: "", age: "", gender: "", phone: "", address: "", referredBy: "" };
 
 const emptyVitals = {
   bloodPressure: "",
