@@ -44,6 +44,21 @@ const priorityColors = {
   stat: "destructive",
 };
 
+const getPatientName = (item) => {
+  if (item?.mode === 'external' && item?.externalPatient?.name) {
+    return item.externalPatient.name;
+  }
+  if (item?.patient) {
+    return `${item.patient.firstName || ''} ${item.patient.lastName || ''}`.trim() || 'Unknown';
+  }
+  return 'Unknown';
+};
+
+const getPatientSubtext = (item) => {
+  if (item?.mode === 'external') return 'Walk-in';
+  return item?.patient?.patientId || 'N/A';
+};
+
 export default function LabDashboard() {
   const navigate = useNavigate();
   const { getModulePermissions } = useVisualAuth();
@@ -57,6 +72,7 @@ export default function LabDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("tests");
 
   // Dialogs
@@ -190,14 +206,15 @@ export default function LabDashboard() {
   };
 
   const filteredTests = tests.filter((t) => {
+    const patientName = getPatientName(t);
     const matchesSearch =
       (t.testName?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (t.testId?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (t.patient?.firstName?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (t.patient?.lastName?.toLowerCase().includes(searchQuery.toLowerCase()));
+      patientName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || t.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || t.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+    const matchesMode = modeFilter === "all" || (t.mode || "internal") === modeFilter;
+    return matchesSearch && matchesStatus && matchesCategory && matchesMode;
   });
 
   const groupedTests = Object.values(
