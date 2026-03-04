@@ -600,22 +600,41 @@ export default function PrescriptionDialog({
               </div>
             </div>
 
+            <ModeToggle mode={rxMode} onChange={setRxMode} />
+
+            {rxMode === "internal" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Patient *</Label>
+                  <Select value={patientId} onValueChange={setPatientId}>
+                    <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
+                    <SelectContent>{patients.map((p) => <SelectItem key={p._id} value={p._id}>{getPatientLabel(p)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Doctor *</Label>
+                  <Input className="mb-2" placeholder="Type doctor name to search" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} />
+                  <Select value={doctorId} onValueChange={setDoctorId} disabled={isDoctorUser && !!loggedInDoctor?._id}>
+                    <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
+                    <SelectContent>{filteredDoctors.map((d) => <SelectItem key={d._id} value={d._id}>Dr. {doctorName(d)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} />
+                <div>
+                  <Label>Doctor (optional)</Label>
+                  <Input className="mb-2" placeholder="Type doctor name to search" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} />
+                  <Select value={doctorId} onValueChange={setDoctorId}>
+                    <SelectTrigger><SelectValue placeholder="Select doctor (optional)" /></SelectTrigger>
+                    <SelectContent>{filteredDoctors.map((d) => <SelectItem key={d._id} value={d._id}>Dr. {doctorName(d)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Patient *</Label>
-                <Select value={patientId} onValueChange={setPatientId}>
-                  <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                  <SelectContent>{patients.map((p) => <SelectItem key={p._id} value={p._id}>{getPatientLabel(p)}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Doctor *</Label>
-                <Input className="mb-2" placeholder="Type doctor name to search" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} />
-                <Select value={doctorId} onValueChange={setDoctorId} disabled={isDoctorUser && !!loggedInDoctor?._id}>
-                  <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
-                  <SelectContent>{filteredDoctors.map((d) => <SelectItem key={d._id} value={d._id}>Dr. {doctorName(d)}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
               <div>
                 <Label>Encounter Type</Label>
                 <Select value={encounterType} onValueChange={setEncounterType}>
