@@ -5,6 +5,8 @@ export const getInvoices = async (filters = {}) => {
   if (filters.patientId) queryParams.append('patientId', filters.patientId);
   if (filters.status) queryParams.append('status', filters.status);
   if (filters.type) queryParams.append('type', filters.type);
+  if (filters.billingScope) queryParams.append('billingScope', filters.billingScope);
+  if (filters.sourceModule) queryParams.append('sourceModule', filters.sourceModule);
   if (filters.startDate) queryParams.append('startDate', filters.startDate);
   if (filters.endDate) queryParams.append('endDate', filters.endDate);
   const query = queryParams.toString();
