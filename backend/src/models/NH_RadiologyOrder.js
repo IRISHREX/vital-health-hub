@@ -144,5 +144,6 @@ radiologyOrderSchema.pre('save', async function(next) {
 radiologyOrderSchema.index({ patient: 1, createdAt: -1 });
 radiologyOrderSchema.index({ status: 1 });
 radiologyOrderSchema.index({ studyType: 1 });
+radiologyOrderSchema.index({ mode: 1 });
 
 module.exports = mongoose.model('RadiologyOrder', radiologyOrderSchema);

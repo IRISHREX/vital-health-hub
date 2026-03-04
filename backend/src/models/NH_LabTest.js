@@ -165,8 +165,8 @@ labTestSchema.pre('save', async function(next) {
 
 labTestSchema.index({ patient: 1, createdAt: -1 });
 labTestSchema.index({ status: 1 });
-// testId index removed - unique: true on field already creates it
 labTestSchema.index({ sampleStatus: 1 });
 labTestSchema.index({ category: 1 });
+labTestSchema.index({ mode: 1 });
 
 module.exports = mongoose.model('LabTest', labTestSchema);
