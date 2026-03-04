@@ -36,6 +36,17 @@ const studyTypeLabels = {
 
 const priorityVariant = { routine: "secondary", urgent: "default", stat: "destructive" };
 
+const getPatientName = (item) => {
+  if (item?.mode === 'external' && item?.externalPatient?.name) return item.externalPatient.name;
+  if (item?.patient) return `${item.patient.firstName || ''} ${item.patient.lastName || ''}`.trim() || 'Unknown';
+  return 'Unknown';
+};
+
+const getPatientSubtext = (item) => {
+  if (item?.mode === 'external') return 'Walk-in';
+  return item?.patient?.patientId || 'N/A';
+};
+
 export default function RadiologyDashboard() {
   const navigate = useNavigate();
   const { getModulePermissions } = useVisualAuth();
@@ -49,6 +60,7 @@ export default function RadiologyDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("orders");
 
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
@@ -92,15 +104,16 @@ export default function RadiologyDashboard() {
 
   const filtered = orders.filter((o) => {
     const q = searchQuery.toLowerCase();
+    const pName = getPatientName(o).toLowerCase();
     const matchSearch = !q ||
       o.studyName?.toLowerCase().includes(q) ||
       o.orderId?.toLowerCase().includes(q) ||
       o.bodyPart?.toLowerCase().includes(q) ||
-      o.patient?.firstName?.toLowerCase().includes(q) ||
-      o.patient?.lastName?.toLowerCase().includes(q);
+      pName.includes(q);
     const matchStatus = statusFilter === "all" || o.status === statusFilter;
     const matchType = typeFilter === "all" || o.studyType === typeFilter;
-    return matchSearch && matchStatus && matchType;
+    const matchMode = modeFilter === "all" || (o.mode || "internal") === modeFilter;
+    return matchSearch && matchStatus && matchType && matchMode;
   });
 
   const pendingQueue = orders.filter((o) => ["ordered", "scheduled"].includes(o.status));
