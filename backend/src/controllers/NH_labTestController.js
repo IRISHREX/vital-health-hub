@@ -393,10 +393,22 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
     throw new Error('No unbilled tests found');
   }
 
-  const patientId = tests[0].patient._id.toString();
-  if (!tests.every(t => t.patient._id.toString() === patientId)) {
-    res.status(400);
-    throw new Error('All tests must be for the same patient');
+  // Determine if external or internal
+  const mode = tests[0].mode || 'internal';
+
+  // Verify all tests belong to same patient/external patient
+  if (mode === 'internal') {
+    const patientId = tests[0].patient?._id?.toString();
+    if (!tests.every(t => t.patient?._id?.toString() === patientId)) {
+      res.status(400);
+      throw new Error('All tests must be for the same patient');
+    }
+  } else {
+    const extName = tests[0].externalPatient?.name;
+    if (!tests.every(t => t.externalPatient?.name === extName)) {
+      res.status(400);
+      throw new Error('All tests must be for the same external patient');
+    }
   }
 
   const items = tests.map(t => ({
@@ -411,17 +423,35 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
 
   const subtotal = items.reduce((s, i) => s + i.amount, 0);
 
-  const invoice = await Invoice.create({
-    patient: patientId,
-    admission: tests[0].admission,
+  const invoiceData = {
     type: 'lab',
     items,
     subtotal,
     totalAmount: subtotal,
     dueAmount: subtotal,
     dueDate: new Date(Date.now() + 30 * 86400000),
-    generatedBy: req.user._id
-  });
+    generatedBy: req.user._id,
+    notes: mode === 'external' ? `External Patient: ${tests[0].externalPatient?.name || 'Walk-in'}` : undefined
+  };
+
+  if (mode === 'internal') {
+    invoiceData.patient = tests[0].patient._id;
+    invoiceData.admission = tests[0].admission;
+  } else {
+    // For external, we still need a patient ref for Invoice model constraint
+    // Store external info in notes; patient field uses a placeholder or first available
+    invoiceData.patient = tests[0].patient || undefined;
+  }
+
+  // Only create invoice if we have patient ref (internal) or handle external
+  if (!invoiceData.patient) {
+    // External patient without system patient - create invoice without patient ref
+    // We need to handle this: for now store external patient info in notes
+    res.status(400);
+    throw new Error('External invoices require manual billing. Use the billing module.');
+  }
+
+  const invoice = await Invoice.create(invoiceData);
 
   await LabTest.updateMany(
     { _id: { $in: testIds } },
