@@ -97,6 +97,8 @@ export default function PrescriptionDialog({
   const [sharing, setSharing] = useState(false);
   const [savedPrescription, setSavedPrescription] = useState(null);
   const [formWidth, setFormWidth] = useState(56);
+  const [rxMode, setRxMode] = useState("internal");
+  const [externalPatient, setExternalPatient] = useState({ ...emptyExternal });
 
   const [patientId, setPatientId] = useState("");
   const [doctorId, setDoctorId] = useState("");
