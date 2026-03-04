@@ -411,8 +411,17 @@ export default function PrescriptionDialog({
       .filter((t) => t.testName?.trim())
       .map((t) => ({ testName: t.testName.trim(), testType: t.testType || "", instructions: t.instructions || "" }));
 
-    if (!patientId || !doctorId || cleanedItems.length === 0) {
+    if (rxMode === "internal" && (!patientId || !doctorId) && cleanedItems.length === 0) {
       return toast.error("Patient, doctor and at least one medicine are required");
+    }
+    if (rxMode === "internal" && (!patientId || !doctorId)) {
+      return toast.error("Patient and doctor are required for internal mode");
+    }
+    if (rxMode === "external" && !externalPatient.name?.trim()) {
+      return toast.error("Patient name is required for external mode");
+    }
+    if (cleanedItems.length === 0) {
+      return toast.error("At least one medicine is required");
     }
     if (appointmentStatus === "completed" && !currentPrescription?._id) {
       return toast.error("Completed appointment must use the latest existing prescription. New prescription is not allowed.");
@@ -421,10 +430,12 @@ export default function PrescriptionDialog({
     setLoading(true);
     try {
       const payload = {
-        patient: patientId,
-        doctor: doctorId,
-        appointment: appointmentId || currentPrescription?.appointment?._id || currentPrescription?.appointment || undefined,
-        admission: admissionId || undefined,
+        mode: rxMode,
+        ...(rxMode === "internal"
+          ? { patient: patientId, doctor: doctorId }
+          : { externalPatient, doctor: doctorId || undefined }),
+        appointment: rxMode === "internal" ? (appointmentId || currentPrescription?.appointment?._id || currentPrescription?.appointment || undefined) : undefined,
+        admission: rxMode === "internal" ? (admissionId || undefined) : undefined,
         encounterType,
         complaints: parseList(complaints),
         medicalHistory: parseList(medicalHistory),
