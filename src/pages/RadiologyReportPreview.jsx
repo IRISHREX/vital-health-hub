@@ -108,7 +108,9 @@ export default function RadiologyReportPreview() {
     const doc = new jsPDF();
     const pw = doc.internal.pageSize.getWidth();
     const patient = order.patient || {};
-    const patientName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
+    const patientName = order.mode === 'external'
+      ? (order.externalPatient?.name || 'Walk-in Patient')
+      : `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
 
     doc.setFontSize(16);
     doc.text(hospitalSettings.hospitalName, 14, 14);
@@ -155,7 +157,9 @@ export default function RadiologyReportPreview() {
   }
 
   const patient = order.patient || {};
-  const patientName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim() || "Unknown";
+  const patientName = order.mode === 'external'
+    ? (order.externalPatient?.name || 'Walk-in Patient')
+    : (`${patient.firstName || ""} ${patient.lastName || ""}`.trim() || "Unknown");
   const performedDate = order.performedAt ? new Date(order.performedAt).toLocaleString() : "-";
 
   return (

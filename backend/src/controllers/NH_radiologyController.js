@@ -5,12 +5,13 @@ const asyncHandler = require('express-async-handler');
 // ====== CRUD ======
 
 const getRadiologyOrders = asyncHandler(async (req, res) => {
-  const { patientId, status, studyType, priority, startDate, endDate } = req.query;
+  const { patientId, status, studyType, priority, startDate, endDate, mode } = req.query;
   const query = {};
   if (patientId) query.patient = patientId;
   if (status) query.status = status;
   if (studyType) query.studyType = studyType;
   if (priority) query.priority = priority;
+  if (mode && mode !== 'all') query.mode = mode;
   if (startDate && endDate) {
     query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
@@ -42,7 +43,23 @@ const getRadiologyOrderById = asyncHandler(async (req, res) => {
 });
 
 const createRadiologyOrder = asyncHandler(async (req, res) => {
-  const orderData = { ...req.body, orderedBy: req.user._id };
+  const { mode = 'internal', externalPatient } = req.body;
+
+  if (mode === 'internal' && !req.body.patient) {
+    res.status(400); throw new Error('Patient is required for internal mode');
+  }
+  if (mode === 'external' && (!externalPatient || !externalPatient.name)) {
+    res.status(400); throw new Error('External patient name is required');
+  }
+
+  const orderData = {
+    ...req.body,
+    orderedBy: req.user._id,
+    mode,
+    externalPatient: mode === 'external' ? externalPatient : undefined,
+    patient: mode === 'internal' ? req.body.patient : undefined,
+    doctor: req.body.doctor || undefined,
+  };
   if (orderData.price && !orderData.totalAmount) {
     orderData.totalAmount = Math.max(0, orderData.price - (orderData.discount || 0));
   }

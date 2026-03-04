@@ -111,8 +111,12 @@ export default function LabReportPreview() {
     const doc = new jsPDF();
     const pw = doc.internal.pageSize.getWidth();
     const patient = test.patient || {};
-    const patientName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
-    const patientGender = patient.gender?.toLowerCase() || "all";
+    const patientName = test.mode === 'external'
+      ? (test.externalPatient?.name || 'Walk-in Patient')
+      : `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
+    const patientGender = test.mode === 'external'
+      ? (test.externalPatient?.gender?.toLowerCase() || 'all')
+      : (patient.gender?.toLowerCase() || "all");
 
     doc.setFontSize(16);
     doc.text(hospitalSettings.hospitalName, 14, 14);
@@ -199,8 +203,12 @@ export default function LabReportPreview() {
   }
 
   const patient = test.patient || {};
-  const patientName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim() || "Unknown";
-  const patientGender = patient.gender?.toLowerCase() || "all";
+  const patientName = test.mode === 'external'
+    ? (test.externalPatient?.name || 'Walk-in Patient')
+    : (`${patient.firstName || ""} ${patient.lastName || ""}`.trim() || "Unknown");
+  const patientGender = test.mode === 'external'
+    ? (test.externalPatient?.gender?.toLowerCase() || 'all')
+    : (patient.gender?.toLowerCase() || "all");
   const reportDate = test.reportGeneratedAt ? new Date(test.reportGeneratedAt).toLocaleString() : "-";
   const hasSections = test.sections?.length > 0;
 

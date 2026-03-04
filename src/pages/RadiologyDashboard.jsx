@@ -36,6 +36,17 @@ const studyTypeLabels = {
 
 const priorityVariant = { routine: "secondary", urgent: "default", stat: "destructive" };
 
+const getPatientName = (item) => {
+  if (item?.mode === 'external' && item?.externalPatient?.name) return item.externalPatient.name;
+  if (item?.patient) return `${item.patient.firstName || ''} ${item.patient.lastName || ''}`.trim() || 'Unknown';
+  return 'Unknown';
+};
+
+const getPatientSubtext = (item) => {
+  if (item?.mode === 'external') return 'Walk-in';
+  return item?.patient?.patientId || 'N/A';
+};
+
 export default function RadiologyDashboard() {
   const navigate = useNavigate();
   const { getModulePermissions } = useVisualAuth();
@@ -49,6 +60,7 @@ export default function RadiologyDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("orders");
 
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
@@ -92,15 +104,16 @@ export default function RadiologyDashboard() {
 
   const filtered = orders.filter((o) => {
     const q = searchQuery.toLowerCase();
+    const pName = getPatientName(o).toLowerCase();
     const matchSearch = !q ||
       o.studyName?.toLowerCase().includes(q) ||
       o.orderId?.toLowerCase().includes(q) ||
       o.bodyPart?.toLowerCase().includes(q) ||
-      o.patient?.firstName?.toLowerCase().includes(q) ||
-      o.patient?.lastName?.toLowerCase().includes(q);
+      pName.includes(q);
     const matchStatus = statusFilter === "all" || o.status === statusFilter;
     const matchType = typeFilter === "all" || o.studyType === typeFilter;
-    return matchSearch && matchStatus && matchType;
+    const matchMode = modeFilter === "all" || (o.mode || "internal") === modeFilter;
+    return matchSearch && matchStatus && matchType && matchMode;
   });
 
   const pendingQueue = orders.filter((o) => ["ordered", "scheduled"].includes(o.status));
@@ -166,6 +179,14 @@ export default function RadiologyDashboard() {
                 {Object.entries(studyTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={modeFilter} onValueChange={setModeFilter}>
+              <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Mode" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Patients</SelectItem>
+                <SelectItem value="internal">Internal</SelectItem>
+                <SelectItem value="external">External / Walk-in</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Card><CardContent className="p-0">
@@ -187,7 +208,14 @@ export default function RadiologyDashboard() {
                   <TableRow key={o._id}>
                     <TableCell className="font-mono text-sm">{o.orderId || "-"}</TableCell>
                     <TableCell>
-                      <div><p className="font-medium">{o.patient?.firstName} {o.patient?.lastName}</p><p className="text-xs text-muted-foreground">{o.patient?.patientId}</p></div>
+                      <div>
+                        <p className="font-medium">{getPatientName(o)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {o.mode === 'external'
+                            ? <Badge variant="outline" className="text-[10px] px-1.5 py-0">Walk-in</Badge>
+                            : (o.patient?.patientId || '')}
+                        </p>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div><p className="font-medium">{o.studyName}</p><p className="text-xs text-muted-foreground">{o.bodyPart}</p></div>
