@@ -366,6 +366,14 @@ export default function LabDashboard() {
                 <SelectItem value="serology">Serology</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={modeFilter} onValueChange={setModeFilter}>
+              <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Mode" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Patients</SelectItem>
+                <SelectItem value="internal">Internal</SelectItem>
+                <SelectItem value="external">External / Walk-in</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Table */}
@@ -387,8 +395,16 @@ export default function LabDashboard() {
                     <TableRow key={group.patientKey}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{group.patient?.firstName || "Unknown"} {group.patient?.lastName || "Patient"}</p>
-                          <p className="text-xs text-muted-foreground">{group.patient?.patientId || "N/A"}</p>
+                          <p className="font-medium">
+                            {group.mode === 'external'
+                              ? group.externalPatient?.name || 'Walk-in'
+                              : `${group.patient?.firstName || "Unknown"} ${group.patient?.lastName || "Patient"}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {group.mode === 'external'
+                              ? <Badge variant="outline" className="text-[10px] px-1.5 py-0">Walk-in</Badge>
+                              : (group.patient?.patientId || "N/A")}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>
