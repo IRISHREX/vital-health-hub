@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { updateBed, deleteBed, assignBed } from "@/lib/beds";
 import { dischargePatient, transferPatient, getAvailableBeds } from "@/lib/admissions";
 import { getPatients } from "@/lib/patients";
+import { getDoctors } from "@/lib/doctors";
 import { AlertTriangle, Trash2, Loader2, LogOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -56,6 +57,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
     dischargingDoctorId: '',
     notes: '',
   });
+  const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
@@ -68,6 +70,15 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
     }
     if (mode === "transfer") {
       loadTransferBeds();
+    }
+    if (mode === "discharge") {
+      loadDoctors();
+      // reset discharge form each time we open discharge view
+      setDischargeFormData({
+        dischargeReason: '',
+        dischargingDoctorId: '',
+        notes: '',
+      });
     }
   }, [isOpen, mode, bed?._id]);
 
@@ -98,6 +109,21 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
       toast({
         title: "Error",
         description: "Failed to load available beds",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadDoctors = async () => {
+    try {
+      const res = await getDoctors();
+      const list = res?.data?.doctors || [];
+      setDoctors(list);
+      // console.log("Loaded doctors for discharge form:", list);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load doctors",
         variant: "destructive",
       });
     }
@@ -678,7 +704,7 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                       onValueChange={(value) =>
                         setDischargeFormData({
                           ...dischargeFormData,
-                          dischargingDoctorId: value,
+                          dischargingDoctorId: value === 'none' ? '' : value,
                         })
                       }
                     >
@@ -686,7 +712,13 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
                         <SelectValue placeholder="Select discharging doctor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not specified</SelectItem>
+                        {/* empty string is not allowed by radix select; use a sentinel value */}
+                        <SelectItem value="none">Not specified</SelectItem>
+                        {doctors.map((d) => (
+                          <SelectItem key={d._id} value={d._id}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
