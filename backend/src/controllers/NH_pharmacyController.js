@@ -180,9 +180,25 @@ exports.getStockHistory = async (req, res, next) => {
 exports.createPrescription = async (req, res, next) => {
   try {
     const payload = { ...req.body };
+    const { mode = 'internal', externalPatient } = payload;
     const appointmentId = payload.appointment;
 
-    if (appointmentId) {
+    if (mode === 'internal' && !payload.patient) {
+      throw new AppError('Patient is required for internal mode', 400);
+    }
+    if (mode === 'external' && (!externalPatient || !externalPatient.name)) {
+      throw new AppError('External patient name is required', 400);
+    }
+
+    // Set mode-specific fields
+    payload.mode = mode;
+    if (mode === 'external') {
+      payload.externalPatient = externalPatient;
+      payload.patient = undefined;
+      payload.doctor = payload.doctor || undefined;
+    }
+
+    if (appointmentId && mode === 'internal') {
       const appointment = await Appointment.findById(appointmentId).select('patient doctor prescription');
       if (!appointment) throw new AppError('Appointment not found', 404);
 
@@ -200,7 +216,7 @@ exports.createPrescription = async (req, res, next) => {
 
     const rx = await Prescription.create({ ...payload, createdBy: req.user._id });
 
-    if (appointmentId) {
+    if (appointmentId && mode === 'internal') {
       await Appointment.findByIdAndUpdate(
         appointmentId,
         { status: 'completed', prescription: String(rx._id) },
@@ -258,11 +274,12 @@ exports.updatePrescription = async (req, res, next) => {
 
 exports.getPrescriptions = async (req, res, next) => {
   try {
-    const { patientId, appointmentId, status, page = 1, limit = 30 } = req.query;
+    const { patientId, appointmentId, status, mode, page = 1, limit = 30 } = req.query;
     const query = {};
     if (patientId) query.patient = patientId;
     if (appointmentId) query.appointment = appointmentId;
     if (status) query.status = status;
+    if (mode && mode !== 'all') query.mode = mode;
 
     const total = await Prescription.countDocuments(query);
     const rxs = await Prescription.find(query)
