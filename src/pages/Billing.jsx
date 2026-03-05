@@ -78,11 +78,30 @@ const defaultHospital = {
 };
 
 const getPatientName = (invoiceOrPatient) => {
+  if (invoiceOrPatient?.billingScope === "external" || invoiceOrPatient?.externalPatientInfo) {
+    return invoiceOrPatient?.externalPatientInfo?.name || "External Walk-in";
+  }
   const patient = invoiceOrPatient?.patient ? invoiceOrPatient.patient : invoiceOrPatient;
   if (!patient) return "Unknown Patient";
   if (typeof patient.name === "string" && patient.name.trim()) return patient.name;
   const fullName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
   return fullName || "Unknown Patient";
+};
+
+const getBillingScopeLabel = (invoice) =>
+  String(invoice?.billingScope || "internal").toLowerCase() === "external" ? "External" : "Internal";
+
+const getSourceModuleLabel = (invoice) => {
+  const moduleKey = String(invoice?.sourceModule || "general").toLowerCase();
+  const map = {
+    pathology: "Pathology",
+    radiology: "Radiology",
+    pharmacy: "Pharmacy",
+    ot: "OT",
+    general: "General",
+    other: "Other",
+  };
+  return map[moduleKey] || moduleKey;
 };
 
 const fileDownload = (fileName, content, mime = "text/plain;charset=utf-8") => {
@@ -298,6 +317,7 @@ const downloadInvoicesPdfBundle = (patientName, invoices, titleSuffix = "All Inv
 };
 
 const getCareLabel = (invoice) => {
+  if (String(invoice?.billingScope || "").toLowerCase() === "external") return "External";
   if (invoice?.admission) return "IPD";
   if (invoice?.patient?.registrationType === "emergency") return "Emergency";
   return "OPD";
@@ -423,6 +443,8 @@ export default function Billing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [careFilter, setCareFilter] = useState("all");
+  const [billingScopeFilter, setBillingScopeFilter] = useState("all");
+  const [sourceModuleFilter, setSourceModuleFilter] = useState("all");
   const [billingOptionFilter, setBillingOptionFilter] = useState("all");
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -470,19 +492,31 @@ export default function Billing() {
       if (statusFilter !== "all" && invoice.status !== statusFilter) return false;
       const care = getCareLabel(invoice).toLowerCase();
       if (careFilter !== "all" && care !== careFilter) return false;
+      const scope = String(invoice?.billingScope || "internal").toLowerCase();
+      if (billingScopeFilter !== "all" && scope !== billingScopeFilter) return false;
+      const sourceModule = String(invoice?.sourceModule || "general").toLowerCase();
+      if (sourceModuleFilter !== "all" && sourceModule !== sourceModuleFilter) return false;
 
       const query = searchQuery.trim().toLowerCase();
       if (!query) return true;
       const invoiceId = String(invoice?.invoiceNumber || "").toLowerCase();
       const patientName = getPatientName(invoice).toLowerCase();
       const patientId = String(invoice?.patient?.patientId || "").toLowerCase();
-      return invoiceId.includes(query) || patientName.includes(query) || patientId.includes(query);
+      const externalPhone = String(invoice?.externalPatientInfo?.phone || "").toLowerCase();
+      return (
+        invoiceId.includes(query) ||
+        patientName.includes(query) ||
+        patientId.includes(query) ||
+        externalPhone.includes(query)
+      );
     });
   }, [
     invoices,
     allowedBillingOptions,
     statusFilter,
     careFilter,
+    billingScopeFilter,
+    sourceModuleFilter,
     searchQuery
   ]);
 
@@ -503,16 +537,42 @@ export default function Billing() {
     return counts;
   }, [baseFilteredInvoices]);
 
+  const scopeSummary = useMemo(() => {
+    return baseFilteredInvoices.reduce(
+      (acc, invoice) => {
+        const isExternal = String(invoice?.billingScope || "internal").toLowerCase() === "external";
+        if (isExternal) {
+          acc.externalCount += 1;
+          acc.externalDue += Number(invoice?.dueAmount || 0);
+        } else {
+          acc.internalCount += 1;
+          acc.internalDue += Number(invoice?.dueAmount || 0);
+        }
+        return acc;
+      },
+      { internalCount: 0, externalCount: 0, internalDue: 0, externalDue: 0 }
+    );
+  }, [baseFilteredInvoices]);
+
   const patientRows = useMemo(() => {
     const grouped = Object.values(
       filteredInvoices.reduce((acc, invoice) => {
-        const patientId = invoice?.patient?._id || "unknown";
+        const isExternal = String(invoice?.billingScope || "internal").toLowerCase() === "external";
+        const externalKeySeed = String(
+          invoice?.externalPatientInfo?.phone ||
+          invoice?.externalPatientInfo?.name ||
+          invoice?._id ||
+          "walkin"
+        ).trim().toLowerCase();
+        const patientId = isExternal ? `external:${externalKeySeed}` : (invoice?.patient?._id || `unknown:${invoice?._id}`);
         if (!acc[patientId]) {
           acc[patientId] = {
             patientId,
             patient: invoice?.patient,
             patientName: getPatientName(invoice),
-            patientCode: invoice?.patient?.patientId || "-",
+            patientCode: isExternal
+              ? (invoice?.externalPatientInfo?.phone || "WALK-IN")
+              : (invoice?.patient?.patientId || "-"),
             invoices: [],
             careTypes: new Set(),
             total: 0,
@@ -796,6 +856,26 @@ export default function Billing() {
               <SelectItem value="refunded">Refunded</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={billingScopeFilter} onValueChange={setBillingScopeFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Scope" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Scope</SelectItem>
+              <SelectItem value="internal">Internal</SelectItem>
+              <SelectItem value="external">External</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sourceModuleFilter} onValueChange={setSourceModuleFilter}>
+            <SelectTrigger className="w-full sm:w-[190px]"><SelectValue placeholder="Source Module" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Modules</SelectItem>
+              <SelectItem value="pathology">Pathology</SelectItem>
+              <SelectItem value="radiology">Radiology</SelectItem>
+              <SelectItem value="pharmacy">Pharmacy</SelectItem>
+              <SelectItem value="ot">OT</SelectItem>
+              <SelectItem value="general">General</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {!allowedBillingOptions.length ? (
@@ -830,6 +910,36 @@ export default function Billing() {
                     <p className="text-sm font-semibold break-words">{billingOptionCounts[option] || 0} invoices</p>
                   </button>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {allowedBillingOptions.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Billing Scope Split</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setBillingScopeFilter("internal")}
+                  className={`rounded-lg border p-3 text-left ${billingScopeFilter === "internal" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                >
+                  <p className="text-xs text-muted-foreground">Internal Billing</p>
+                  <p className="text-sm font-semibold">{scopeSummary.internalCount} invoices</p>
+                  <p className="text-xs text-muted-foreground">Due Rs {scopeSummary.internalDue.toLocaleString()}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingScopeFilter("external")}
+                  className={`rounded-lg border p-3 text-left ${billingScopeFilter === "external" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                >
+                  <p className="text-xs text-muted-foreground">External Walk-in Billing</p>
+                  <p className="text-sm font-semibold">{scopeSummary.externalCount} invoices</p>
+                  <p className="text-xs text-muted-foreground">Due Rs {scopeSummary.externalDue.toLocaleString()}</p>
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -908,6 +1018,8 @@ export default function Billing() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Invoice</TableHead>
+                      <TableHead>Scope</TableHead>
+                      <TableHead>Module</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead>Paid</TableHead>
                       <TableHead>Due</TableHead>
@@ -923,6 +1035,12 @@ export default function Billing() {
                       return (
                         <TableRow key={inv._id}>
                           <TableCell className="font-medium">{inv.invoiceNumber || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant={String(inv?.billingScope || "internal") === "external" ? "secondary" : "outline"}>
+                              {getBillingScopeLabel(inv)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{getSourceModuleLabel(inv)}</TableCell>
                           <TableCell>Rs {Number(inv.totalAmount || 0).toLocaleString()}</TableCell>
                           <TableCell className="text-status-available">Rs {Number(inv.paidAmount || 0).toLocaleString()}</TableCell>
                           <TableCell className={Number(inv.dueAmount || 0) > 0 ? "text-status-occupied" : ""}>Rs {Number(inv.dueAmount || 0).toLocaleString()}</TableCell>
@@ -950,7 +1068,7 @@ export default function Billing() {
             </Card>
           ))}
 
-          {permissions.canCreate && canUseFeature("billing", "billing_other") && (
+          {permissions.canCreate && canUseFeature("billing", "billing_other") && selectedPatientRow?.patient?._id && (
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-base">Add/Adjust Bills (key/value + discount)</CardTitle></CardHeader>
               <CardContent className="space-y-3">

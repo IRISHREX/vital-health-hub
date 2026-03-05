@@ -23,11 +23,13 @@ const getComputedInvoiceStatus = (invoice) => {
 // @route   GET /api/invoices
 // @access  Private
 const getInvoices = asyncHandler(async (req, res) => {
-  const { patientId, status, startDate, endDate, type } = req.query;
+  const { patientId, status, startDate, endDate, type, billingScope, sourceModule } = req.query;
   const query = {};
 
   if (patientId) query.patient = patientId;
   if (type) query.type = type;
+  if (billingScope) query.billingScope = billingScope;
+  if (sourceModule) query.sourceModule = sourceModule;
   if (startDate && endDate) {
     query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
@@ -84,6 +86,9 @@ const createInvoice = asyncHandler(async (req, res) => {
     admission,
     appointment,
     type,
+    billingScope = 'internal',
+    sourceModule = 'general',
+    externalPatientInfo,
     items,
     subtotal,
     discountAmount,
@@ -97,9 +102,19 @@ const createInvoice = asyncHandler(async (req, res) => {
   } = req.body;
 
   // Validate required fields
-  if (!patient || !type || !items || !items.length || !totalAmount || !dueDate) {
+  if (!type || !items || !items.length || !totalAmount || !dueDate) {
     res.status(400);
-    throw new Error('Missing required fields: patient, type, items, totalAmount, dueDate');
+    throw new Error('Missing required fields: type, items, totalAmount, dueDate');
+  }
+
+  if (billingScope === 'internal' && !patient) {
+    res.status(400);
+    throw new Error('patient is required for internal billing scope');
+  }
+
+  if (billingScope === 'external' && !externalPatientInfo?.name) {
+    res.status(400);
+    throw new Error('externalPatientInfo.name is required for external billing scope');
   }
 
   // Validate that type is one of the allowed values
@@ -136,6 +151,9 @@ const createInvoice = asyncHandler(async (req, res) => {
     admission,
     appointment,
     type,
+    billingScope,
+    sourceModule,
+    externalPatientInfo: billingScope === 'external' ? externalPatientInfo : undefined,
     items,
     subtotal: finalSubtotal,
     discountAmount: finalDiscountAmount,

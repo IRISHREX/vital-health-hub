@@ -14,7 +14,15 @@ const BillingLedger = require('./NH_BillingLedger');
 const ServiceOrder = require('./NH_ServiceOrder');
 const LabTest = require('./NH_LabTest');
 const LabTestCatalog = require('./NH_LabTestCatalog');
-const { HospitalSettings, SecuritySettings, NotificationSettings, UserPreferences, VisualAccessSettings, DataManagementSettings } = require('./NH_Settings');
+const {
+  HospitalSettings,
+  SecuritySettings,
+  NotificationSettings,
+  UserPreferences,
+  VisualAccessSettings,
+  DataManagementSettings,
+  ModuleOperationsSettings
+} = require('./NH_Settings');
 const Medicine = require('./NH_Medicine');
 const Prescription = require('./NH_Prescription');
 const StockAdjustment = require('./NH_StockAdjustment');
@@ -46,6 +54,7 @@ module.exports = {
   UserPreferences,
   VisualAccessSettings,
   DataManagementSettings,
+  ModuleOperationsSettings,
   Medicine,
   Prescription,
   StockAdjustment,

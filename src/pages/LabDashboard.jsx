@@ -44,6 +44,21 @@ const priorityColors = {
   stat: "destructive",
 };
 
+const getPatientName = (item) => {
+  if (item?.mode === 'external' && item?.externalPatient?.name) {
+    return item.externalPatient.name;
+  }
+  if (item?.patient) {
+    return `${item.patient.firstName || ''} ${item.patient.lastName || ''}`.trim() || 'Unknown';
+  }
+  return 'Unknown';
+};
+
+const getPatientSubtext = (item) => {
+  if (item?.mode === 'external') return 'Walk-in';
+  return item?.patient?.patientId || 'N/A';
+};
+
 export default function LabDashboard() {
   const navigate = useNavigate();
   const { getModulePermissions } = useVisualAuth();
@@ -57,6 +72,7 @@ export default function LabDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("tests");
 
   // Dialogs
@@ -190,23 +206,28 @@ export default function LabDashboard() {
   };
 
   const filteredTests = tests.filter((t) => {
+    const patientName = getPatientName(t);
     const matchesSearch =
       (t.testName?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (t.testId?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (t.patient?.firstName?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (t.patient?.lastName?.toLowerCase().includes(searchQuery.toLowerCase()));
+      patientName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || t.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || t.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+    const matchesMode = modeFilter === "all" || (t.mode || "internal") === modeFilter;
+    return matchesSearch && matchesStatus && matchesCategory && matchesMode;
   });
 
   const groupedTests = Object.values(
     filteredTests.reduce((acc, test) => {
-      const patientKey = test.patient?._id || `unknown-${test._id}`;
+      const patientKey = test.mode === 'external'
+        ? `ext-${test.externalPatient?.name || 'unknown'}-${test.externalPatient?.phone || ''}`
+        : (test.patient?._id || `unknown-${test._id}`);
       if (!acc[patientKey]) {
         acc[patientKey] = {
           patientKey,
           patient: test.patient || null,
+          externalPatient: test.externalPatient || null,
+          mode: test.mode || 'internal',
           tests: [],
         };
       }
@@ -345,6 +366,14 @@ export default function LabDashboard() {
                 <SelectItem value="serology">Serology</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={modeFilter} onValueChange={setModeFilter}>
+              <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Mode" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Patients</SelectItem>
+                <SelectItem value="internal">Internal</SelectItem>
+                <SelectItem value="external">External / Walk-in</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Table */}
@@ -366,8 +395,16 @@ export default function LabDashboard() {
                     <TableRow key={group.patientKey}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{group.patient?.firstName || "Unknown"} {group.patient?.lastName || "Patient"}</p>
-                          <p className="text-xs text-muted-foreground">{group.patient?.patientId || "N/A"}</p>
+                          <p className="font-medium">
+                            {group.mode === 'external'
+                              ? group.externalPatient?.name || 'Walk-in'
+                              : `${group.patient?.firstName || "Unknown"} ${group.patient?.lastName || "Patient"}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {group.mode === 'external'
+                              ? <Badge variant="outline" className="text-[10px] px-1.5 py-0">Walk-in</Badge>
+                              : (group.patient?.patientId || "N/A")}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>

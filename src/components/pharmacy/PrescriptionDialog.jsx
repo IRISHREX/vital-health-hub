@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { Plus, Trash2, Download, Printer, Eye, Send, Sparkles, LayoutTemplate } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/lib/AuthContext";
+import ModeToggle from "@/components/shared/ModeToggle";
+import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
 
 const emptyItem = {
   medicine: "",
@@ -33,6 +35,8 @@ const emptyItem = {
   instructions: "",
   stockRequestRaised: false,
 };
+
+const emptyExternal = { name: "", age: "", gender: "", phone: "", address: "", referredBy: "" };
 
 const emptyVitals = {
   bloodPressure: "",
@@ -93,6 +97,8 @@ export default function PrescriptionDialog({
   const [sharing, setSharing] = useState(false);
   const [savedPrescription, setSavedPrescription] = useState(null);
   const [formWidth, setFormWidth] = useState(56);
+  const [rxMode, setRxMode] = useState("internal");
+  const [externalPatient, setExternalPatient] = useState({ ...emptyExternal });
 
   const [patientId, setPatientId] = useState("");
   const [doctorId, setDoctorId] = useState("");
@@ -212,6 +218,8 @@ export default function PrescriptionDialog({
     setShareNote("");
     setVitals({ ...emptyVitals });
     setFemaleHealth({ ...emptyFemaleHealth });
+    setRxMode("internal");
+    setExternalPatient({ ...emptyExternal });
   }, [open, initialAdmissionId, initialAppointmentId, initialAppointmentStatus, initialDoctorId, initialEncounterType, initialPatientId]);
 
   const applyPrescriptionToForm = (rx) => {
@@ -403,8 +411,17 @@ export default function PrescriptionDialog({
       .filter((t) => t.testName?.trim())
       .map((t) => ({ testName: t.testName.trim(), testType: t.testType || "", instructions: t.instructions || "" }));
 
-    if (!patientId || !doctorId || cleanedItems.length === 0) {
+    if (rxMode === "internal" && (!patientId || !doctorId) && cleanedItems.length === 0) {
       return toast.error("Patient, doctor and at least one medicine are required");
+    }
+    if (rxMode === "internal" && (!patientId || !doctorId)) {
+      return toast.error("Patient and doctor are required for internal mode");
+    }
+    if (rxMode === "external" && !externalPatient.name?.trim()) {
+      return toast.error("Patient name is required for external mode");
+    }
+    if (cleanedItems.length === 0) {
+      return toast.error("At least one medicine is required");
     }
     if (appointmentStatus === "completed" && !currentPrescription?._id) {
       return toast.error("Completed appointment must use the latest existing prescription. New prescription is not allowed.");
@@ -413,10 +430,12 @@ export default function PrescriptionDialog({
     setLoading(true);
     try {
       const payload = {
-        patient: patientId,
-        doctor: doctorId,
-        appointment: appointmentId || currentPrescription?.appointment?._id || currentPrescription?.appointment || undefined,
-        admission: admissionId || undefined,
+        mode: rxMode,
+        ...(rxMode === "internal"
+          ? { patient: patientId, doctor: doctorId }
+          : { externalPatient, doctor: doctorId || undefined }),
+        appointment: rxMode === "internal" ? (appointmentId || currentPrescription?.appointment?._id || currentPrescription?.appointment || undefined) : undefined,
+        admission: rxMode === "internal" ? (admissionId || undefined) : undefined,
         encounterType,
         complaints: parseList(complaints),
         medicalHistory: parseList(medicalHistory),
@@ -581,22 +600,41 @@ export default function PrescriptionDialog({
               </div>
             </div>
 
+            <ModeToggle mode={rxMode} onChange={setRxMode} />
+
+            {rxMode === "internal" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Patient *</Label>
+                  <Select value={patientId} onValueChange={setPatientId}>
+                    <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
+                    <SelectContent>{patients.map((p) => <SelectItem key={p._id} value={p._id}>{getPatientLabel(p)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Doctor *</Label>
+                  <Input className="mb-2" placeholder="Type doctor name to search" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} />
+                  <Select value={doctorId} onValueChange={setDoctorId} disabled={isDoctorUser && !!loggedInDoctor?._id}>
+                    <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
+                    <SelectContent>{filteredDoctors.map((d) => <SelectItem key={d._id} value={d._id}>Dr. {doctorName(d)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} />
+                <div>
+                  <Label>Doctor (optional)</Label>
+                  <Input className="mb-2" placeholder="Type doctor name to search" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} />
+                  <Select value={doctorId} onValueChange={setDoctorId}>
+                    <SelectTrigger><SelectValue placeholder="Select doctor (optional)" /></SelectTrigger>
+                    <SelectContent>{filteredDoctors.map((d) => <SelectItem key={d._id} value={d._id}>Dr. {doctorName(d)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Patient *</Label>
-                <Select value={patientId} onValueChange={setPatientId}>
-                  <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                  <SelectContent>{patients.map((p) => <SelectItem key={p._id} value={p._id}>{getPatientLabel(p)}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Doctor *</Label>
-                <Input className="mb-2" placeholder="Type doctor name to search" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} />
-                <Select value={doctorId} onValueChange={setDoctorId} disabled={isDoctorUser && !!loggedInDoctor?._id}>
-                  <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
-                  <SelectContent>{filteredDoctors.map((d) => <SelectItem key={d._id} value={d._id}>Dr. {doctorName(d)}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
               <div>
                 <Label>Encounter Type</Label>
                 <Select value={encounterType} onValueChange={setEncounterType}>

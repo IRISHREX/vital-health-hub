@@ -17,6 +17,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   Building2,
   Users,
   Shield,
@@ -49,6 +57,7 @@ import {
   CalendarClock,
   Copy,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -63,6 +72,7 @@ import {
   getPendingAccessRequests,
   respondToAccessRequest,
   getDataManagementSettings,
+  updateModuleOperationsSettings,
   updateDataManagementSettings,
   getDataImportTemplate,
   bulkImportData,
@@ -122,6 +132,30 @@ const dataEntityOptions = [
   { key: "patient_history", label: "Patient History" },
   { key: "billings", label: "Billings" },
 ];
+
+const moduleOperationKeys = ["pathology", "radiology", "pharmacy"];
+const moduleOperationLabels = {
+  pathology: "Pathology Lab",
+  radiology: "Radiology",
+  pharmacy: "Pharmacy",
+};
+const createDefaultModuleOperationConfig = () => ({
+  enabled: true,
+  runIndependently: true,
+  integrateWithHospitalCore: true,
+  allowExternalWalkIns: true,
+  externalBillingEnabled: true,
+  trackExternalBillingSeparately: true,
+});
+const createDefaultModuleOperationsSettings = () => ({
+  deploymentMode: "hybrid",
+  modules: {
+    pathology: createDefaultModuleOperationConfig(),
+    radiology: createDefaultModuleOperationConfig(),
+    pharmacy: createDefaultModuleOperationConfig(),
+  },
+  userOverrides: [],
+});
 
 const parseSpreadsheetText = (text) => {
   const source = String(text || "").replace(/\r\n/g, "\n").trim();
@@ -230,6 +264,9 @@ export default function Settings() {
 
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [userEmails, setUserEmails] = useState([]);
+  const [userDirectory, setUserDirectory] = useState([]);
+  const [moduleOperationsSettings, setModuleOperationsSettings] = useState(createDefaultModuleOperationsSettings);
+  const [selectedModuleOverrideUserId, setSelectedModuleOverrideUserId] = useState("__none__");
   const [permissionOverrides, setPermissionOverrides] = useState([]);
   const [permissionEmail, setPermissionEmail] = useState("");
   const [permissionManagers, setPermissionManagers] = useState([]);
@@ -237,6 +274,7 @@ export default function Settings() {
   const [assignmentPolicies, setAssignmentPolicies] = useState(defaultAssignmentPolicies);
   const [permissionModuleSearch, setPermissionModuleSearch] = useState("");
   const [permissionModuleFilter, setPermissionModuleFilter] = useState("all");
+  const [permissionVisibleModules, setPermissionVisibleModules] = useState(rbacModules);
   const [permissionSubtab, setPermissionSubtab] = useState("matrix");
   const [requestForm, setRequestForm] = useState({ module: "billing", feature: "view", reason: "" });
   const [submittingRequest, setSubmittingRequest] = useState(false);
@@ -311,7 +349,7 @@ export default function Settings() {
         ]);
 
         if (settingsRes?.success && settingsRes?.data) {
-          const { hospital, security, notifications, dataManagement } = settingsRes.data;
+          const { hospital, security, notifications, dataManagement, moduleOperations } = settingsRes.data;
           
           setHospitalSettings({
             hospitalName: hospital?.hospitalName || "",
@@ -335,6 +373,27 @@ export default function Settings() {
             smsAlerts: notifications?.smsAlerts ?? false,
             pushNotifications: notifications?.pushNotifications ?? true,
           });
+
+          if (moduleOperations) {
+            setModuleOperationsSettings({
+              deploymentMode: moduleOperations?.deploymentMode || "hybrid",
+              modules: {
+                pathology: {
+                  ...createDefaultModuleOperationConfig(),
+                  ...(moduleOperations?.modules?.pathology || {}),
+                },
+                radiology: {
+                  ...createDefaultModuleOperationConfig(),
+                  ...(moduleOperations?.modules?.radiology || {}),
+                },
+                pharmacy: {
+                  ...createDefaultModuleOperationConfig(),
+                  ...(moduleOperations?.modules?.pharmacy || {}),
+                },
+              },
+              userOverrides: Array.isArray(moduleOperations?.userOverrides) ? moduleOperations.userOverrides : [],
+            });
+          }
 
           if (isSuperAdmin && dataManagement) {
             const nextDataSettings = {
@@ -405,6 +464,7 @@ export default function Settings() {
         }
 
         if (usersRes?.success && usersRes?.data?.users) {
+          setUserDirectory(usersRes.data.users || []);
           const emails = usersRes.data.users
             .map((u) => u.email)
             .filter(Boolean)
@@ -535,10 +595,21 @@ export default function Settings() {
     return selectedPermissionModules.filter((mod) => {
       const label = (moduleLabels[mod.module] || mod.module).toLowerCase();
       const byFilter = permissionModuleFilter === "all" || mod.module === permissionModuleFilter;
+      const byVisibility = permissionVisibleModules.includes(mod.module);
       const bySearch = !query || label.includes(query) || mod.module.toLowerCase().includes(query);
-      return byFilter && bySearch;
+      return byFilter && byVisibility && bySearch;
     });
-  }, [selectedPermissionModules, permissionModuleSearch, permissionModuleFilter]);
+  }, [selectedPermissionModules, permissionModuleSearch, permissionModuleFilter, permissionVisibleModules]);
+
+  const togglePermissionModuleVisibility = (module, checked) => {
+    setPermissionVisibleModules((prev) => {
+      if (!checked) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((item) => item !== module);
+      }
+      return prev.includes(module) ? prev : [...prev, module];
+    });
+  };
 
   const ensureEmailOverride = (email) => {
     const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -829,6 +900,93 @@ export default function Settings() {
     }
   };
 
+  const updateGlobalModuleOperation = (moduleKey, field, checked) => {
+    setModuleOperationsSettings((prev) => ({
+      ...prev,
+      modules: {
+        ...prev.modules,
+        [moduleKey]: {
+          ...(prev.modules?.[moduleKey] || createDefaultModuleOperationConfig()),
+          [field]: checked,
+        },
+      },
+    }));
+  };
+
+  const selectedModuleOverride = useMemo(() => {
+    if (selectedModuleOverrideUserId === "__none__") return null;
+    return (moduleOperationsSettings.userOverrides || []).find(
+      (entry) => String(entry?.user) === String(selectedModuleOverrideUserId)
+    ) || null;
+  }, [moduleOperationsSettings.userOverrides, selectedModuleOverrideUserId]);
+
+  const updateUserModuleOperation = (moduleKey, field, checked) => {
+    if (selectedModuleOverrideUserId === "__none__") return;
+    setModuleOperationsSettings((prev) => {
+      const overrides = Array.isArray(prev.userOverrides) ? [...prev.userOverrides] : [];
+      const existingIdx = overrides.findIndex(
+        (entry) => String(entry?.user) === String(selectedModuleOverrideUserId)
+      );
+      const baseModules = existingIdx >= 0 ? (overrides[existingIdx].modules || {}) : {};
+      const moduleBase = {
+        ...(prev.modules?.[moduleKey] || createDefaultModuleOperationConfig()),
+        ...(baseModules?.[moduleKey] || {}),
+        [field]: checked,
+      };
+
+      if (existingIdx >= 0) {
+        overrides[existingIdx] = {
+          ...overrides[existingIdx],
+          modules: {
+            ...baseModules,
+            [moduleKey]: moduleBase,
+          },
+        };
+      } else {
+        overrides.push({
+          user: selectedModuleOverrideUserId,
+          modules: {
+            [moduleKey]: moduleBase,
+          },
+        });
+      }
+
+      return {
+        ...prev,
+        userOverrides: overrides,
+      };
+    });
+  };
+
+  const handleRemoveUserOverride = () => {
+    if (selectedModuleOverrideUserId === "__none__") return;
+    setModuleOperationsSettings((prev) => ({
+      ...prev,
+      userOverrides: (prev.userOverrides || []).filter(
+        (entry) => String(entry?.user) !== String(selectedModuleOverrideUserId)
+      ),
+    }));
+  };
+
+  const handleSaveModuleOperations = async () => {
+    try {
+      setSaving(true);
+      await updateModuleOperationsSettings({
+        deploymentMode: moduleOperationsSettings.deploymentMode,
+        modules: moduleOperationsSettings.modules,
+        userOverrides: (moduleOperationsSettings.userOverrides || []).map((entry) => ({
+          user: entry.user,
+          modules: entry.modules || {},
+        })),
+      });
+      toast.success("Module operations settings updated");
+    } catch (error) {
+      toast.error(error.message || "Failed to update module operations settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRequestDecision = async (requestId, decision) => {
     try {
       setRequestActionLoadingId(requestId);
@@ -878,6 +1036,7 @@ export default function Settings() {
   const userInitials = user?.fullName
     ? user.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
+  const moduleOverrideUsers = (userDirectory || []).filter((entry) => entry?._id);
   const canSeeVisualPermissionsTab = true;
   const canEditVisualPermissions = user?.role === "super_admin" || canManageVisualPermissions;
   const canEditDelegation = user?.role === "super_admin";
@@ -894,7 +1053,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-8">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profile
@@ -916,6 +1075,10 @@ export default function Settings() {
               <TabsTrigger value="notifications" className="gap-2">
                 <Bell className="h-4 w-4" />
                 Notifications
+              </TabsTrigger>
+              <TabsTrigger value="modules" className="gap-2">
+                <Database className="h-4 w-4" />
+                Modules
               </TabsTrigger>
               <TabsTrigger value="data" className="gap-2">
                 <Database className="h-4 w-4" />
@@ -1469,6 +1632,158 @@ export default function Settings() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="modules">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Module Operations</CardTitle>
+                  <CardDescription>
+                    Configure Pathology, Radiology, and Pharmacy for integrated or standalone workflows, including per-user external walk-in controls.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Deployment Mode</Label>
+                    <Select
+                      value={moduleOperationsSettings.deploymentMode || "hybrid"}
+                      onValueChange={(value) =>
+                        setModuleOperationsSettings((prev) => ({
+                          ...prev,
+                          deploymentMode: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="w-full sm:w-[280px]">
+                        <SelectValue placeholder="Select deployment mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="integrated">Integrated with Hospital Core</SelectItem>
+                        <SelectItem value="independent">Independent Module Deployment</SelectItem>
+                        <SelectItem value="hybrid">Hybrid (Both Modes)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Global Module Controls</h3>
+                    <div className="grid gap-3 lg:grid-cols-3">
+                      {moduleOperationKeys.map((moduleKey) => {
+                        const moduleConfig = moduleOperationsSettings.modules?.[moduleKey] || createDefaultModuleOperationConfig();
+                        return (
+                          <div key={`global-${moduleKey}`} className="rounded-lg border p-4 space-y-2">
+                            <p className="text-sm font-semibold">{moduleOperationLabels[moduleKey]}</p>
+                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <span>Module Enabled</span>
+                              <Switch checked={!!moduleConfig.enabled} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "enabled", checked)} />
+                            </label>
+                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <span>Standalone Mode</span>
+                              <Switch checked={!!moduleConfig.runIndependently} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "runIndependently", checked)} />
+                            </label>
+                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <span>Integrated Mode</span>
+                              <Switch checked={!!moduleConfig.integrateWithHospitalCore} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "integrateWithHospitalCore", checked)} />
+                            </label>
+                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <span>Allow External Walk-ins</span>
+                              <Switch checked={!!moduleConfig.allowExternalWalkIns} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "allowExternalWalkIns", checked)} />
+                            </label>
+                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <span>Enable External Billing</span>
+                              <Switch checked={!!moduleConfig.externalBillingEnabled} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "externalBillingEnabled", checked)} />
+                            </label>
+                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <span>Track External Billing Separately</span>
+                              <Switch checked={!!moduleConfig.trackExternalBillingSeparately} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "trackExternalBillingSeparately", checked)} />
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <h3 className="text-sm font-semibold">Per User Override</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Use this when a specific user should allow/deny external walk-ins differently from global module rules.
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Select User</Label>
+                        <Select value={selectedModuleOverrideUserId} onValueChange={setSelectedModuleOverrideUserId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select user" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Select user</SelectItem>
+                            {moduleOverrideUsers.map((entry) => (
+                              <SelectItem key={entry._id} value={entry._id}>
+                                {`${entry.firstName || ""} ${entry.lastName || ""}`.trim() || entry.email} ({entry.email})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end">
+                        <Button variant="outline" onClick={handleRemoveUserOverride} disabled={selectedModuleOverrideUserId === "__none__"}>
+                          Remove User Override
+                        </Button>
+                      </div>
+                    </div>
+
+                    {selectedModuleOverrideUserId !== "__none__" ? (
+                      <div className="grid gap-3 lg:grid-cols-3">
+                        {moduleOperationKeys.map((moduleKey) => {
+                          const globalConfig = moduleOperationsSettings.modules?.[moduleKey] || createDefaultModuleOperationConfig();
+                          const overrideConfig = selectedModuleOverride?.modules?.[moduleKey] || {};
+                          const moduleConfig = { ...globalConfig, ...overrideConfig };
+                          return (
+                            <div key={`override-${moduleKey}`} className="rounded-lg border p-4 space-y-2">
+                              <p className="text-sm font-semibold">{moduleOperationLabels[moduleKey]}</p>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Module Enabled</span>
+                                <Switch checked={!!moduleConfig.enabled} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "enabled", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Standalone Mode</span>
+                                <Switch checked={!!moduleConfig.runIndependently} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "runIndependently", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Integrated Mode</span>
+                                <Switch checked={!!moduleConfig.integrateWithHospitalCore} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "integrateWithHospitalCore", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Allow External Walk-ins</span>
+                                <Switch checked={!!moduleConfig.allowExternalWalkIns} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "allowExternalWalkIns", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Enable External Billing</span>
+                                <Switch checked={!!moduleConfig.externalBillingEnabled} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "externalBillingEnabled", checked)} />
+                              </label>
+                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                <span>Track External Billing Separately</span>
+                                <Switch checked={!!moduleConfig.trackExternalBillingSeparately} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "trackExternalBillingSeparately", checked)} />
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+                        Select a user to configure per-user module operation overrides.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveModuleOperations} disabled={saving}>
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Save Module Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="data">
               <Card>
                 <CardHeader>
@@ -1795,7 +2110,7 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
@@ -1817,6 +2132,27 @@ export default function Settings() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="outline" className="justify-start">
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                          <DropdownMenuLabel>Show / Hide Permission Modules</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {rbacModules.map((module) => (
+                            <DropdownMenuCheckboxItem
+                              key={`permission-view-${module}`}
+                              checked={permissionVisibleModules.includes(module)}
+                              onCheckedChange={(checked) => togglePermissionModuleVisibility(module, checked)}
+                            >
+                              {moduleLabels[module] || module}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     <div className="grid gap-3 lg:grid-cols-2">

@@ -1,16 +1,19 @@
 const RadiologyOrder = require('../models/NH_RadiologyOrder');
 const Invoice = require('../models/NH_Invoice');
 const asyncHandler = require('express-async-handler');
+const { AppError } = require('../middleware/errorHandler');
+const { getEffectiveModuleConfig } = require('../utils/moduleOperationsSettings');
 
 // ====== CRUD ======
 
 const getRadiologyOrders = asyncHandler(async (req, res) => {
-  const { patientId, status, studyType, priority, startDate, endDate } = req.query;
+  const { patientId, status, studyType, priority, startDate, endDate, mode } = req.query;
   const query = {};
   if (patientId) query.patient = patientId;
   if (status) query.status = status;
   if (studyType) query.studyType = studyType;
   if (priority) query.priority = priority;
+  if (mode && mode !== 'all') query.mode = mode;
   if (startDate && endDate) {
     query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
@@ -42,7 +45,37 @@ const getRadiologyOrderById = asyncHandler(async (req, res) => {
 });
 
 const createRadiologyOrder = asyncHandler(async (req, res) => {
-  const orderData = { ...req.body, orderedBy: req.user._id };
+  const { mode = 'internal', externalPatient } = req.body;
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id });
+
+  if (!moduleConfig.enabled) {
+    throw new AppError('Radiology module is disabled by settings', 403);
+  }
+
+  if (mode === 'internal' && !req.body.patient) {
+    res.status(400); throw new Error('Patient is required for internal mode');
+  }
+  if (mode === 'internal' && !moduleConfig.integrateWithHospitalCore) {
+    throw new AppError('Radiology module is configured for standalone mode only', 403);
+  }
+  if (mode === 'external' && !moduleConfig.runIndependently) {
+    throw new AppError('Standalone radiology workflow is disabled', 403);
+  }
+  if (mode === 'external' && !moduleConfig.allowExternalWalkIns) {
+    throw new AppError('External walk-ins are disabled for radiology', 403);
+  }
+  if (mode === 'external' && (!externalPatient || !externalPatient.name)) {
+    res.status(400); throw new Error('External patient name is required');
+  }
+
+  const orderData = {
+    ...req.body,
+    orderedBy: req.user._id,
+    mode,
+    externalPatient: mode === 'external' ? externalPatient : undefined,
+    patient: mode === 'internal' ? req.body.patient : undefined,
+    doctor: req.body.doctor || undefined,
+  };
   if (orderData.price && !orderData.totalAmount) {
     orderData.totalAmount = Math.max(0, orderData.price - (orderData.discount || 0));
   }
@@ -179,6 +212,11 @@ const getRadiologyStats = asyncHandler(async (req, res) => {
 
 const generateRadiologyInvoice = asyncHandler(async (req, res) => {
   const { orderIds } = req.body;
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id });
+
+  if (!moduleConfig.enabled) {
+    throw new AppError('Radiology module is disabled by settings', 403);
+  }
   if (!orderIds || !orderIds.length) {
     res.status(400); throw new Error('Provide order IDs to generate invoice');
   }
@@ -188,9 +226,23 @@ const generateRadiologyInvoice = asyncHandler(async (req, res) => {
 
   if (!orders.length) { res.status(400); throw new Error('No unbilled orders found'); }
 
-  const patientId = orders[0].patient._id.toString();
-  if (!orders.every(o => o.patient._id.toString() === patientId)) {
-    res.status(400); throw new Error('All orders must be for the same patient');
+  const mode = orders[0].mode || 'internal';
+  if (!orders.every((order) => (order.mode || 'internal') === mode)) {
+    res.status(400); throw new Error('All orders must belong to the same billing mode');
+  }
+  if (mode === 'internal') {
+    const patientId = orders[0].patient?._id?.toString();
+    if (!patientId || !orders.every(o => o.patient?._id?.toString() === patientId)) {
+      res.status(400); throw new Error('All orders must be for the same patient');
+    }
+  } else {
+    if (!moduleConfig.externalBillingEnabled) {
+      throw new AppError('External billing is disabled for radiology', 403);
+    }
+    const extName = orders[0].externalPatient?.name;
+    if (!extName || !orders.every(o => o.externalPatient?.name === extName)) {
+      res.status(400); throw new Error('All orders must be for the same external patient');
+    }
   }
 
   const items = orders.map(o => ({
@@ -205,17 +257,34 @@ const generateRadiologyInvoice = asyncHandler(async (req, res) => {
 
   const subtotal = items.reduce((s, i) => s + i.amount, 0);
 
-  const invoice = await Invoice.create({
-    patient: patientId,
-    admission: orders[0].admission,
+  const invoiceData = {
     type: 'radiology',
+    sourceModule: 'radiology',
     items,
     subtotal,
     totalAmount: subtotal,
     dueAmount: subtotal,
     dueDate: new Date(Date.now() + 30 * 86400000),
     generatedBy: req.user._id
-  });
+  };
+
+  if (mode === 'internal') {
+    invoiceData.patient = orders[0].patient._id;
+    invoiceData.admission = orders[0].admission;
+    invoiceData.billingScope = 'internal';
+  } else {
+    invoiceData.billingScope = 'external';
+    invoiceData.externalPatientInfo = {
+      name: orders[0].externalPatient?.name || 'Walk-in',
+      age: orders[0].externalPatient?.age,
+      gender: orders[0].externalPatient?.gender,
+      phone: orders[0].externalPatient?.phone,
+      address: orders[0].externalPatient?.address,
+      referredBy: orders[0].externalPatient?.referredBy
+    };
+  }
+
+  const invoice = await Invoice.create(invoiceData);
 
   await RadiologyOrder.updateMany(
     { _id: { $in: orderIds } },

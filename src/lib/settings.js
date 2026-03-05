@@ -29,6 +29,10 @@ export const createAccessRequest = (data) => apiClient.post('/settings/access-re
 export const getPendingAccessRequests = () => apiClient.get('/settings/access-requests/pending');
 export const respondToAccessRequest = (id, data) => apiClient.patch(`/settings/access-requests/${id}/respond`, data);
 
+// Module operations (deployment + walk-in/billing controls)
+export const getModuleOperationsSettings = () => apiClient.get('/settings/module-operations');
+export const updateModuleOperationsSettings = (data) => apiClient.put('/settings/module-operations', data);
+
 // Data management (super admin)
 export const getDataManagementSettings = () => apiClient.get('/settings/data-management');
 export const updateDataManagementSettings = (data) => apiClient.put('/settings/data-management', data);

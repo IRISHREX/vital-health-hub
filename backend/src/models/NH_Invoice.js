@@ -10,7 +10,7 @@ const invoiceSchema = new mongoose.Schema({
   patient: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Patient',
-    required: true
+    required: false
   },
   admission: {
     type: mongoose.Schema.Types.ObjectId,
@@ -24,6 +24,24 @@ const invoiceSchema = new mongoose.Schema({
     type: String,
     enum: ['opd', 'ipd', 'pharmacy', 'lab', 'radiology', 'ot', 'other'],
     required: true
+  },
+  billingScope: {
+    type: String,
+    enum: ['internal', 'external'],
+    default: 'internal'
+  },
+  sourceModule: {
+    type: String,
+    enum: ['pathology', 'radiology', 'pharmacy', 'ot', 'general', 'other'],
+    default: 'general'
+  },
+  externalPatientInfo: {
+    name: { type: String },
+    age: { type: String },
+    gender: { type: String, enum: ['male', 'female', 'other'] },
+    phone: { type: String },
+    address: { type: String },
+    referredBy: { type: String }
   },
   items: [{
     description: { type: String, required: true },
@@ -111,6 +129,12 @@ const invoiceSchema = new mongoose.Schema({
 
 // Auto-generate invoice number
 invoiceSchema.pre('save', async function(next) {
+  if (this.billingScope === 'internal' && !this.patient) {
+    return next(new Error('Patient is required for internal billing'));
+  }
+  if (this.billingScope === 'external' && !this.externalPatientInfo?.name) {
+    return next(new Error('externalPatientInfo.name is required for external billing'));
+  }
   if (!this.invoiceNumber) {
     try {
       const date = new Date();

@@ -3,6 +3,8 @@ const LabTestCatalog = require('../models/NH_LabTestCatalog');
 const Patient = require('../models/NH_Patient');
 const Invoice = require('../models/NH_Invoice');
 const asyncHandler = require('express-async-handler');
+const { AppError } = require('../middleware/errorHandler');
+const { getEffectiveModuleConfig } = require('../utils/moduleOperationsSettings');
 
 const generateUniqueSampleId = async () => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -106,13 +108,14 @@ const deleteCatalogItem = asyncHandler(async (req, res) => {
 // ====== LAB TESTS (Orders) ======
 
 const getLabTests = asyncHandler(async (req, res) => {
-  const { patientId, status, category, priority, startDate, endDate, sampleStatus } = req.query;
+  const { patientId, status, category, priority, startDate, endDate, sampleStatus, mode } = req.query;
   const query = {};
   if (patientId) query.patient = patientId;
   if (status) query.status = status;
   if (category) query.category = category;
   if (priority) query.priority = priority;
   if (sampleStatus) query.sampleStatus = sampleStatus;
+  if (mode && mode !== 'all') query.mode = mode;
   if (startDate && endDate) {
     query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
@@ -145,7 +148,29 @@ const getLabTestById = asyncHandler(async (req, res) => {
 });
 
 const createLabTest = asyncHandler(async (req, res) => {
-  const { catalogTestId, catalogTestIds } = req.body;
+  const { catalogTestId, catalogTestIds, mode = 'internal', externalPatient } = req.body;
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
+
+  if (!moduleConfig.enabled) {
+    throw new AppError('Pathology module is disabled by settings', 403);
+  }
+
+  // Validate based on mode
+  if (mode === 'internal' && !req.body.patient) {
+    res.status(400); throw new Error('Patient is required for internal mode');
+  }
+  if (mode === 'internal' && !moduleConfig.integrateWithHospitalCore) {
+    throw new AppError('Pathology module is configured for standalone mode only', 403);
+  }
+  if (mode === 'external' && !moduleConfig.runIndependently) {
+    throw new AppError('Standalone pathology workflow is disabled', 403);
+  }
+  if (mode === 'external' && !moduleConfig.allowExternalWalkIns) {
+    throw new AppError('External walk-ins are disabled for pathology lab', 403);
+  }
+  if (mode === 'external' && (!externalPatient || !externalPatient.name)) {
+    res.status(400); throw new Error('External patient name is required');
+  }
 
   const selectedCatalogIds = Array.isArray(catalogTestIds) && catalogTestIds.length
     ? catalogTestIds
@@ -158,7 +183,14 @@ const createLabTest = asyncHandler(async (req, res) => {
       throw new Error('One or more catalog tests not found');
     }
 
-    const sharedData = { ...req.body, orderedBy: req.user._id };
+    const sharedData = {
+      ...req.body,
+      orderedBy: req.user._id,
+      mode,
+      externalPatient: mode === 'external' ? externalPatient : undefined,
+      patient: mode === 'internal' ? req.body.patient : undefined,
+      doctor: req.body.doctor || undefined,
+    };
 
     const testsToCreate = selectedCatalogIds.map((id) => {
       const catalogItem = catalogItems.find((item) => item._id.toString() === id.toString());
@@ -196,7 +228,14 @@ const createLabTest = asyncHandler(async (req, res) => {
     return;
   }
 
-  const testData = { ...req.body, orderedBy: req.user._id };
+  const testData = {
+    ...req.body,
+    orderedBy: req.user._id,
+    mode,
+    externalPatient: mode === 'external' ? externalPatient : undefined,
+    patient: mode === 'internal' ? req.body.patient : undefined,
+    doctor: req.body.doctor || undefined,
+  };
   const test = await LabTest.create(testData);
   const populated = await LabTest.findById(test._id)
     .populate('patient', 'firstName lastName patientId')
@@ -357,6 +396,11 @@ const getLabStats = asyncHandler(async (req, res) => {
 
 const generateLabInvoice = asyncHandler(async (req, res) => {
   const { testIds } = req.body;
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
+
+  if (!moduleConfig.enabled) {
+    throw new AppError('Pathology module is disabled by settings', 403);
+  }
   if (!testIds || !testIds.length) {
     res.status(400);
     throw new Error('Provide test IDs to generate invoice');
@@ -370,10 +414,26 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
     throw new Error('No unbilled tests found');
   }
 
-  const patientId = tests[0].patient._id.toString();
-  if (!tests.every(t => t.patient._id.toString() === patientId)) {
+  // Determine if external or internal
+  const mode = tests[0].mode || 'internal';
+  if (!tests.every((test) => (test.mode || 'internal') === mode)) {
     res.status(400);
-    throw new Error('All tests must be for the same patient');
+    throw new Error('All tests must belong to the same billing mode');
+  }
+
+  // Verify all tests belong to same patient/external patient
+  if (mode === 'internal') {
+    const patientId = tests[0].patient?._id?.toString();
+    if (!tests.every(t => t.patient?._id?.toString() === patientId)) {
+      res.status(400);
+      throw new Error('All tests must be for the same patient');
+    }
+  } else {
+    const extName = tests[0].externalPatient?.name;
+    if (!tests.every(t => t.externalPatient?.name === extName)) {
+      res.status(400);
+      throw new Error('All tests must be for the same external patient');
+    }
   }
 
   const items = tests.map(t => ({
@@ -388,17 +448,38 @@ const generateLabInvoice = asyncHandler(async (req, res) => {
 
   const subtotal = items.reduce((s, i) => s + i.amount, 0);
 
-  const invoice = await Invoice.create({
-    patient: patientId,
-    admission: tests[0].admission,
+  const invoiceData = {
     type: 'lab',
+    sourceModule: 'pathology',
     items,
     subtotal,
     totalAmount: subtotal,
     dueAmount: subtotal,
     dueDate: new Date(Date.now() + 30 * 86400000),
-    generatedBy: req.user._id
-  });
+    generatedBy: req.user._id,
+    notes: mode === 'external' ? `External Patient: ${tests[0].externalPatient?.name || 'Walk-in'}` : undefined
+  };
+
+  if (mode === 'internal') {
+    invoiceData.patient = tests[0].patient._id;
+    invoiceData.admission = tests[0].admission;
+    invoiceData.billingScope = 'internal';
+  } else {
+    if (!moduleConfig.externalBillingEnabled) {
+      throw new AppError('External billing is disabled for pathology lab', 403);
+    }
+    invoiceData.billingScope = 'external';
+    invoiceData.externalPatientInfo = {
+      name: tests[0].externalPatient?.name || 'Walk-in',
+      age: tests[0].externalPatient?.age,
+      gender: tests[0].externalPatient?.gender,
+      phone: tests[0].externalPatient?.phone,
+      address: tests[0].externalPatient?.address,
+      referredBy: tests[0].externalPatient?.referredBy
+    };
+  }
+
+  const invoice = await Invoice.create(invoiceData);
 
   await LabTest.updateMany(
     { _id: { $in: testIds } },
