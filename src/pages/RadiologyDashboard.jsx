@@ -213,7 +213,7 @@ export default function RadiologyDashboard() {
                             <CheckCircle2 className="h-4 w-4" />
                           </Button>
                         )}
-                        {["completed", "reported", "verified"].includes(o.status) && (
+                        {["completed", "reported", "verified", "delivered"].includes(o.status) && (
                           <>
                             <Button variant="ghost" size="icon" title="Report" onClick={() => { setSelectedOrder(o); setReportDialogOpen(true); }}>
                               <FileText className="h-4 w-4" />
