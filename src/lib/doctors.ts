@@ -1,11 +1,25 @@
 import { apiClient } from './api-client';
 
 const formatDoctorData = (doctorData) => {
+  const rawFee = doctorData?.consultationFee;
+  const opd =
+    typeof rawFee === "object" && rawFee !== null
+      ? Number(rawFee.opd)
+      : Number(rawFee);
+  const ipd =
+    typeof rawFee === "object" && rawFee !== null
+      ? Number(rawFee.ipd)
+      : Number.isFinite(opd)
+        ? opd * 2
+        : NaN;
+  const safeOpd = Number.isFinite(opd) ? opd : 500;
+  const safeIpd = Number.isFinite(ipd) ? ipd : safeOpd * 2;
+
   return {
     ...doctorData,
     consultationFee: {
-      opd: doctorData.consultationFee,
-      ipd: (doctorData.consultationFee || 500) * 2
+      opd: safeOpd,
+      ipd: safeIpd
     }
   };
 };

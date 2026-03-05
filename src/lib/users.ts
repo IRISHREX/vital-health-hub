@@ -15,3 +15,7 @@ export const updateUser = async (id, userData) => {
 export const deleteUser = async (id) => {
   return await apiClient.delete(`/users/${id}`);
 };
+
+export const getNurses = async () => {
+  return await apiClient.get('/users/nurses');
+};
