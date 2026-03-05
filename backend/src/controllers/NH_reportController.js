@@ -1,14 +1,24 @@
 const asyncHandler = require('express-async-handler');
-const Admission = require('../models/NH_Admission');
-const Invoice = require('../models/NH_Invoice');
-const Patient = require('../models/NH_Patient');
-const Appointment = require('../models/NH_Appointment');
-const Bed = require('../models/NH_Bed');
+const BaseAdmission = require('../models/NH_Admission');
+const BaseInvoice = require('../models/NH_Invoice');
+const BasePatient = require('../models/NH_Patient');
+const BaseAppointment = require('../models/NH_Appointment');
+const BaseBed = require('../models/NH_Bed');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+    Admission: getModel(req, 'Admission', BaseAdmission),
+    Invoice: getModel(req, 'Invoice', BaseInvoice),
+    Patient: getModel(req, 'Patient', BasePatient),
+    Appointment: getModel(req, 'Appointment', BaseAppointment),
+    Bed: getModel(req, 'Bed', BaseBed)
+});
 
 // @desc    Get key performance indicators
 // @route   GET /api/reports/kpis
 // @access  Private
 const getKpis = asyncHandler(async (req, res) => {
+    const { Patient, Admission, Bed, Invoice, Appointment } = getModels(req);
     const totalPatients = await Patient.countDocuments();
     const totalAdmissions = await Admission.countDocuments();
     const today = new Date();
@@ -51,6 +61,7 @@ const getKpis = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/financial
 // @access  Private
 const getFinancialReport = asyncHandler(async (req, res) => {
+    const { Invoice } = getModels(req);
     const { startDate, endDate, groupBy = 'day' } = req.query;
     const match = { status: { $in: ['paid', 'partial'] } };
     if (startDate && endDate) {
@@ -85,6 +96,7 @@ const getFinancialReport = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/admissions
 // @access  Private
 const getAdmissionsReport = asyncHandler(async (req, res) => {
+    const { Admission } = getModels(req);
     const { startDate, endDate } = req.query;
     const match = {};
     if (startDate && endDate) {

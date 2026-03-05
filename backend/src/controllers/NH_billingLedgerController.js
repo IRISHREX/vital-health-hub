@@ -1,7 +1,18 @@
-const { BillingLedger, Invoice, Admission, Patient } = require('../models');
+const BaseBillingLedger = require('../models/NH_BillingLedger');
+const BaseInvoice = require('../models/NH_Invoice');
+const BaseAdmission = require('../models/NH_Admission');
+const BasePatient = require('../models/NH_Patient');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
 
-const attachEntriesToInvoice = async (invoice, entries) => {
+const getModels = (req) => ({
+  BillingLedger: getModel(req, 'BillingLedger', BaseBillingLedger),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+  Admission: getModel(req, 'Admission', BaseAdmission),
+  Patient: getModel(req, 'Patient', BasePatient),
+});
+
+const attachEntriesToInvoice = async (invoice, entries, BillingLedgerModel = BaseBillingLedger) => {
   if (!invoice || !entries.length) return 0;
 
   entries.forEach((entry) => {
@@ -23,7 +34,7 @@ const attachEntriesToInvoice = async (invoice, entries) => {
   await invoice.save();
 
   const entryIds = entries.map((e) => e._id);
-  await BillingLedger.updateMany(
+  await BillingLedgerModel.updateMany(
     { _id: { $in: entryIds } },
     { billed: true, billedAt: new Date(), invoice: invoice._id }
   );
@@ -36,6 +47,7 @@ const attachEntriesToInvoice = async (invoice, entries) => {
 // @access  Private
 exports.createLedgerEntry = async (req, res, next) => {
   try {
+    const { BillingLedger, Invoice, Admission, Patient } = getModels(req);
     const {
       admissionId,
       patientId,
@@ -90,7 +102,7 @@ exports.createLedgerEntry = async (req, res, next) => {
         status: { $in: ['draft', 'pending'] }
       });
       if (invoice) {
-        await attachEntriesToInvoice(invoice, [entry]);
+        await attachEntriesToInvoice(invoice, [entry], BillingLedger);
       }
     }
 
@@ -109,6 +121,7 @@ exports.createLedgerEntry = async (req, res, next) => {
 // @access  Private
 exports.getLedgerEntries = async (req, res, next) => {
   try {
+    const { BillingLedger } = getModels(req);
     const { admissionId, patientId, billed, startDate, endDate, page = 1, limit = 50 } = req.query;
     const query = {};
 
@@ -152,6 +165,7 @@ exports.getLedgerEntries = async (req, res, next) => {
 // @access  Private
 exports.generateProvisionalInvoice = async (req, res, next) => {
   try {
+    const { BillingLedger, Invoice, Admission, Patient } = getModels(req);
     const { admissionId } = req.body;
     if (!admissionId) {
       throw new AppError('admissionId is required', 400);
@@ -193,7 +207,7 @@ exports.generateProvisionalInvoice = async (req, res, next) => {
     }
 
     const unbilledEntries = await BillingLedger.find({ admission: admissionId, billed: false });
-    const attachedCount = await attachEntriesToInvoice(invoice, unbilledEntries);
+    const attachedCount = await attachEntriesToInvoice(invoice, unbilledEntries, BillingLedger);
 
     res.json({
       success: true,

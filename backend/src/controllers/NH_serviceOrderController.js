@@ -1,5 +1,20 @@
-const { ServiceOrder, Admission, Patient, Facility, BillingLedger, Invoice } = require('../models');
+const BaseServiceOrder = require('../models/NH_ServiceOrder');
+const BaseAdmission = require('../models/NH_Admission');
+const BasePatient = require('../models/NH_Patient');
+const BaseFacility = require('../models/NH_Facility');
+const BaseBillingLedger = require('../models/NH_BillingLedger');
+const BaseInvoice = require('../models/NH_Invoice');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  ServiceOrder: getModel(req, 'ServiceOrder', BaseServiceOrder),
+  Admission: getModel(req, 'Admission', BaseAdmission),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Facility: getModel(req, 'Facility', BaseFacility),
+  BillingLedger: getModel(req, 'BillingLedger', BaseBillingLedger),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+});
 
 const typeToCategory = {
   lab: 'lab_test',
@@ -15,7 +30,7 @@ const buildDescription = ({ serviceName, facilityName, type }) => {
   return facilityName ? `${base} (${facilityName})` : base;
 };
 
-const attachLedgerToInvoice = async (ledgerEntry, admissionId) => {
+const attachLedgerToInvoice = async (Invoice, ledgerEntry, admissionId) => {
   const invoice = await Invoice.findOne({
     admission: admissionId,
     status: { $in: ['draft', 'pending'] }
@@ -52,6 +67,7 @@ const attachLedgerToInvoice = async (ledgerEntry, admissionId) => {
 // @access  Private
 exports.createServiceOrder = async (req, res, next) => {
   try {
+    const { ServiceOrder, Admission, Patient, Facility } = getModels(req);
     const {
       admissionId,
       patientId,
@@ -132,6 +148,7 @@ exports.createServiceOrder = async (req, res, next) => {
 // @access  Private
 exports.getServiceOrders = async (req, res, next) => {
   try {
+    const { ServiceOrder } = getModels(req);
     const { admissionId, patientId, status, type, page = 1, limit = 20 } = req.query;
     const query = {};
 
@@ -171,6 +188,7 @@ exports.getServiceOrders = async (req, res, next) => {
 // @access  Private
 exports.updateServiceOrder = async (req, res, next) => {
   try {
+    const { ServiceOrder, Facility, BillingLedger, Invoice } = getModels(req);
     const { status, result, notes, performedBy } = req.body;
     const order = await ServiceOrder.findById(req.params.id);
 
@@ -212,7 +230,7 @@ exports.updateServiceOrder = async (req, res, next) => {
         recordedBy: req.user._id
       });
 
-      await attachLedgerToInvoice(ledgerEntry, order.admission);
+      await attachLedgerToInvoice(Invoice, ledgerEntry, order.admission);
       order.billed = true;
       await order.save();
     }

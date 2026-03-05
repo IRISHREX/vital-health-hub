@@ -1,7 +1,22 @@
-const { Patient, Appointment, User, Bed, Prescription, Notification } = require('../models');
+const BasePatient = require('../models/NH_Patient');
+const BaseAppointment = require('../models/NH_Appointment');
+const BaseUser = require('../models/NH_User');
+const BaseBed = require('../models/NH_Bed');
+const BasePrescription = require('../models/NH_Prescription');
+const BaseNotification = require('../models/NH_Notification');
 const { AppError } = require('../middleware/errorHandler');
 const { emitNotification } = require('../config/socket');
 const { assertAssignmentAllowed } = require('../utils/assignmentPermissions');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Patient: getModel(req, 'Patient', BasePatient),
+  Appointment: getModel(req, 'Appointment', BaseAppointment),
+  User: getModel(req, 'User', BaseUser),
+  Bed: getModel(req, 'Bed', BaseBed),
+  Prescription: getModel(req, 'Prescription', BasePrescription),
+  Notification: getModel(req, 'Notification', BaseNotification),
+});
 
 const canQueryOtherNurses = (role) => ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(role);
 
@@ -14,7 +29,7 @@ const getNurseScope = (req) => {
   return requestedNurseId;
 };
 
-const getBedAssignedPatientIds = async (nurseId) => {
+const getBedAssignedPatientIds = async (Bed, nurseId) => {
   const beds = await Bed.find({
     nurseInCharge: nurseId,
     currentPatient: { $ne: null }
@@ -25,7 +40,7 @@ const getBedAssignedPatientIds = async (nurseId) => {
   return { patientIds, bedIds };
 };
 
-const isPatientAssignedToNurse = async (patient, nurseId) => {
+const isPatientAssignedToNurse = async (Bed, patient, nurseId) => {
   const byPatient =
     (patient.assignedNurses || []).some((id) => id.toString() === nurseId.toString()) ||
     (patient.primaryNurse && patient.primaryNurse.toString() === nurseId.toString());
@@ -37,7 +52,7 @@ const isPatientAssignedToNurse = async (patient, nurseId) => {
   return !!(bed?.nurseInCharge && bed.nurseInCharge.toString() === nurseId.toString());
 };
 
-const ensurePatientAssignedToNurse = async (patientId, nurseId) => {
+const ensurePatientAssignedToNurse = async (Patient, patientId, nurseId) => {
   if (!patientId || !nurseId) return;
   const patient = await Patient.findById(patientId).select('assignedNurses primaryNurse');
   if (!patient) return;
@@ -58,8 +73,9 @@ const ensurePatientAssignedToNurse = async (patientId, nurseId) => {
 // Get patients assigned to this nurse (supports admin/doctor requesting a specific nurse via ?nurseId=)
 exports.getAssignedPatients = async (req, res, next) => {
   try {
+    const { Patient, Bed } = getModels(req);
     const nurseIdToUse = getNurseScope(req);
-    const { patientIds, bedIds } = await getBedAssignedPatientIds(nurseIdToUse);
+    const { patientIds, bedIds } = await getBedAssignedPatientIds(Bed, nurseIdToUse);
 
     const patients = await Patient.find({
       $or: [
@@ -78,6 +94,7 @@ exports.getAssignedPatients = async (req, res, next) => {
 // Get appointments assigned to this nurse (supports admin/doctor requesting a specific nurse via ?nurseId=)
 exports.getAssignedAppointments = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const nurseIdToUse = getNurseScope(req);
 
     const appointments = await Appointment.find({ assignedNurse: nurseIdToUse })
@@ -93,12 +110,13 @@ exports.getAssignedAppointments = async (req, res, next) => {
 // Get prescriptions for a patient assigned to this nurse
 exports.getAssignedPatientPrescriptions = async (req, res, next) => {
   try {
+    const { Patient, Prescription, Bed } = getModels(req);
     const patientId = req.params.id;
     const patient = await Patient.findById(patientId).select('assignedNurses primaryNurse');
     if (!patient) throw new AppError('Patient not found', 404);
 
     const isPrivileged = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
-    const isAssigned = await isPatientAssignedToNurse(patient, req.user._id);
+    const isAssigned = await isPatientAssignedToNurse(Bed, patient, req.user._id);
 
     if (!isPrivileged && !isAssigned) {
       throw new AppError('You are not assigned to this patient', 403);
@@ -120,6 +138,7 @@ exports.getAssignedPatientPrescriptions = async (req, res, next) => {
 // Assign a room (ward + floor + roomNumber) to a nurse
 exports.assignRoomToNurse = async (req, res, next) => {
   try {
+    const { User, Bed, Patient } = getModels(req);
     const { nurseId, ward, floor, roomNumber } = req.body;
 
     if (!nurseId || !ward || floor === undefined || floor === null || !roomNumber) {
@@ -159,7 +178,7 @@ exports.assignRoomToNurse = async (req, res, next) => {
       await Promise.all(
         roomBeds
           .filter((b) => !!b.currentPatient)
-          .map((b) => ensurePatientAssignedToNurse(b.currentPatient, nurseId))
+          .map((b) => ensurePatientAssignedToNurse(Patient, b.currentPatient, nurseId))
       );
     }
 
@@ -176,6 +195,7 @@ exports.assignRoomToNurse = async (req, res, next) => {
 // Handover patient to another nurse
 exports.handoverPatient = async (req, res, next) => {
   try {
+    const { Patient, User, Notification, Bed } = getModels(req);
     const { patientId, toNurseId } = req.body;
 
     if (!patientId || !toNurseId) {
@@ -198,7 +218,7 @@ exports.handoverPatient = async (req, res, next) => {
     });
 
     const isPrivileged = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
-    const isAssigned = await isPatientAssignedToNurse(patient, req.user._id);
+    const isAssigned = await isPatientAssignedToNurse(Bed, patient, req.user._id);
 
     if (!isPrivileged && !isAssigned) {
       throw new AppError('You are not assigned to this patient', 403);
@@ -253,6 +273,7 @@ exports.handoverPatient = async (req, res, next) => {
 // Respond to handover request notification
 exports.respondToHandoverRequest = async (req, res, next) => {
   try {
+    const { Notification, Patient, User } = getModels(req);
     const { id } = req.params;
     const decision = String(req.body?.decision || '').toLowerCase();
     if (!['accepted', 'rejected'].includes(decision)) {
@@ -346,6 +367,7 @@ exports.respondToHandoverRequest = async (req, res, next) => {
 // Update patient status (nurse action)
 exports.updatePatientStatus = async (req, res, next) => {
   try {
+    const { Patient } = getModels(req);
     const { status } = req.body;
     const allowed = ['active', 'admitted', 'discharged', 'critical', 'inactive'];
     if (!allowed.includes(status)) throw new AppError('Invalid status', 400);

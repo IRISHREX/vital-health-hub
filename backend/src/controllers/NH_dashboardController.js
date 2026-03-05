@@ -1,8 +1,28 @@
-const { Appointment, Patient, Vital, User, Doctor, Bed, Admission, Invoice } = require('../models');
+const BaseAppointment = require('../models/NH_Appointment');
+const BasePatient = require('../models/NH_Patient');
+const BaseVital = require('../models/NH_Vital');
+const BaseUser = require('../models/NH_User');
+const BaseDoctor = require('../models/NH_Doctor');
+const BaseBed = require('../models/NH_Bed');
+const BaseAdmission = require('../models/NH_Admission');
+const BaseInvoice = require('../models/NH_Invoice');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Appointment: getModel(req, 'Appointment', BaseAppointment),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Vital: getModel(req, 'Vital', BaseVital),
+  User: getModel(req, 'User', BaseUser),
+  Doctor: getModel(req, 'Doctor', BaseDoctor),
+  Bed: getModel(req, 'Bed', BaseBed),
+  Admission: getModel(req, 'Admission', BaseAdmission),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+});
 
 // Return role-specific dashboard summaries
 exports.getDashboard = async (req, res, next) => {
   try {
+    const { Appointment, Patient, Vital, User, Doctor, Bed, Admission, Invoice } = getModels(req);
     const roleQuery = req.query.role || req.user.role;
     const requestedNurseId = req.query.nurseId;
     const canQueryOtherNurses = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
@@ -23,46 +43,43 @@ exports.getDashboard = async (req, res, next) => {
       dayEnd.setHours(23, 59, 59, 999);
 
       const todayAppointments = await Appointment.countDocuments({
-        appointmentDate: { $gte: dayStart, $lte: dayEnd }
+        appointmentDate: { $gte: dayStart, $lte: dayEnd },
       });
       const todayDischarges = await Admission.countDocuments({
-        actualDischargeDate: { $gte: dayStart, $lte: dayEnd }
+        actualDischargeDate: { $gte: dayStart, $lte: dayEnd },
       });
 
       const pendingBills = await Invoice.countDocuments({
         status: { $nin: ['cancelled', 'refunded'] },
-        $expr: { $gt: ['$totalAmount', '$paidAmount'] }
+        $expr: { $gt: ['$totalAmount', '$paidAmount'] },
       });
 
       const pendingRevenueResult = await Invoice.aggregate([
         {
           $match: {
-            status: { $nin: ['cancelled', 'refunded'] }
-          }
+            status: { $nin: ['cancelled', 'refunded'] },
+          },
         },
         {
           $project: {
             due: {
-              $max: [
-                0,
-                { $subtract: ['$totalAmount', '$paidAmount'] }
-              ]
-            }
-          }
+              $max: [0, { $subtract: ['$totalAmount', '$paidAmount'] }],
+            },
+          },
         },
         {
           $group: {
             _id: null,
-            totalDue: { $sum: '$due' }
-          }
-        }
+            totalDue: { $sum: '$due' },
+          },
+        },
       ]);
       const pendingRevenue = pendingRevenueResult[0]?.totalDue || 0;
       const bedUtilizationRate = totalBeds > 0 ? Math.round(((totalBeds - availableBeds) / totalBeds) * 100) : 0;
 
       const doctorUpcomingAppointments = await Appointment.countDocuments({
         status: { $in: ['scheduled', 'confirmed'] },
-        appointmentDate: { $gte: dayStart, $lte: dayEnd }
+        appointmentDate: { $gte: dayStart, $lte: dayEnd },
       });
 
       const totalNurses = await User.countDocuments({ role: 'nurse' });
@@ -73,7 +90,7 @@ exports.getDashboard = async (req, res, next) => {
           cards: [
             { key: 'admin', label: 'Admin View', value: totalPatients },
             { key: 'doctor', label: 'Doctor View', value: doctorUpcomingAppointments },
-            { key: 'nurse', label: 'Nurse View', value: totalNurses }
+            { key: 'nurse', label: 'Nurse View', value: totalNurses },
           ],
           stats: {
             totalPatients,
@@ -87,9 +104,9 @@ exports.getDashboard = async (req, res, next) => {
             todayAppointments,
             todayDischarges,
             bedUtilizationRate,
-            pendingRevenue
-          }
-        }
+            pendingRevenue,
+          },
+        },
       });
     }
 
@@ -107,11 +124,12 @@ exports.getDashboard = async (req, res, next) => {
     if (roleQuery === 'nurse' && (['nurse', 'head_nurse'].includes(req.user.role) || ['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role))) {
       // For Admins and Doctors: Show Nurse Availability Overview
       if (['super_admin', 'hospital_admin', 'doctor'].includes(req.user.role) && !requestedNurseId) {
-        const nurses = await User.find({ role: { $in: ['nurse', 'head_nurse'] } })
-          .select('firstName lastName email phone status department isActive avatar');
+        const nurses = await User.find({ role: { $in: ['nurse', 'head_nurse'] } }).select(
+          'firstName lastName email phone status department isActive avatar'
+        );
 
-        const availableNurses = nurses.filter(n => n.status === 'active');
-        const unavailableNurses = nurses.filter(n => n.status !== 'active');
+        const availableNurses = nurses.filter((n) => n.status === 'active');
+        const unavailableNurses = nurses.filter((n) => n.status !== 'active');
 
         return res.json({
           success: true,
@@ -120,19 +138,18 @@ exports.getDashboard = async (req, res, next) => {
             stats: {
               total: nurses.length,
               available: availableNurses.length,
-              unavailable: unavailableNurses.length
+              unavailable: unavailableNurses.length,
             },
             nurses: {
               available: availableNurses,
-              unavailable: unavailableNurses
-            }
-          }
+              unavailable: unavailableNurses,
+            },
+          },
         });
       }
 
       const isAllNursesScope =
-        (requestedNurseId === 'all' && canQueryOtherNurses) ||
-        (!requestedNurseId && req.user.role === 'head_nurse');
+        (requestedNurseId === 'all' && canQueryOtherNurses) || (!requestedNurseId && req.user.role === 'head_nurse');
       const nurseId = (!isAllNursesScope && requestedNurseId && canQueryOtherNurses) ? requestedNurseId : req.user._id;
 
       let assignedPatients = 0;
@@ -141,31 +158,28 @@ exports.getDashboard = async (req, res, next) => {
 
       if (isAllNursesScope) {
         assignedPatients = await Patient.countDocuments({
-          $or: [
-            { assignedNurses: { $exists: true, $ne: [] } },
-            { primaryNurse: { $ne: null } }
-          ]
+          $or: [{ assignedNurses: { $exists: true, $ne: [] } }, { primaryNurse: { $ne: null } }],
         });
         todaysAppointments = await Appointment.countDocuments({
           assignedNurse: { $ne: null },
-          appointmentDate: { $gte: new Date(new Date().setHours(0, 0, 0, 0)), $lt: new Date(new Date().setHours(23, 59, 59, 999)) }
+          appointmentDate: {
+            $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            $lt: new Date(new Date().setHours(23, 59, 59, 999)),
+          },
         });
       } else {
         assignedPatients = await Patient.countDocuments({
-          $or: [
-            { assignedNurses: nurseId },
-            { primaryNurse: nurseId }
-          ]
+          $or: [{ assignedNurses: nurseId }, { primaryNurse: nurseId }],
         });
         todaysAppointments = await Appointment.countDocuments({
           assignedNurse: nurseId,
-          appointmentDate: { $gte: new Date(new Date().setHours(0, 0, 0, 0)), $lt: new Date(new Date().setHours(23, 59, 59, 999)) }
+          appointmentDate: {
+            $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            $lt: new Date(new Date().setHours(23, 59, 59, 999)),
+          },
         });
         const assignedPatientDocs = await Patient.find({
-          $or: [
-            { assignedNurses: nurseId },
-            { primaryNurse: nurseId }
-          ]
+          $or: [{ assignedNurses: nurseId }, { primaryNurse: nurseId }],
         }).select('_id');
         assignedPatientIds = assignedPatientDocs.map((p) => p._id);
       }
@@ -175,20 +189,17 @@ exports.getDashboard = async (req, res, next) => {
       const recentVitals = await Vital.countDocuments({
         $and: [
           {
-            $or: [
-              { recordedAt: { $gte: last24h } },
-              { createdAt: { $gte: last24h } }
-            ]
+            $or: [{ recordedAt: { $gte: last24h } }, { createdAt: { $gte: last24h } }],
           },
-          (isAllNursesScope
+          isAllNursesScope
             ? { _id: { $exists: true } }
             : {
-              $or: [
-                { recordedBy: nurseId },
-                ...(assignedPatientIds.length > 0 ? [{ patient: { $in: assignedPatientIds } }] : [])
-              ]
-            })
-        ]
+                $or: [
+                  { recordedBy: nurseId },
+                  ...(assignedPatientIds.length > 0 ? [{ patient: { $in: assignedPatientIds } }] : []),
+                ],
+              },
+        ],
       });
 
       return res.json({ success: true, data: { assignedPatients, todaysAppointments, recentVitals } });

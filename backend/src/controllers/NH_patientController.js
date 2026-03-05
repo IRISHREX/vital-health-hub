@@ -1,19 +1,33 @@
-const {
-  Patient,
-  Invoice,
-  Bed,
-  Appointment,
-  Admission,
-  Vital,
-  LabTest,
-  Prescription,
-  ServiceOrder,
-  BillingLedger,
-  Task,
-  User
-} = require('../models');
+const BasePatient = require('../models/NH_Patient');
+const BaseInvoice = require('../models/NH_Invoice');
+const BaseBed = require('../models/NH_Bed');
+const BaseAppointment = require('../models/NH_Appointment');
+const BaseAdmission = require('../models/NH_Admission');
+const BaseVital = require('../models/NH_Vital');
+const BaseLabTest = require('../models/NH_LabTest');
+const BasePrescription = require('../models/NH_Prescription');
+const BaseServiceOrder = require('../models/NH_ServiceOrder');
+const BaseBillingLedger = require('../models/NH_BillingLedger');
+const BaseTask = require('../models/NH_Task');
+const BaseUser = require('../models/NH_User');
 const { AppError } = require('../middleware/errorHandler');
 const { assertAssignmentAllowed } = require('../utils/assignmentPermissions');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Patient: getModel(req, 'Patient', BasePatient),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+  Bed: getModel(req, 'Bed', BaseBed),
+  Appointment: getModel(req, 'Appointment', BaseAppointment),
+  Admission: getModel(req, 'Admission', BaseAdmission),
+  Vital: getModel(req, 'Vital', BaseVital),
+  LabTest: getModel(req, 'LabTest', BaseLabTest),
+  Prescription: getModel(req, 'Prescription', BasePrescription),
+  ServiceOrder: getModel(req, 'ServiceOrder', BaseServiceOrder),
+  BillingLedger: getModel(req, 'BillingLedger', BaseBillingLedger),
+  Task: getModel(req, 'Task', BaseTask),
+  User: getModel(req, 'User', BaseUser),
+});
 
 const safeDate = (value) => {
   if (!value) return null;
@@ -23,7 +37,7 @@ const safeDate = (value) => {
 
 const toText = (value) => String(value || '').toLowerCase();
 
-const enforcePatientAssignmentPolicy = async (req, payload = {}) => {
+const enforcePatientAssignmentPolicy = async (req, User, payload = {}) => {
   const nurseIds = [
     ...(Array.isArray(payload.assignedNurses) ? payload.assignedNurses : []),
     payload.primaryNurse
@@ -50,6 +64,7 @@ const enforcePatientAssignmentPolicy = async (req, payload = {}) => {
 // @access  Private
 exports.getPatients = async (req, res, next) => {
   try {
+    const { Patient } = getModels(req);
     const { status, registrationType, search, page = 1, limit = 20 } = req.query;
     
     const query = {};
@@ -93,6 +108,7 @@ exports.getPatients = async (req, res, next) => {
 // @access  Private
 exports.getPatient = async (req, res, next) => {
   try {
+    const { Patient } = getModels(req);
     const patient = await Patient.findById(req.params.id)
       .populate('registeredBy', 'firstName lastName')
       .populate({ path: 'assignedDoctor', populate: { path: 'user', select: 'firstName lastName' } })
@@ -118,6 +134,7 @@ exports.getPatient = async (req, res, next) => {
 // @access  Private
 exports.getPatientHistory = async (req, res, next) => {
   try {
+    const { Patient, Appointment, Admission, Vital, Prescription, LabTest, Invoice, BillingLedger, ServiceOrder, Task } = getModels(req);
     const patientId = req.params.id;
     const page = Math.max(1, Number.parseInt(req.query.page || '1', 10));
     const limit = Math.min(200, Math.max(10, Number.parseInt(req.query.limit || '50', 10)));
@@ -585,6 +602,7 @@ exports.getPatientHistory = async (req, res, next) => {
 // @access  Private
 exports.createPatient = async (req, res, next) => {
   try {
+    const { Patient, Invoice, Bed, User } = getModels(req);
     const { 
       firstName, lastName, dateOfBirth, gender, phone, email, address, 
       emergencyContact, bloodGroup, registrationType, medicalHistory, 
@@ -623,7 +641,7 @@ exports.createPatient = async (req, res, next) => {
     if (req.body.primaryNurse) {
       patientData.primaryNurse = req.body.primaryNurse;
     }
-    await enforcePatientAssignmentPolicy(req, patientData);
+    await enforcePatientAssignmentPolicy(req, User, patientData);
 
     // Assign bed if IPD and bed provided
     if (registrationType === 'ipd' && assignedBed) {
@@ -750,6 +768,7 @@ exports.createPatient = async (req, res, next) => {
 // @access  Private
 exports.updatePatient = async (req, res, next) => {
   try {
+    const { Patient, Bed, Admission, User } = getModels(req);
     const { assignedBed } = req.body;
     const patient = await Patient.findById(req.params.id);
 
@@ -833,7 +852,7 @@ exports.updatePatient = async (req, res, next) => {
       const updatePayload = {};
       if (req.body.assignedNurses !== undefined) updatePayload.assignedNurses = req.body.assignedNurses;
       if (req.body.primaryNurse !== undefined) updatePayload.primaryNurse = req.body.primaryNurse;
-      await enforcePatientAssignmentPolicy(req, updatePayload);
+      await enforcePatientAssignmentPolicy(req, User, updatePayload);
 
       const updatedPatient = await Patient.findByIdAndUpdate(
         req.params.id,
@@ -860,7 +879,7 @@ exports.updatePatient = async (req, res, next) => {
     };
     if (req.body.assignedNurses !== undefined) updatePayload.assignedNurses = req.body.assignedNurses;
     if (req.body.primaryNurse !== undefined) updatePayload.primaryNurse = req.body.primaryNurse;
-    await enforcePatientAssignmentPolicy(req, updatePayload);
+    await enforcePatientAssignmentPolicy(req, User, updatePayload);
 
     const updatedPatient = await Patient.findByIdAndUpdate(
       req.params.id,
@@ -891,6 +910,7 @@ exports.updatePatient = async (req, res, next) => {
 // @access  Admin
 exports.deletePatient = async (req, res, next) => {
   try {
+    const { Patient, Invoice, Bed } = getModels(req);
     const patient = await Patient.findById(req.params.id);
 
     if (!patient) {
@@ -929,6 +949,7 @@ exports.deletePatient = async (req, res, next) => {
 // @access  Private
 exports.getPatientStats = async (req, res, next) => {
   try {
+    const { Patient } = getModels(req);
     const totalPatients = await Patient.countDocuments();
     const admittedPatients = await Patient.countDocuments({ status: 'admitted' });
     const opdPatients = await Patient.countDocuments({ registrationType: 'opd', status: 'active' });

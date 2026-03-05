@@ -1,9 +1,23 @@
-const { Doctor, Appointment, Patient, Invoice, Prescription } = require('../models');
+const BaseDoctor = require('../models/NH_Doctor');
+const BaseAppointment = require('../models/NH_Appointment');
+const BasePatient = require('../models/NH_Patient');
+const BaseInvoice = require('../models/NH_Invoice');
+const BasePrescription = require('../models/NH_Prescription');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Doctor: getModel(req, 'Doctor', BaseDoctor),
+  Appointment: getModel(req, 'Appointment', BaseAppointment),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+  Prescription: getModel(req, 'Prescription', BasePrescription),
+});
 
 // Get doctor profile with stats
 exports.getDoctorProfile = async (req, res, next) => {
   try {
+    const { Doctor, Appointment, Invoice } = getModels(req);
     const doctorId = req.params.id;
     const doctor = await Doctor.findById(doctorId)
       .populate('user', 'firstName lastName email phone avatar department address');
@@ -53,6 +67,7 @@ exports.getDoctorProfile = async (req, res, next) => {
 // Get doctor revenue breakdown
 exports.getDoctorRevenue = async (req, res, next) => {
   try {
+    const { Invoice } = getModels(req);
     const doctorId = req.params.id;
     const { period = '30' } = req.query;
     const daysAgo = new Date();

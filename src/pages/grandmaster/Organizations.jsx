@@ -37,11 +37,16 @@ export default function Organizations() {
   const [moduleDialogOrg, setModuleDialogOrg] = useState(null);
   const [selectedModules, setSelectedModules] = useState([]);
 
-  const { data: orgRes, isLoading } = useQuery({
+  const { data: orgRes, isLoading, error } = useQuery({
     queryKey: ['gm-orgs', search, statusFilter],
     queryFn: () => listOrganizations({ search, status: statusFilter === 'all' ? undefined : statusFilter }),
   });
   const orgs = orgRes?.data || [];
+
+  // Show error if API request fails
+  if (error) {
+    console.error('API Error:', error);
+  }
 
   const onboardMut = useMutation({
     mutationFn: onboardOrganization,
@@ -160,6 +165,12 @@ export default function Organizations() {
 
       {/* List */}
       <div className="grid gap-4">
+        {error && (
+          <Card className="border-destructive"><CardContent className="p-4 text-destructive text-sm">Error loading organizations: {error.message}</CardContent></Card>
+        )}
+        {isLoading && (
+          <Card><CardContent className="p-4 text-center text-muted-foreground">Loading organizations...</CardContent></Card>
+        )}
         {orgs.map((org) => (
           <Card key={org._id}>
             <CardContent className="flex items-center justify-between p-4">

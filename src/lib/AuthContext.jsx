@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { getAuthToken, setAuthToken, removeAuthToken, getUser, setUser, removeUser } from './api-client';
+import { getAuthToken, setAuthToken, removeAuthToken, getUser, setUser, removeUser, setOrgSlug } from './api-client';
 import { loginApi } from './auth';
 
 const AuthContext = createContext(undefined);
@@ -20,6 +20,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (credentials) => {
+    if (credentials?.orgSlug !== undefined) {
+      setOrgSlug(credentials.orgSlug);
+    }
     const { data } = await loginApi(credentials);
     if (data.token && data.user) {
         setAuthToken(data.token);

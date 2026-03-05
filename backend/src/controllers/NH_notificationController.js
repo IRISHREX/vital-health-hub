@@ -1,12 +1,20 @@
-const Notification = require('../models/NH_Notification');
+const BaseNotification = require('../models/NH_Notification');
+const BaseUser = require('../models/NH_User');
 const { AppError } = require('../middleware/errorHandler');
 const { emitNotification } = require('../config/socket');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Notification: getModel(req, 'Notification', BaseNotification),
+  User: getModel(req, 'User', BaseUser),
+});
 
 // @desc    Get all notifications for current user
 // @route   GET /api/notifications
 // @access  Private
 exports.getNotifications = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const { page = 1, limit = 20, isRead, type, priority } = req.query;
     
     const query = { recipient: req.user._id };
@@ -51,6 +59,7 @@ exports.getNotifications = async (req, res, next) => {
 // @access  Private
 exports.getNotificationStats = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const userId = req.user._id;
     
     const today = new Date();
@@ -97,6 +106,7 @@ exports.getNotificationStats = async (req, res, next) => {
 // @access  Private
 exports.getNotification = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const notification = await Notification.findOne({
       _id: req.params.id,
       recipient: req.user._id
@@ -120,6 +130,7 @@ exports.getNotification = async (req, res, next) => {
 // @access  Private (Admin)
 exports.createNotification = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const { recipientId, type, title, message, priority, data } = req.body;
 
     if (!recipientId || !type || !title || !message) {
@@ -153,8 +164,8 @@ exports.createNotification = async (req, res, next) => {
 // @access  Private (Super Admin, Hospital Admin)
 exports.broadcastNotification = async (req, res, next) => {
   try {
+    const { Notification, User } = getModels(req);
     const { type, title, message, priority, data, roles } = req.body;
-    const User = require('../models/NH_User');
 
     if (!type || !title || !message) {
       throw new AppError('Missing required fields: type, title, message', 400);
@@ -200,6 +211,7 @@ exports.broadcastNotification = async (req, res, next) => {
 // @access  Private
 exports.markAsRead = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, recipient: req.user._id },
       { isRead: true, readAt: new Date() },
@@ -225,6 +237,7 @@ exports.markAsRead = async (req, res, next) => {
 // @access  Private
 exports.acknowledgeNotification = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const notification = await Notification.findOne({
       _id: req.params.id,
       recipient: req.user._id
@@ -259,6 +272,7 @@ exports.acknowledgeNotification = async (req, res, next) => {
 // @access  Private
 exports.markAllAsRead = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const result = await Notification.updateMany(
       { recipient: req.user._id, isRead: false },
       { isRead: true, readAt: new Date() }
@@ -278,6 +292,7 @@ exports.markAllAsRead = async (req, res, next) => {
 // @access  Private
 exports.deleteNotification = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const notification = await Notification.findOneAndDelete({
       _id: req.params.id,
       recipient: req.user._id
@@ -301,6 +316,7 @@ exports.deleteNotification = async (req, res, next) => {
 // @access  Private
 exports.clearReadNotifications = async (req, res, next) => {
   try {
+    const { Notification } = getModels(req);
     const result = await Notification.deleteMany({
       recipient: req.user._id,
       isRead: true
@@ -316,8 +332,9 @@ exports.clearReadNotifications = async (req, res, next) => {
 };
 
 // Helper function to create notifications programmatically (for internal use)
-exports.createSystemNotification = async (recipientId, type, title, message, data = {}, priority = 'medium') => {
+exports.createSystemNotification = async (recipientId, type, title, message, data = {}, priority = 'medium', context = null) => {
   try {
+    const Notification = context?.req ? getModel(context.req, 'Notification', BaseNotification) : BaseNotification;
     const notification = await Notification.create({
       recipient: recipientId,
       type,

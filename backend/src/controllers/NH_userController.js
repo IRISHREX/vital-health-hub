@@ -1,11 +1,17 @@
-const { User } = require('../models');
+const BaseUser = require('../models/NH_User');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  User: getModel(req, 'User', BaseUser),
+});
 
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Admin
 exports.getUsers = async (req, res, next) => {
   try {
+    const { User } = getModels(req);
     const { role, department, isActive, search, page = 1, limit = 20 } = req.query;
     
     const query = {};
@@ -48,6 +54,7 @@ exports.getUsers = async (req, res, next) => {
 // @access  Admin
 exports.getUser = async (req, res, next) => {
   try {
+    const { User } = getModels(req);
     const user = await User.findById(req.params.id);
     
     if (!user) {
@@ -68,6 +75,7 @@ exports.getUser = async (req, res, next) => {
 // @access  Admin
 exports.updateUser = async (req, res, next) => {
   try {
+    const { User } = getModels(req);
     const { firstName, lastName, role, phone, department, isActive, address } = req.body;
 
     const user = await User.findByIdAndUpdate(
@@ -95,6 +103,7 @@ exports.updateUser = async (req, res, next) => {
 // @access  Super Admin
 exports.deleteUser = async (req, res, next) => {
   try {
+    const { User } = getModels(req);
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
@@ -119,6 +128,7 @@ exports.deleteUser = async (req, res, next) => {
 // @access  Admin
 exports.getUserStats = async (req, res, next) => {
   try {
+    const { User } = getModels(req);
     const stats = await User.aggregate([
       {
         $group: {
@@ -152,6 +162,7 @@ exports.getUserStats = async (req, res, next) => {
 // @access  Authenticated
 exports.getNurses = async (req, res, next) => {
   try {
+    const { User } = getModels(req);
     const nurses = await User.find({ role: { $in: ['nurse', 'head_nurse'] }, isActive: true })
       .select('firstName lastName email role department assignedRooms');
     res.json({ success: true, data: { users: nurses } });

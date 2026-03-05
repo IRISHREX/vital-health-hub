@@ -1,12 +1,20 @@
-const LabTest = require('../models/NH_LabTest');
-const LabTestCatalog = require('../models/NH_LabTestCatalog');
-const Patient = require('../models/NH_Patient');
-const Invoice = require('../models/NH_Invoice');
+const BaseLabTest = require('../models/NH_LabTest');
+const BaseLabTestCatalog = require('../models/NH_LabTestCatalog');
+const BasePatient = require('../models/NH_Patient');
+const BaseInvoice = require('../models/NH_Invoice');
 const asyncHandler = require('express-async-handler');
 const { AppError } = require('../middleware/errorHandler');
 const { getEffectiveModuleConfig } = require('../utils/moduleOperationsSettings');
+const { getModel } = require('../utils/tenantModel');
 
-const generateUniqueSampleId = async () => {
+const getModels = (req) => ({
+  LabTest: getModel(req, 'LabTest', BaseLabTest),
+  LabTestCatalog: getModel(req, 'LabTestCatalog', BaseLabTestCatalog),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+});
+
+const generateUniqueSampleId = async (LabTest) => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const now = new Date();
     const yy = now.getFullYear().toString().slice(-2);
@@ -72,6 +80,7 @@ const buildFlatParamsFromCatalog = (catalogItem) => {
 // ====== CATALOG ======
 
 const getCatalog = asyncHandler(async (req, res) => {
+  const { LabTestCatalog } = getModels(req);
   const { category, search, active } = req.query;
   const query = {};
   if (category) query.category = category;
@@ -83,23 +92,27 @@ const getCatalog = asyncHandler(async (req, res) => {
 });
 
 const getCatalogItem = asyncHandler(async (req, res) => {
+  const { LabTestCatalog } = getModels(req);
   const item = await LabTestCatalog.findById(req.params.id);
   if (!item) { res.status(404); throw new Error('Test not found in catalog'); }
   res.json({ success: true, data: item });
 });
 
 const createCatalogItem = asyncHandler(async (req, res) => {
+  const { LabTestCatalog } = getModels(req);
   const item = await LabTestCatalog.create(req.body);
   res.status(201).json({ success: true, data: item });
 });
 
 const updateCatalogItem = asyncHandler(async (req, res) => {
+  const { LabTestCatalog } = getModels(req);
   const item = await LabTestCatalog.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!item) { res.status(404); throw new Error('Test not found in catalog'); }
   res.json({ success: true, data: item });
 });
 
 const deleteCatalogItem = asyncHandler(async (req, res) => {
+  const { LabTestCatalog } = getModels(req);
   const item = await LabTestCatalog.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
   if (!item) { res.status(404); throw new Error('Test not found in catalog'); }
   res.json({ success: true, message: 'Test deactivated' });
@@ -108,6 +121,7 @@ const deleteCatalogItem = asyncHandler(async (req, res) => {
 // ====== LAB TESTS (Orders) ======
 
 const getLabTests = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const { patientId, status, category, priority, startDate, endDate, sampleStatus, mode } = req.query;
   const query = {};
   if (patientId) query.patient = patientId;
@@ -133,6 +147,7 @@ const getLabTests = asyncHandler(async (req, res) => {
 });
 
 const getLabTestById = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id)
     .populate('patient')
     .populate('doctor', 'name specialization')
@@ -148,6 +163,7 @@ const getLabTestById = asyncHandler(async (req, res) => {
 });
 
 const createLabTest = asyncHandler(async (req, res) => {
+  const { LabTest, LabTestCatalog } = getModels(req);
   const { catalogTestId, catalogTestIds, mode = 'internal', externalPatient } = req.body;
   const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
 
@@ -245,6 +261,7 @@ const createLabTest = asyncHandler(async (req, res) => {
 });
 
 const updateLabTest = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
     .populate('patient', 'firstName lastName patientId')
     .populate('doctor', 'name');
@@ -253,6 +270,7 @@ const updateLabTest = asyncHandler(async (req, res) => {
 });
 
 const deleteLabTest = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
   if (test.status !== 'ordered') {
@@ -267,6 +285,7 @@ const deleteLabTest = asyncHandler(async (req, res) => {
 // ====== SAMPLE WORKFLOW ======
 
 const collectSample = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
 
@@ -280,7 +299,7 @@ const collectSample = asyncHandler(async (req, res) => {
   test.sampleCollectedBy = req.user._id;
   test.status = 'sample_collected';
   if (!test.sampleId) {
-    test.sampleId = await generateUniqueSampleId();
+    test.sampleId = await generateUniqueSampleId(LabTest);
   }
 
   await test.save();
@@ -288,6 +307,7 @@ const collectSample = asyncHandler(async (req, res) => {
 });
 
 const receiveSample = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
   test.sampleStatus = 'received';
@@ -296,6 +316,7 @@ const receiveSample = asyncHandler(async (req, res) => {
 });
 
 const rejectSample = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
   test.sampleStatus = 'rejected';
@@ -305,6 +326,7 @@ const rejectSample = asyncHandler(async (req, res) => {
 });
 
 const startProcessing = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
   if (!['collected', 'received', 'processing'].includes(test.sampleStatus)) {
@@ -320,6 +342,7 @@ const startProcessing = asyncHandler(async (req, res) => {
 // ====== RESULTS ======
 
 const enterResults = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const { sections, parameters, interpretation, remarks } = req.body;
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
@@ -344,6 +367,7 @@ const enterResults = asyncHandler(async (req, res) => {
 });
 
 const verifyResults = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
   test.status = 'verified';
@@ -354,6 +378,7 @@ const verifyResults = asyncHandler(async (req, res) => {
 });
 
 const deliverReport = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const test = await LabTest.findById(req.params.id);
   if (!test) { res.status(404); throw new Error('Lab test not found'); }
   test.status = 'delivered';
@@ -364,6 +389,7 @@ const deliverReport = asyncHandler(async (req, res) => {
 // ====== STATS ======
 
 const getLabStats = asyncHandler(async (req, res) => {
+  const { LabTest } = getModels(req);
   const [total, pending, processing, completed, today] = await Promise.all([
     LabTest.countDocuments(),
     LabTest.countDocuments({ status: { $in: ['ordered', 'sample_collected'] } }),
@@ -395,6 +421,7 @@ const getLabStats = asyncHandler(async (req, res) => {
 // ====== GENERATE INVOICE ======
 
 const generateLabInvoice = asyncHandler(async (req, res) => {
+  const { LabTest, Invoice } = getModels(req);
   const { testIds } = req.body;
   const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
 

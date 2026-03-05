@@ -1,12 +1,19 @@
-const RadiologyOrder = require('../models/NH_RadiologyOrder');
-const Invoice = require('../models/NH_Invoice');
+const BaseRadiologyOrder = require('../models/NH_RadiologyOrder');
+const BaseInvoice = require('../models/NH_Invoice');
 const asyncHandler = require('express-async-handler');
 const { AppError } = require('../middleware/errorHandler');
 const { getEffectiveModuleConfig } = require('../utils/moduleOperationsSettings');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  RadiologyOrder: getModel(req, 'RadiologyOrder', BaseRadiologyOrder),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+});
 
 // ====== CRUD ======
 
 const getRadiologyOrders = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const { patientId, status, studyType, priority, startDate, endDate, mode } = req.query;
   const query = {};
   if (patientId) query.patient = patientId;
@@ -31,6 +38,7 @@ const getRadiologyOrders = asyncHandler(async (req, res) => {
 });
 
 const getRadiologyOrderById = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findById(req.params.id)
     .populate('patient')
     .populate('doctor', 'name specialization')
@@ -45,6 +53,7 @@ const getRadiologyOrderById = asyncHandler(async (req, res) => {
 });
 
 const createRadiologyOrder = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const { mode = 'internal', externalPatient } = req.body;
   const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id });
 
@@ -88,6 +97,7 @@ const createRadiologyOrder = asyncHandler(async (req, res) => {
 });
 
 const updateRadiologyOrder = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
     .populate('patient', 'firstName lastName patientId')
     .populate('doctor', 'name');
@@ -96,6 +106,7 @@ const updateRadiologyOrder = asyncHandler(async (req, res) => {
 });
 
 const deleteRadiologyOrder = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Radiology order not found'); }
   if (order.status !== 'ordered') {
@@ -109,6 +120,7 @@ const deleteRadiologyOrder = asyncHandler(async (req, res) => {
 // ====== WORKFLOW ======
 
 const scheduleOrder = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
   order.status = 'scheduled';
@@ -118,6 +130,7 @@ const scheduleOrder = asyncHandler(async (req, res) => {
 });
 
 const startStudy = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
   order.status = 'in_progress';
@@ -127,6 +140,7 @@ const startStudy = asyncHandler(async (req, res) => {
 });
 
 const completeStudy = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
   order.status = 'completed';
@@ -142,6 +156,7 @@ const completeStudy = asyncHandler(async (req, res) => {
 // ====== REPORT ======
 
 const createReport = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const { findings, impression, recommendation, reportNotes } = req.body;
   const order = await RadiologyOrder.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
@@ -165,6 +180,7 @@ const createReport = asyncHandler(async (req, res) => {
 });
 
 const verifyReport = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
   order.status = 'verified';
@@ -175,6 +191,7 @@ const verifyReport = asyncHandler(async (req, res) => {
 });
 
 const deliverReport = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const order = await RadiologyOrder.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
   order.status = 'delivered';
@@ -185,6 +202,7 @@ const deliverReport = asyncHandler(async (req, res) => {
 // ====== STATS ======
 
 const getRadiologyStats = asyncHandler(async (req, res) => {
+  const { RadiologyOrder } = getModels(req);
   const [total, pending, inProgress, completed, today] = await Promise.all([
     RadiologyOrder.countDocuments(),
     RadiologyOrder.countDocuments({ status: { $in: ['ordered', 'scheduled'] } }),
@@ -211,6 +229,7 @@ const getRadiologyStats = asyncHandler(async (req, res) => {
 // ====== INVOICE ======
 
 const generateRadiologyInvoice = asyncHandler(async (req, res) => {
+  const { RadiologyOrder, Invoice } = getModels(req);
   const { orderIds } = req.body;
   const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id });
 

@@ -15,11 +15,38 @@ const getApiUrl = () => {
 };
 
 export const API_URL = getApiUrl();
+const ORG_SLUG_KEY = 'org_slug';
 
 // Auth token management
 export const getAuthToken = () => localStorage.getItem('token');
 export const setAuthToken = (token) => localStorage.setItem('token', token);
 export const removeAuthToken = () => localStorage.removeItem('token');
+
+// Organization slug management for tenant routing
+export const getOrgSlug = () => {
+  const stored = String(localStorage.getItem(ORG_SLUG_KEY) || '').trim().toLowerCase();
+  if (stored) return stored;
+
+  const host = String(window.location.hostname || '').toLowerCase();
+  if (!host || host === 'localhost' || host === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    return '';
+  }
+
+  const parts = host.split('.');
+  if (parts.length >= 3 && parts[0] && parts[0] !== 'www') {
+    return parts[0];
+  }
+  return '';
+};
+export const setOrgSlug = (slug) => {
+  const normalized = String(slug || '').trim().toLowerCase();
+  if (!normalized) {
+    localStorage.removeItem(ORG_SLUG_KEY);
+    return;
+  }
+  localStorage.setItem(ORG_SLUG_KEY, normalized);
+};
+export const removeOrgSlug = () => localStorage.removeItem(ORG_SLUG_KEY);
 
 // User object management
 export const getUser = () => {
@@ -33,9 +60,11 @@ export const removeUser = () => localStorage.removeItem('user');
 export const apiClient = {
   async request(endpoint, options = {}) {
     const token = getAuthToken();
+    const orgSlug = getOrgSlug();
     const headers = {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
+      ...(orgSlug && { 'x-org-slug': orgSlug }),
       ...options.headers,
     };
 

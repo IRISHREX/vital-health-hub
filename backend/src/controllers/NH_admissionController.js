@@ -1,6 +1,17 @@
-const { Admission, Bed, Patient, Invoice } = require('../models');
+const BaseAdmission = require('../models/NH_Admission');
+const BaseBed = require('../models/NH_Bed');
+const BasePatient = require('../models/NH_Patient');
+const BaseInvoice = require('../models/NH_Invoice');
 const { AppError } = require('../middleware/errorHandler');
 const { emitBedUpdate, emitNotification } = require('../config/socket');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Admission: getModel(req, 'Admission', BaseAdmission),
+  Bed: getModel(req, 'Bed', BaseBed),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+});
 
 /**
  * PATIENT ADMISSION FLOW
@@ -15,6 +26,7 @@ const { emitBedUpdate, emitNotification } = require('../config/socket');
 // @access  Private
 exports.createAdmission = async (req, res, next) => {
   try {
+    const { Admission, Bed, Patient, Invoice } = getModels(req);
     const {
       patientId,
       bedId,
@@ -221,6 +233,7 @@ exports.createAdmission = async (req, res, next) => {
 // @access  Private
 exports.updateAdmission = async (req, res, next) => {
   try {
+    const { Admission } = getModels(req);
     const admissionId = req.params.id;
 
     // prevent bed changes through this endpoint; transfers have their own flow
@@ -289,6 +302,7 @@ exports.updateAdmission = async (req, res, next) => {
 // @access  Private
 exports.transferPatient = async (req, res, next) => {
   try {
+    const { Admission, Bed, Patient, Invoice } = getModels(req);
     const { admissionId } = req.params;
     const { newBedId, transferReason } = req.body;
 
@@ -510,6 +524,7 @@ exports.transferPatient = async (req, res, next) => {
 // @access  Private
 exports.dischargePatient = async (req, res, next) => {
   try {
+    const { Admission, Bed, Patient, Invoice } = getModels(req);
     const { admissionId } = req.params;
     const { dischargeReason, notes, dischargingDoctorId } = req.body;
 
@@ -669,6 +684,7 @@ exports.dischargePatient = async (req, res, next) => {
 // @access  Private
 exports.getAdmissions = async (req, res, next) => {
   try {
+    const { Admission } = getModels(req);
     const { patientId, status, bedId, page = 1, limit = 20 } = req.query;
 
     const query = {};
@@ -710,6 +726,7 @@ exports.getAdmissions = async (req, res, next) => {
 // @access  Private
 exports.getAdmission = async (req, res, next) => {
   try {
+    const { Admission, Invoice } = getModels(req);
     const admission = await Admission.findById(req.params.id)
       .populate('patient')
       .populate('bed')
@@ -747,6 +764,7 @@ exports.getAdmission = async (req, res, next) => {
 // @access  Private
 exports.getAdmissionStats = async (req, res, next) => {
   try {
+    const { Admission } = getModels(req);
     const total = await Admission.countDocuments();
     const admitted = await Admission.countDocuments({ status: 'ADMITTED' });
     const discharged = await Admission.countDocuments({ status: 'DISCHARGED' });

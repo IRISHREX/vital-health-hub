@@ -1,9 +1,25 @@
-const Medicine = require('../models/NH_Medicine');
-const Prescription = require('../models/NH_Prescription');
-const StockAdjustment = require('../models/NH_StockAdjustment');
-const { BillingLedger, Invoice, User, Notification, Appointment } = require('../models');
+const BaseMedicine = require('../models/NH_Medicine');
+const BasePrescription = require('../models/NH_Prescription');
+const BaseStockAdjustment = require('../models/NH_StockAdjustment');
+const BaseBillingLedger = require('../models/NH_BillingLedger');
+const BaseInvoice = require('../models/NH_Invoice');
+const BaseUser = require('../models/NH_User');
+const BaseNotification = require('../models/NH_Notification');
+const BaseAppointment = require('../models/NH_Appointment');
 const { AppError } = require('../middleware/errorHandler');
 const { getEffectiveModuleConfig } = require('../utils/moduleOperationsSettings');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Medicine: getModel(req, 'Medicine', BaseMedicine),
+  Prescription: getModel(req, 'Prescription', BasePrescription),
+  StockAdjustment: getModel(req, 'StockAdjustment', BaseStockAdjustment),
+  BillingLedger: getModel(req, 'BillingLedger', BaseBillingLedger),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+  User: getModel(req, 'User', BaseUser),
+  Notification: getModel(req, 'Notification', BaseNotification),
+  Appointment: getModel(req, 'Appointment', BaseAppointment),
+});
 
 const getComputedInvoiceStatus = (invoice) => {
   if (!invoice) return 'pending';
@@ -21,7 +37,7 @@ const getComputedInvoiceStatus = (invoice) => {
   return 'pending';
 };
 
-const getOrCreatePharmacyInvoice = async ({ patientId, admissionId, userId, mode = 'internal', externalPatient }) => {
+const getOrCreatePharmacyInvoice = async ({ Invoice, patientId, admissionId, userId, mode = 'internal', externalPatient }) => {
   const query = {
     type: 'pharmacy',
     status: { $in: ['draft', 'pending', 'partial', 'overdue'] },
@@ -87,6 +103,7 @@ const recalculateInvoiceTotals = (invoice) => {
 // Medicine CRUD
 exports.createMedicine = async (req, res, next) => {
   try {
+    const { Medicine } = getModels(req);
     const medicine = await Medicine.create({ ...req.body, addedBy: req.user._id });
     res.status(201).json({ success: true, data: medicine });
   } catch (err) { next(err); }
@@ -94,6 +111,7 @@ exports.createMedicine = async (req, res, next) => {
 
 exports.getMedicines = async (req, res, next) => {
   try {
+    const { Medicine } = getModels(req);
     const { search, category, sort = '-createdAt', page = 1, limit = 50, lowStock } = req.query;
     const query = { isActive: true };
     if (search) query.$text = { $search: search };
@@ -112,6 +130,7 @@ exports.getMedicines = async (req, res, next) => {
 
 exports.getMedicine = async (req, res, next) => {
   try {
+    const { Medicine } = getModels(req);
     const med = await Medicine.findById(req.params.id);
     if (!med) throw new AppError('Medicine not found', 404);
     res.json({ success: true, data: med });
@@ -120,6 +139,7 @@ exports.getMedicine = async (req, res, next) => {
 
 exports.updateMedicine = async (req, res, next) => {
   try {
+    const { Medicine } = getModels(req);
     const med = await Medicine.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!med) throw new AppError('Medicine not found', 404);
     res.json({ success: true, data: med });
@@ -128,6 +148,7 @@ exports.updateMedicine = async (req, res, next) => {
 
 exports.deleteMedicine = async (req, res, next) => {
   try {
+    const { Medicine } = getModels(req);
     await Medicine.findByIdAndUpdate(req.params.id, { isActive: false });
     res.json({ success: true, message: 'Medicine deactivated' });
   } catch (err) { next(err); }
@@ -136,6 +157,7 @@ exports.deleteMedicine = async (req, res, next) => {
 // Pharmacy stats
 exports.getPharmacyStats = async (req, res, next) => {
   try {
+    const { Medicine, Prescription } = getModels(req);
     const totalMedicines = await Medicine.countDocuments({ isActive: true });
     const lowStockCount = await Medicine.countDocuments({ isActive: true, $expr: { $lte: ['$stock', '$reorderLevel'] } });
     const outOfStock = await Medicine.countDocuments({ isActive: true, stock: 0 });
@@ -168,6 +190,7 @@ exports.getPharmacyStats = async (req, res, next) => {
 // Stock adjustments
 exports.adjustStock = async (req, res, next) => {
   try {
+    const { Medicine, StockAdjustment } = getModels(req);
     const { medicineId, type, quantity, reason, reference } = req.body;
     const med = await Medicine.findById(medicineId);
     if (!med) throw new AppError('Medicine not found', 404);
@@ -188,6 +211,7 @@ exports.adjustStock = async (req, res, next) => {
 
 exports.getStockHistory = async (req, res, next) => {
   try {
+    const { StockAdjustment } = getModels(req);
     const { medicineId, page = 1, limit = 30 } = req.query;
     const query = medicineId ? { medicine: medicineId } : {};
     const total = await StockAdjustment.countDocuments(query);
@@ -205,6 +229,7 @@ exports.getStockHistory = async (req, res, next) => {
 // Prescriptions
 exports.createPrescription = async (req, res, next) => {
   try {
+    const { Prescription, Appointment } = getModels(req);
     const payload = { ...req.body };
     const { mode = 'internal', externalPatient } = payload;
     const appointmentId = payload.appointment;
@@ -270,6 +295,7 @@ exports.createPrescription = async (req, res, next) => {
 
 exports.updatePrescription = async (req, res, next) => {
   try {
+    const { Prescription, Appointment } = getModels(req);
     const prescriptionId = req.params.id;
     const payload = { ...req.body };
     const appointmentId = payload.appointment;
@@ -314,6 +340,7 @@ exports.updatePrescription = async (req, res, next) => {
 
 exports.getPrescriptions = async (req, res, next) => {
   try {
+    const { Prescription } = getModels(req);
     const { patientId, appointmentId, status, mode, page = 1, limit = 30 } = req.query;
     const query = {};
     if (patientId) query.patient = patientId;
@@ -338,6 +365,7 @@ exports.getPrescriptions = async (req, res, next) => {
 
 exports.getPrescription = async (req, res, next) => {
   try {
+    const { Prescription } = getModels(req);
     const rx = await Prescription.findById(req.params.id)
       .populate('patient', 'firstName lastName patientId gender dateOfBirth')
       .populate('doctor', 'firstName lastName specialization name user')
@@ -353,6 +381,7 @@ exports.getPrescription = async (req, res, next) => {
 
 exports.getPharmacyInvoices = async (req, res, next) => {
   try {
+    const { Invoice } = getModels(req);
     const { patientId, status, billingScope, page = 1, limit = 30 } = req.query;
     const pageSize = Number(limit) || 30;
     const query = { type: 'pharmacy' };
@@ -389,6 +418,7 @@ exports.getPharmacyInvoices = async (req, res, next) => {
 
 exports.dispensePrescription = async (req, res, next) => {
   try {
+    const { Prescription, Medicine, Invoice, StockAdjustment, BillingLedger } = getModels(req);
     const rx = await Prescription.findById(req.params.id).populate('items.medicine');
     if (!rx) throw new AppError('Prescription not found', 404);
     const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pharmacy', userId: req.user._id });
@@ -405,6 +435,7 @@ exports.dispensePrescription = async (req, res, next) => {
     let hasAnyDispense = false;
 
     const invoice = await getOrCreatePharmacyInvoice({
+      Invoice,
       patientId: rx.patient,
       admissionId: rx.admission || null,
       userId: req.user._id,
@@ -498,6 +529,7 @@ exports.dispensePrescription = async (req, res, next) => {
 
 exports.cancelPrescription = async (req, res, next) => {
   try {
+    const { Prescription } = getModels(req);
     const rx = await Prescription.findByIdAndUpdate(req.params.id, { status: 'cancelled' }, { new: true });
     if (!rx) throw new AppError('Prescription not found', 404);
     res.json({ success: true, data: rx });
@@ -506,6 +538,7 @@ exports.cancelPrescription = async (req, res, next) => {
 
 exports.sharePrescription = async (req, res, next) => {
   try {
+    const { Prescription, Notification } = getModels(req);
     const prescriptionId = req.params.id;
     const recipientIds = Array.isArray(req.body?.recipientIds) ? req.body.recipientIds : [];
     const note = String(req.body?.note || '').trim();
@@ -559,6 +592,7 @@ exports.sharePrescription = async (req, res, next) => {
 
 exports.requestMedicineStock = async (req, res, next) => {
   try {
+    const { User, Notification } = getModels(req);
     const medicineName = String(req.body?.medicineName || '').trim();
     const patientId = req.body?.patientId || null;
     const encounterType = String(req.body?.encounterType || 'opd').trim().toLowerCase();

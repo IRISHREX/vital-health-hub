@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { getOrgSlug } from '@/lib/api-client';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [orgSlug, setOrgSlug] = useState(() => getOrgSlug());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,7 +22,7 @@ export default function Login() {
     setError('');
     setIsLoading(true);
     try {
-      await login({ email, password });
+      await login({ email, password, orgSlug });
       navigate('/');
     } catch (err) {
       setError(err.message || 'Login failed');
@@ -37,6 +39,17 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="orgSlug">Organization Slug</Label>
+              <Input
+                id="orgSlug"
+                type="text"
+                placeholder="e.g. acme-hospital"
+                value={orgSlug}
+                onChange={(e) => setOrgSlug(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

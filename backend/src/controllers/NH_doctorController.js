@@ -1,11 +1,19 @@
-const { Doctor, User } = require('../models');
+const BaseDoctor = require('../models/NH_Doctor');
+const BaseUser = require('../models/NH_User');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Doctor: getModel(req, 'Doctor', BaseDoctor),
+  User: getModel(req, 'User', BaseUser),
+});
 
 // @desc    Get all doctors
 // @route   GET /api/doctors
 // @access  Private
 exports.getDoctors = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const { department, specialization, availabilityStatus, search, page = 1, limit = 20 } = req.query;
     
     const query = {};
@@ -64,6 +72,7 @@ exports.getDoctors = async (req, res, next) => {
 // @access  Private
 exports.getDoctorStats = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const total = await Doctor.countDocuments();
     const available = await Doctor.countDocuments({ availabilityStatus: 'available' });
     const onLeave = await Doctor.countDocuments({ availabilityStatus: 'on_leave' });
@@ -113,6 +122,7 @@ exports.getDoctorStats = async (req, res, next) => {
 // @access  Private
 exports.getDoctor = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const doctor = await Doctor.findById(req.params.id)
       .populate('user', 'firstName lastName email phone avatar address');
     
@@ -134,6 +144,7 @@ exports.getDoctor = async (req, res, next) => {
 // @access  Admin
 exports.createDoctor = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const { name, email, phone, specialization, department, qualification, experience, consultationFee, availabilityStatus } = req.body;
 
     // Validate required fields
@@ -183,6 +194,7 @@ exports.createDoctor = async (req, res, next) => {
 // @access  Admin/Doctor (own profile)
 exports.updateDoctor = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const payload = { ...req.body };
     if (payload.consultationFee !== undefined) {
       const parsedOpdFee =
@@ -223,6 +235,7 @@ exports.updateDoctor = async (req, res, next) => {
 // @access  Admin
 exports.deleteDoctor = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const doctor = await Doctor.findById(req.params.id);
 
     if (!doctor) {
@@ -245,6 +258,7 @@ exports.deleteDoctor = async (req, res, next) => {
 // @access  Admin/Doctor
 exports.updateSchedule = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const { schedule } = req.body;
 
     const doctor = await Doctor.findByIdAndUpdate(
@@ -272,6 +286,7 @@ exports.updateSchedule = async (req, res, next) => {
 // @access  Admin/Doctor
 exports.updateAvailability = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const { availabilityStatus } = req.body;
 
     const doctor = await Doctor.findByIdAndUpdate(
@@ -299,6 +314,7 @@ exports.updateAvailability = async (req, res, next) => {
 // @access  Admin/Doctor
 exports.addLeave = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const { startDate, endDate, reason } = req.body;
 
     const doctor = await Doctor.findById(req.params.id);
@@ -325,6 +341,7 @@ exports.addLeave = async (req, res, next) => {
 // @access  Private
 exports.getAvailableToday = async (req, res, next) => {
   try {
+    const { Doctor } = getModels(req);
     const today = new Date();
     const dayName = today.toLocaleDateString('en-US', { weekday: 'lowercase' });
 

@@ -1,8 +1,41 @@
-const passport = require('passport');
-const { VisualAccessSettings } = require('../models/NH_Settings');
+const jwt = require('jsonwebtoken');
+const BaseUser = require('../models/NH_User');
+const {
+  VisualAccessSettings: BaseVisualAccessSettings,
+} = require('../models/NH_Settings');
+const config = require('../config');
+const { getModel } = require('../utils/tenantModel');
 
-// Authenticate with JWT
-const authenticate = passport.authenticate('jwt', { session: false });
+const getUserModel = (req) => getModel(req, 'User', BaseUser);
+const getVisualAccessModel = (req) => getModel(req, 'VisualAccessSettings', BaseVisualAccessSettings);
+
+// Authenticate with JWT and tenant-aware user lookup
+const authenticate = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const decoded = jwt.verify(token, config.jwt.secret);
+    const User = getUserModel(req);
+    const user = await User.findById(decoded.id).select('+permissions');
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    req.user = user;
+    return next();
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    }
+    return next(error);
+  }
+};
 
 const modulePathMap = {
   '/dashboard': 'dashboard',
@@ -38,22 +71,25 @@ const actionFeatureMap = {
   canView: 'view',
   canCreate: 'create',
   canEdit: 'edit',
-  canDelete: 'delete'
+  canDelete: 'delete',
 };
 
-let visualAccessCache = null;
-let visualAccessCacheTs = 0;
+const visualAccessCacheByTenant = new Map();
 const VISUAL_ACCESS_CACHE_TTL_MS = 5000;
 
-const getVisualAccessSettingsCached = async () => {
+const getVisualAccessSettingsCached = async (req) => {
+  const tenantKey = req?.tenant?.slug || 'default';
   const now = Date.now();
-  if (visualAccessCache && now - visualAccessCacheTs < VISUAL_ACCESS_CACHE_TTL_MS) {
-    return visualAccessCache;
+  const cached = visualAccessCacheByTenant.get(tenantKey);
+
+  if (cached && now - cached.ts < VISUAL_ACCESS_CACHE_TTL_MS) {
+    return cached.value;
   }
 
-  visualAccessCache = await VisualAccessSettings.findOne().lean();
-  visualAccessCacheTs = now;
-  return visualAccessCache;
+  const VisualAccessSettings = getVisualAccessModel(req);
+  const value = await VisualAccessSettings.findOne().lean();
+  visualAccessCacheByTenant.set(tenantKey, { value, ts: now });
+  return value;
 };
 
 const resolveModuleFromRequest = (req) => {
@@ -88,14 +124,14 @@ const authorizeRoles = (...allowedRoles) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Authentication required',
       });
     }
 
     try {
       const module = resolveModuleFromRequest(req);
       const action = methodActionMap[req.method] || 'canView';
-      const visualSettings = await getVisualAccessSettingsCached();
+      const visualSettings = await getVisualAccessSettingsCached(req);
       const { hasModuleOverride, moduleOverride } = getUserOverrideContext(
         visualSettings,
         req.user.email,
@@ -117,18 +153,18 @@ const authorizeRoles = (...allowedRoles) => {
           success: false,
           message: isRestricted
             ? 'This functionality is restricted. Please request access from Super Admin.'
-            : 'You do not have permission to access this resource'
+            : 'You do not have permission to access this resource',
         });
       }
 
       // Fall back to role-based control when no email override exists for the module.
       const userRole = req.user.role;
-      const hasRolePermission = allowedRoles.some(requiredRole => canAccess(userRole, requiredRole));
+      const hasRolePermission = allowedRoles.some((requiredRole) => canAccess(userRole, requiredRole));
 
       if (!hasRolePermission) {
         return res.status(403).json({
           success: false,
-          message: 'You do not have permission to access this resource'
+          message: 'You do not have permission to access this resource',
         });
       }
 
@@ -145,26 +181,26 @@ const authorizePermissions = (...requiredPermissions) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Authentication required',
       });
     }
 
     if (!req.user.permissions || req.user.permissions.length === 0) {
       return res.status(403).json({
         success: false,
-        message: 'You do not have any permissions assigned'
+        message: 'You do not have any permissions assigned',
       });
     }
-    
+
     // Check if the user has any of the required permissions
-    const hasRequiredPermission = requiredPermissions.some(permission => 
+    const hasRequiredPermission = requiredPermissions.some((permission) =>
       req.user.permissions.includes(permission)
     );
 
     if (!hasRequiredPermission) {
       return res.status(403).json({
         success: false,
-        message: 'You do not have sufficient permissions to access this resource'
+        message: 'You do not have sufficient permissions to access this resource',
       });
     }
 
@@ -179,14 +215,30 @@ const hasPermission = (user, permission) => {
 
 // Placeholder for all possible permissions in the system
 const allPermissions = [
-  'user:read', 'user:write', 'user:delete', // User management
-  'patient:read', 'patient:write', 'patient:delete', // Patient management
-  'bed:read', 'bed:write', 'bed:delete', 'bed:changeStatus', // Bed management
-  'facility:read', 'facility:write', 'facility:delete', // Facility management
-  'doctor:read', 'doctor:write', 'doctor:delete', // Doctor management
-  'appointment:read', 'appointment:write', 'appointment:delete', // Appointment management
-  'invoice:read', 'invoice:write', 'invoice:delete', // Invoice management
-  'report:read', 'report:write', // Report management
+  'user:read',
+  'user:write',
+  'user:delete', // User management
+  'patient:read',
+  'patient:write',
+  'patient:delete', // Patient management
+  'bed:read',
+  'bed:write',
+  'bed:delete',
+  'bed:changeStatus', // Bed management
+  'facility:read',
+  'facility:write',
+  'facility:delete', // Facility management
+  'doctor:read',
+  'doctor:write',
+  'doctor:delete', // Doctor management
+  'appointment:read',
+  'appointment:write',
+  'appointment:delete', // Appointment management
+  'invoice:read',
+  'invoice:write',
+  'invoice:delete', // Invoice management
+  'report:read',
+  'report:write', // Report management
   'settings:manage', // General settings management
 ];
 
@@ -202,7 +254,7 @@ const roleHierarchy = {
   doctor: ['doctor'],
   receptionist: ['receptionist', 'nurse'],
   billing_staff: ['billing_staff'],
-  nurse: ['nurse']
+  nurse: ['nurse'],
 };
 
 // Check if user can access based on hierarchy
@@ -215,19 +267,17 @@ const authorizeOwnerOrAdmin = (ownerField = 'user') => {
   return (req, res, next) => {
     const resourceOwnerId = req.resource?.[ownerField]?.toString() || req.resource?.[ownerField];
     const userId = req.user._id.toString();
-    
+
     if (resourceOwnerId === userId || canAccess(req.user.role, 'hospital_admin')) {
       return next();
     }
 
     return res.status(403).json({
       success: false,
-      message: 'You do not have permission to access this resource'
+      message: 'You do not have permission to access this resource',
     });
   };
 };
-
-
 
 module.exports = {
   authenticate,
@@ -238,5 +288,5 @@ module.exports = {
   canAccess,
   roleHierarchy,
   hasPermission,
-  getAllPermissions
+  getAllPermissions,
 };
