@@ -361,7 +361,7 @@ export default function Dashboard() {
         </div>
         <div>
           <p className="text-2xl font-bold text-foreground">{value}</p>
-          <p className="text-sm text-muted-foreground">{title}</p>
+          <p className="text-sm font-semibold text-muted-foreground">{title}</p>
           {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
         </div>
       </div>
@@ -531,7 +531,7 @@ export default function Dashboard() {
                     View
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto">
                   <DropdownMenuLabel>Show / Hide Widgets</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {DEFAULT_WIDGETS.map((widget) => {
@@ -554,7 +554,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-4 auto-rows-[130px] grid-flow-dense">
+          <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-4 grid-flow-dense">
             {visibleWidgetIds.map((widgetId) => {
               const def = DEFAULT_WIDGETS.find((w) => w.id === widgetId);
               if (!def) return null;
@@ -569,7 +569,7 @@ export default function Dashboard() {
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => handleDropWidget(widgetId)}
                   >
-                    <div className="flex items-center justify-between border-b px-3 py-2">
+                    <div className="flex-col items-center justify-between border-b px-3 py-2">
                       <div
                         className="flex cursor-grab items-center gap-2 text-sm font-medium"
                         draggable
@@ -583,7 +583,7 @@ export default function Dashboard() {
                         {def.title}
                         {draggingWidgetId === widgetId ? <Badge variant="secondary">Dragging</Badge> : null}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center justify-end gap-1">
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => resizeWidgetWidth(widgetId, "shrink")} title="Narrower">
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -608,7 +608,7 @@ export default function Dashboard() {
                         </Button>
                       </div>
                     </div>
-                    <div className="h-[calc(100%-42px)] overflow-auto p-3">
+                    <div className="h-[calc(100%-65px)] overflow-auto ">
                       {renderWidgetBody(widgetId)}
                     </div>
                   </div>
