@@ -34,6 +34,17 @@ import PrescriptionPreview from "./pages/PrescriptionPreview";
 import LabReportPreview from "./pages/LabReportPreview";
 import RadiologyReportPreview from "./pages/RadiologyReportPreview";
 
+// Grandmaster Module
+import GrandmasterLogin from "./pages/grandmaster/GrandmasterLogin";
+import GrandmasterLayout from "./pages/grandmaster/GrandmasterLayout";
+import GrandmasterDashboard from "./pages/grandmaster/GrandmasterDashboard";
+import Organizations from "./pages/grandmaster/Organizations";
+import Subscriptions from "./pages/grandmaster/Subscriptions";
+import Monitoring from "./pages/grandmaster/Monitoring";
+import Admins from "./pages/grandmaster/Admins";
+import Notices from "./pages/grandmaster/Notices";
+import PlatformSettings from "./pages/grandmaster/PlatformSettings";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -45,7 +56,22 @@ const App = () => (
           <Sonner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
+              {/* Hospital Login */}
               <Route path="/login" element={<Login />} />
+
+              {/* Grandmaster Portal */}
+              <Route path="/grandmaster/login" element={<GrandmasterLogin />} />
+              <Route path="/grandmaster" element={<GrandmasterLayout />}>
+                <Route index element={<GrandmasterDashboard />} />
+                <Route path="organizations" element={<Organizations />} />
+                <Route path="subscriptions" element={<Subscriptions />} />
+                <Route path="monitoring" element={<Monitoring />} />
+                <Route path="admins" element={<Admins />} />
+                <Route path="notices" element={<Notices />} />
+                <Route path="settings" element={<PlatformSettings />} />
+              </Route>
+
+              {/* Hospital Dashboard */}
               <Route element={<DashboardLayout />}>
                 <Route element={<AuthorizedRoute module="dashboard" />}>
                   <Route path="/" element={<Dashboard />} />
