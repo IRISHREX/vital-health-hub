@@ -10,9 +10,9 @@ import {
   UserCog,
   GripVertical,
   Eye,
+  RotateCcw,
   X,
-  ChevronLeft,
-  ChevronRight,
+  MoveDiagonal2,
   LayoutGrid,
 } from "lucide-react";
 import { Fragment, useState, useEffect, useMemo } from "react";
@@ -68,6 +68,14 @@ const HEIGHT_CLASS = {
   2: "row-span-2",
   3: "row-span-3",
 };
+const WIDGET_TONES = [
+  "bg-gradient-to-br from-emerald-50 to-white border-emerald-200",
+  "bg-gradient-to-br from-sky-50 to-white border-sky-200",
+  "bg-gradient-to-br from-amber-50 to-white border-amber-200",
+  "bg-gradient-to-br from-rose-50 to-white border-rose-200",
+  "bg-gradient-to-br from-violet-50 to-white border-violet-200",
+  "bg-gradient-to-br from-cyan-50 to-white border-cyan-200",
+];
 
 const DEFAULT_WIDGETS = [
   { id: "view:admin", title: "Admin View", defaultW: 3, defaultH: 1 },
@@ -108,6 +116,12 @@ const moveItem = (list, fromId, toId) => {
 };
 
 const storageKey = (userId) => `dashboard_layout_dense_v3_${userId || "anonymous"}`;
+const getWidgetToneClass = (widgetId = "") => {
+  const seed = String(widgetId)
+    .split("")
+    .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return WIDGET_TONES[seed % WIDGET_TONES.length];
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -148,6 +162,7 @@ export default function Dashboard() {
   const [hiddenWidgetIds, setHiddenWidgetIds] = useState([]);
   const [widgetMeta, setWidgetMeta] = useState(DEFAULT_META);
   const [draggingWidgetId, setDraggingWidgetId] = useState("");
+  const [resizing, setResizing] = useState(null);
 
   useEffect(() => {
     if (!user?._id) return;
@@ -304,23 +319,43 @@ export default function Dashboard() {
     [widgetOrder, hiddenWidgetIds]
   );
 
-  const resizeWidgetWidth = (id, direction) => {
-    setWidgetMeta((prev) => {
-      const current = prev[id]?.w || 4;
-      const idx = SIZE_STEPS.indexOf(current);
-      if (idx < 0) return prev;
-      const nextIdx = direction === "expand" ? Math.min(idx + 1, SIZE_STEPS.length - 1) : Math.max(idx - 1, 0);
-      return { ...prev, [id]: { ...(prev[id] || {}), w: SIZE_STEPS[nextIdx], h: prev[id]?.h || 2 } };
-    });
-  };
+  useEffect(() => {
+    if (!resizing) return;
 
-  const resizeWidgetHeight = (id, direction) => {
-    setWidgetMeta((prev) => {
-      const current = prev[id]?.h || 2;
-      const next = direction === "expand" ? Math.min(3, current + 1) : Math.max(1, current - 1);
-      return { ...prev, [id]: { ...(prev[id] || {}), w: prev[id]?.w || 4, h: next } };
-    });
-  };
+    const onMouseMove = (event) => {
+      const dx = event.clientX - resizing.startX;
+      const dy = event.clientY - resizing.startY;
+      const widthStepShift = Math.round(dx / 120);
+      const heightStepShift = Math.round(dy / 90);
+      const currentWidthIdx = SIZE_STEPS.indexOf(resizing.baseW);
+      const nextWidthIdx = Math.max(0, Math.min(SIZE_STEPS.length - 1, currentWidthIdx + widthStepShift));
+      const nextW = SIZE_STEPS[nextWidthIdx];
+      const nextH = Math.max(1, Math.min(3, resizing.baseH + heightStepShift));
+
+      setWidgetMeta((prev) => ({
+        ...prev,
+        [resizing.widgetId]: {
+          ...(prev[resizing.widgetId] || {}),
+          w: nextW,
+          h: nextH,
+        },
+      }));
+    };
+
+    const onMouseUp = () => setResizing(null);
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "nwse-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [resizing]);
 
   const removeWidget = (id) => {
     if (visibleWidgetIds.length <= 1) return;
@@ -354,9 +389,9 @@ export default function Dashboard() {
   };
 
   const renderMetric = (title, value, subtitle, Icon, iconClass = "text-primary") => (
-    <div className="h-full rounded-xl border bg-card p-4">
+    <div className="h-full rounded-xl border border-primary/20 bg-primary/5 p-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/80 border">
           <Icon className={`h-5 w-5 ${iconClass}`} />
         </div>
         <div>
@@ -513,22 +548,16 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard Overview</h1>
-        <p className="text-muted-foreground">Real-time hospital management metrics and insights</p>
       </div>
 
       {isAdmin ? (
         <>
-          <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Customizable Widget Board</h2>
-              <p className="text-xs text-muted-foreground">Everything is widgetized: drag, remove/add, resize, and dense auto-fit layout to reduce wasted space.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex justify-end rounded-xl border bg-card p-3">
+            <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline">
-                    <Eye className="mr-1 h-3.5 w-3.5" />
-                    View
+                  <Button size="icon" variant="outline" title="Manage widgets" aria-label="Manage widgets">
+                    <Eye className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto">
@@ -550,7 +579,15 @@ export default function Dashboard() {
                   <DropdownMenuItem onClick={resetWidgets}>Reset Layout</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button size="sm" variant="ghost" onClick={resetWidgets}>Reset Layout</Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={resetWidgets}
+                title="Reset layout"
+                aria-label="Reset layout"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
@@ -565,7 +602,7 @@ export default function Dashboard() {
               return (
                 <Fragment key={widgetId}>
                   <div
-                    className={`${wClass} ${hClass} rounded-xl border bg-card shadow-card`}
+                    className={`${wClass} ${hClass} rounded-xl border shadow-card ${getWidgetToneClass(widgetId)}`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => handleDropWidget(widgetId)}
                   >
@@ -584,18 +621,6 @@ export default function Dashboard() {
                         {draggingWidgetId === widgetId ? <Badge variant="secondary">Dragging</Badge> : null}
                       </div>
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => resizeWidgetWidth(widgetId, "shrink")} title="Narrower">
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => resizeWidgetWidth(widgetId, "expand")} title="Wider">
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => resizeWidgetHeight(widgetId, "shrink")} title="Shorter">
-                          <LayoutGrid className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => resizeWidgetHeight(widgetId, "expand")} title="Taller">
-                          <LayoutGrid className="h-4 w-4" />
-                        </Button>
                         <Button
                           size="icon"
                           variant="ghost"
@@ -608,8 +633,27 @@ export default function Dashboard() {
                         </Button>
                       </div>
                     </div>
-                    <div className="h-[calc(100%-65px)] overflow-auto ">
+                    <div className="relative h-[calc(100%-65px)] overflow-auto">
                       {renderWidgetBody(widgetId)}
+                      <button
+                        type="button"
+                        className="absolute bottom-2 right-2 inline-flex h-6 w-6 cursor-nwse-resize items-center justify-center rounded border bg-background/90 text-muted-foreground hover:text-foreground"
+                        title="Pull to resize"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const current = widgetMeta[widgetId] || { w: def.defaultW, h: def.defaultH };
+                          setResizing({
+                            widgetId,
+                            startX: event.clientX,
+                            startY: event.clientY,
+                            baseW: current.w,
+                            baseH: current.h,
+                          });
+                        }}
+                      >
+                        <MoveDiagonal2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 </Fragment>
