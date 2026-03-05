@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getPharmacyStats, getMedicines, getPrescriptions, getStockHistory, getPharmacyInvoices } from "@/lib/pharmacy";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getPharmacyStats, getMedicines, getPrescriptions, getStockHistory, getPharmacyInvoices, deleteMedicine } from "@/lib/pharmacy";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,8 @@ import {
   Eye,
   MoreVertical,
   Download,
-  Printer
+  Printer,
+  Trash2
 } from "lucide-react";
 import AddMedicineDialog from "@/components/pharmacy/AddMedicineDialog";
 import StockAdjustDialog from "@/components/pharmacy/StockAdjustDialog";
@@ -107,6 +109,26 @@ export default function PharmacyDashboard() {
   const prescriptions = Array.isArray(rxRes) ? rxRes : rxRes?.data || [];
   const stockHistory = Array.isArray(historyRes) ? historyRes : historyRes?.data || [];
   const invoices = Array.isArray(invoiceRes) ? invoiceRes : invoiceRes?.data || [];
+
+  const queryClient = useQueryClient();
+  const deleteMutation = useMutation({
+    mutationFn: (id) => deleteMedicine(id),
+    onSuccess: () => {
+      toast.success("Medicine deleted");
+      queryClient.invalidateQueries(["medicines"]);
+      queryClient.invalidateQueries(["pharmacy-stats"]);
+    },
+    onError: (err) => {
+      toast.error(err?.message || "Failed to delete medicine");
+    }
+  });
+
+  const handleDelete = (med) => {
+    const label = med?.name || "this medicine";
+    const ok = window.confirm(`Delete medicine "${label}"?`);
+    if (!ok) return;
+    deleteMutation.mutate(med._id);
+  };
 
   const toggleSort = (field) =>
     setSortField((prev) => (prev === field ? `-${field}` : prev === `-${field}` ? field : field));
@@ -237,8 +259,13 @@ export default function PharmacyDashboard() {
                         <TableCell className="text-sm">{med.expiryDate ? new Date(med.expiryDate).toLocaleDateString() : "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            {permissions.canEdit && <Button variant="ghost" size="icon" onClick={() => { setEditMed(med); setAddOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
-                            {permissions.canEdit && <Button variant="ghost" size="icon" onClick={() => setStockMed(med)}><Package className="h-4 w-4" /></Button>}
+                            {permissions.canEdit && <Button title="Edit" variant="ghost" size="icon" onClick={() => { setEditMed(med); setAddOpen(true); }}><Pencil className="h-4 w-4" /></Button>}
+                            {permissions.canEdit && <Button title="Stock adjustment"variant="ghost" size="icon" onClick={() => setStockMed(med)}><Package className="h-4 w-4" /></Button>}
+                            {permissions.canDelete && (
+                              <Button title="Delete" variant="ghost" size="icon" className="text-destructive hover:bg-destructive" onClick={() => handleDelete(med)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
