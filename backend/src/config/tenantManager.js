@@ -6,28 +6,48 @@
 const mongoose = require('mongoose');
 const config = require('../config');
 
-// Cache of tenant connections: { dbName: mongoose.Connection }
+// Cache of tenant connections: { cacheKey: mongoose.Connection }
 const tenantConnections = new Map();
+
+const buildTenantUri = (dbName, dbUri) => {
+  if (dbUri) return dbUri;
+
+  const baseUri = config.mongoUri;
+  if (/\/[^/?]+(\?|$)/.test(baseUri)) {
+    return baseUri.replace(/\/[^/?]+(\?|$)/, `/${dbName}$1`);
+  }
+
+  const [withoutQuery, query = ''] = baseUri.split('?');
+  return `${withoutQuery.replace(/\/+$/, '')}/${dbName}${query ? `?${query}` : ''}`;
+};
 
 /**
  * Get or create a mongoose connection for a specific tenant database.
  * Re-uses cached connections for performance.
+ *
+ * @param {string|{dbName?: string, dbUri?: string}} input
  */
-const getTenantConnection = (dbName) => {
-  if (tenantConnections.has(dbName)) {
-    const conn = tenantConnections.get(dbName);
+const getTenantConnection = (input) => {
+  const opts = typeof input === 'string' ? { dbName: input } : (input || {});
+  const { dbName, dbUri } = opts;
+
+  if (!dbName && !dbUri) {
+    throw new Error('getTenantConnection requires dbName or dbUri');
+  }
+
+  const cacheKey = dbUri ? `uri:${dbUri}` : `db:${dbName}`;
+  const label = dbName || 'custom-uri';
+
+  if (tenantConnections.has(cacheKey)) {
+    const conn = tenantConnections.get(cacheKey);
     if (conn.readyState === 1 || conn.readyState === 2) {
       return conn;
     }
-    // Connection is closed/closing – remove from cache and recreate
-    tenantConnections.delete(dbName);
+    // Connection is closed/closing - remove from cache and recreate
+    tenantConnections.delete(cacheKey);
   }
 
-  // Derive tenant URI from the main URI by replacing the database name
-  const baseUri = config.mongoUri;
-  // MongoDB URI format: mongodb+srv://user:pass@host/dbName?params
-  // or mongodb://user:pass@host:port/dbName?params
-  const tenantUri = baseUri.replace(/\/[^/?]+(\?|$)/, `/${dbName}$1`);
+  const tenantUri = buildTenantUri(dbName, dbUri);
 
   const conn = mongoose.createConnection(tenantUri, {
     maxPoolSize: 5,
@@ -36,14 +56,14 @@ const getTenantConnection = (dbName) => {
   });
 
   conn.on('error', (err) => {
-    console.error(`[Tenant:${dbName}] Connection error:`, err.message);
+    console.error(`[Tenant:${label}] Connection error:`, err.message);
   });
 
   conn.on('connected', () => {
-    console.log(`[Tenant:${dbName}] Connected`);
+    console.log(`[Tenant:${label}] Connected`);
   });
 
-  tenantConnections.set(dbName, conn);
+  tenantConnections.set(cacheKey, conn);
   return conn;
 };
 
@@ -61,7 +81,7 @@ const registerTenantModels = (conn) => {
     const Patient = require('../models/NH_Patient');
     conn.model('Patient', Patient.schema);
   }
-  // Add more models as needed – this is the extension point
+  // Add more models as needed - this is the extension point
   return conn;
 };
 
@@ -70,8 +90,8 @@ const registerTenantModels = (conn) => {
  */
 const closeAllTenantConnections = async () => {
   const promises = [];
-  for (const [dbName, conn] of tenantConnections) {
-    console.log(`[Tenant:${dbName}] Closing connection`);
+  for (const [key, conn] of tenantConnections) {
+    console.log(`[Tenant:${key}] Closing connection`);
     promises.push(conn.close());
   }
   await Promise.all(promises);
@@ -101,5 +121,5 @@ module.exports = {
   registerTenantModels,
   closeAllTenantConnections,
   getActiveTenantCount,
-  generateDbName
+  generateDbName,
 };

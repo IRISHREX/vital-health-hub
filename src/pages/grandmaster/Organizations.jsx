@@ -32,14 +32,14 @@ export default function Organizations() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [moduleDialogOrg, setModuleDialogOrg] = useState(null);
   const [selectedModules, setSelectedModules] = useState([]);
 
   const { data: orgRes, isLoading } = useQuery({
     queryKey: ['gm-orgs', search, statusFilter],
-    queryFn: () => listOrganizations({ search, status: statusFilter || undefined }),
+    queryFn: () => listOrganizations({ search, status: statusFilter === 'all' ? undefined : statusFilter }),
   });
   const orgs = orgRes?.data || [];
 
@@ -77,6 +77,8 @@ export default function Organizations() {
       type: fd.get('type'),
       phone: fd.get('phone'),
       email: fd.get('email'),
+      databaseUrl: String(fd.get('databaseUrl') || '').trim() || undefined,
+      adminPassword: String(fd.get('adminPassword') || ''),
       address: { city: fd.get('city'), state: fd.get('state') },
       adminDetails: {
         firstName: fd.get('adminFirst'),
@@ -111,6 +113,10 @@ export default function Organizations() {
                 </div>
                 <div><Label>Phone</Label><Input name="phone" /></div>
                 <div><Label>Email</Label><Input name="email" type="email" /></div>
+                <div className="col-span-2">
+                  <Label>Database URL (optional)</Label>
+                  <Input name="databaseUrl" placeholder="mongodb+srv://user:pass@cluster/dbname?retryWrites=true&w=majority" />
+                </div>
                 <div><Label>City</Label><Input name="city" /></div>
                 <div><Label>State</Label><Input name="state" /></div>
               </div>
@@ -121,6 +127,10 @@ export default function Organizations() {
                   <div><Label>Last Name</Label><Input name="adminLast" required /></div>
                   <div><Label>Email</Label><Input name="adminEmail" type="email" required /></div>
                   <div><Label>Phone</Label><Input name="adminPhone" /></div>
+                  <div className="col-span-2">
+                    <Label>Super Admin Password</Label>
+                    <Input name="adminPassword" type="password" minLength={8} required />
+                  </div>
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={onboardMut.isPending}>
@@ -140,7 +150,7 @@ export default function Organizations() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40"><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="suspended">Suspended</SelectItem>
             <SelectItem value="onboarding">Onboarding</SelectItem>

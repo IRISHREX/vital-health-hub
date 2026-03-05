@@ -71,13 +71,13 @@ exports.platformStats = async (req, res, next) => {
 // Per-organization monitoring stats
 exports.orgStats = async (req, res, next) => {
   try {
-    const org = await Organization.findById(req.params.id);
+    const org = await Organization.findById(req.params.id).select('+dbUri');
     if (!org) return res.status(404).json({ success: false, message: 'Organization not found' });
 
     // Try to get stats from tenant DB
     let tenantStats = { patients: 0, users: 0, beds: 0, admissions: 0, labTests: 0, invoices: 0 };
     try {
-      const conn = getTenantConnection(org.dbName);
+      const conn = getTenantConnection({ dbName: org.dbName, dbUri: org.dbUri });
       const UserSchema = require('../models/NH_User').schema;
       const TenantUser = conn.models.User || conn.model('User', UserSchema);
 
