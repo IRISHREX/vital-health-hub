@@ -1,20 +1,48 @@
 const {
-  HospitalSettings,
-  SecuritySettings,
-  NotificationSettings,
-  UserPreferences,
-  VisualAccessSettings,
-  DataManagementSettings,
-  ModuleOperationsSettings
+  HospitalSettings: BaseHospitalSettings,
+  SecuritySettings: BaseSecuritySettings,
+  NotificationSettings: BaseNotificationSettings,
+  UserPreferences: BaseUserPreferences,
+  VisualAccessSettings: BaseVisualAccessSettings,
+  DataManagementSettings: BaseDataManagementSettings,
+  ModuleOperationsSettings: BaseModuleOperationsSettings
 } = require('../models/NH_Settings');
 const { AppError } = require('../middleware/errorHandler');
-const { User, Notification, AccessRequest, Bed, Doctor, Medicine, LabTestCatalog, Patient, Invoice } = require('../models');
+const BaseUser = require('../models/NH_User');
+const BaseNotification = require('../models/NH_Notification');
+const BaseAccessRequest = require('../models/NH_AccessRequest');
+const BaseBed = require('../models/NH_Bed');
+const BaseDoctor = require('../models/NH_Doctor');
+const BaseMedicine = require('../models/NH_Medicine');
+const BaseLabTestCatalog = require('../models/NH_LabTestCatalog');
+const BasePatient = require('../models/NH_Patient');
+const BaseInvoice = require('../models/NH_Invoice');
+const { getModel } = require('../utils/tenantModel');
 const { DEFAULT_ASSIGNMENT_POLICIES, normalizeAssignmentPolicies } = require('../utils/assignmentPermissions');
 const {
   DEFAULT_SETTINGS: DEFAULT_MODULE_OPERATION_SETTINGS,
   sanitizeSettingsPayload,
   getOrCreateModuleOperationsSettings
 } = require('../utils/moduleOperationsSettings');
+
+const getTenantModels = (req) => ({
+  HospitalSettings: getModel(req, 'HospitalSettings', BaseHospitalSettings),
+  SecuritySettings: getModel(req, 'SecuritySettings', BaseSecuritySettings),
+  NotificationSettings: getModel(req, 'NotificationSettings', BaseNotificationSettings),
+  UserPreferences: getModel(req, 'UserPreferences', BaseUserPreferences),
+  VisualAccessSettings: getModel(req, 'VisualAccessSettings', BaseVisualAccessSettings),
+  DataManagementSettings: getModel(req, 'DataManagementSettings', BaseDataManagementSettings),
+  ModuleOperationsSettings: getModel(req, 'ModuleOperationsSettings', BaseModuleOperationsSettings),
+  User: getModel(req, 'User', BaseUser),
+  Notification: getModel(req, 'Notification', BaseNotification),
+  AccessRequest: getModel(req, 'AccessRequest', BaseAccessRequest),
+  Bed: getModel(req, 'Bed', BaseBed),
+  Doctor: getModel(req, 'Doctor', BaseDoctor),
+  Medicine: getModel(req, 'Medicine', BaseMedicine),
+  LabTestCatalog: getModel(req, 'LabTestCatalog', BaseLabTestCatalog),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+});
 
 // ============ HOSPITAL SETTINGS ============
 
@@ -23,6 +51,7 @@ const {
 // @access  Private (Admin)
 exports.getHospitalSettings = async (req, res, next) => {
   try {
+    const { HospitalSettings } = getTenantModels(req);
     let settings = await HospitalSettings.findOne();
     
     // Create default settings if none exist
@@ -44,6 +73,7 @@ exports.getHospitalSettings = async (req, res, next) => {
 // @access  Private (Super Admin, Hospital Admin)
 exports.updateHospitalSettings = async (req, res, next) => {
   try {
+    const { HospitalSettings } = getTenantModels(req);
     const {
       hospitalName,
       registrationNumber,
@@ -97,6 +127,7 @@ exports.updateHospitalSettings = async (req, res, next) => {
 // @access  Private (Admin)
 exports.getSecuritySettings = async (req, res, next) => {
   try {
+    const { SecuritySettings } = getTenantModels(req);
     let settings = await SecuritySettings.findOne();
     
     if (!settings) {
@@ -117,6 +148,7 @@ exports.getSecuritySettings = async (req, res, next) => {
 // @access  Private (Super Admin)
 exports.updateSecuritySettings = async (req, res, next) => {
   try {
+    const { SecuritySettings } = getTenantModels(req);
     const {
       twoFactorEnabled,
       sessionTimeout,
@@ -164,6 +196,7 @@ exports.updateSecuritySettings = async (req, res, next) => {
 // @access  Private (Admin)
 exports.getNotificationSettings = async (req, res, next) => {
   try {
+    const { NotificationSettings } = getTenantModels(req);
     let settings = await NotificationSettings.findOne();
     
     if (!settings) {
@@ -184,6 +217,7 @@ exports.getNotificationSettings = async (req, res, next) => {
 // @access  Private (Super Admin, Hospital Admin)
 exports.updateNotificationSettings = async (req, res, next) => {
   try {
+    const { NotificationSettings } = getTenantModels(req);
     const {
       emailNotifications,
       smsAlerts,
@@ -235,6 +269,7 @@ exports.updateNotificationSettings = async (req, res, next) => {
 // @access  Private
 exports.getUserPreferences = async (req, res, next) => {
   try {
+    const { UserPreferences } = getTenantModels(req);
     let preferences = await UserPreferences.findOne({ userId: req.user._id });
     
     if (!preferences) {
@@ -255,6 +290,7 @@ exports.getUserPreferences = async (req, res, next) => {
 // @access  Private
 exports.updateUserPreferences = async (req, res, next) => {
   try {
+    const { UserPreferences } = getTenantModels(req);
     const {
       theme,
       language,
@@ -303,7 +339,7 @@ exports.updateUserPreferences = async (req, res, next) => {
 // @access  Private (Admin)
 exports.getUserStats = async (req, res, next) => {
   try {
-    const { User } = require('../models');
+    const { User } = getTenantModels(req);
     
     const stats = await User.aggregate([
       {
@@ -342,6 +378,7 @@ exports.getUserStats = async (req, res, next) => {
 // @access  Private
 exports.getVisualAccessSettings = async (req, res, next) => {
   try {
+    const { VisualAccessSettings } = getTenantModels(req);
     let settings = await VisualAccessSettings.findOne();
     if (!settings) {
       settings = await VisualAccessSettings.create({
@@ -370,6 +407,7 @@ exports.getVisualAccessSettings = async (req, res, next) => {
 // @access  Private (Super Admin, Hospital Admin)
 exports.updateVisualAccessSettings = async (req, res, next) => {
   try {
+    const { VisualAccessSettings } = getTenantModels(req);
     const { overrides = [], permissionManagers = [], assignmentPolicies = DEFAULT_ASSIGNMENT_POLICIES } = req.body;
     let settings = await VisualAccessSettings.findOne();
     if (!settings) {
@@ -453,6 +491,7 @@ exports.updateVisualAccessSettings = async (req, res, next) => {
 // @access  Private
 exports.createAccessRequest = async (req, res, next) => {
   try {
+    const { AccessRequest, User, Notification } = getTenantModels(req);
     const moduleName = String(req.body?.module || "").trim().toLowerCase();
     const feature = String(req.body?.feature || "").trim().toLowerCase();
     const reason = String(req.body?.reason || "").trim();
@@ -522,6 +561,7 @@ exports.createAccessRequest = async (req, res, next) => {
 // @access  Private (Super Admin)
 exports.getPendingAccessRequests = async (req, res, next) => {
   try {
+    const { AccessRequest } = getTenantModels(req);
     if (req.user?.role !== 'super_admin') {
       throw new AppError('Only Super Admin can view pending access requests', 403);
     }
@@ -544,6 +584,7 @@ exports.getPendingAccessRequests = async (req, res, next) => {
 // @access  Private (Super Admin)
 exports.respondToAccessRequest = async (req, res, next) => {
   try {
+    const { AccessRequest, VisualAccessSettings, Notification } = getTenantModels(req);
     if (req.user?.role !== 'super_admin') {
       throw new AppError('Only Super Admin can respond to access requests', 403);
     }
@@ -647,7 +688,8 @@ const getTemplateDefinition = (entity) => {
   return templates[entity] || [];
 };
 
-const buildExportPayload = async (entity) => {
+const buildExportPayload = async (entity, models) => {
+  const { Bed, Doctor, User, Medicine, LabTestCatalog, Patient, Invoice } = models;
   if (entity === 'beds') {
     const beds = await Bed.find({}).lean();
     const headers = ['bedNumber', 'bedType', 'ward', 'floor', 'roomNumber', 'status', 'pricePerDay', 'isActive', 'notes', 'createdAt', 'updatedAt'];
@@ -812,7 +854,8 @@ const buildExportPayload = async (entity) => {
   throw new AppError('Unsupported entity for export', 400);
 };
 
-const importRowsForEntity = async (entity, rows = []) => {
+const importRowsForEntity = async (entity, rows = [], models) => {
+  const { Bed, Doctor, User, Medicine, LabTestCatalog } = models;
   const result = { created: 0, updated: 0, skipped: 0, errors: [] };
 
   for (let idx = 0; idx < rows.length; idx += 1) {
@@ -974,6 +1017,7 @@ const importRowsForEntity = async (entity, rows = []) => {
 // @access  Private (Super Admin)
 exports.getDataManagementSettings = async (req, res, next) => {
   try {
+    const { DataManagementSettings } = getTenantModels(req);
     let settings = await DataManagementSettings.findOne();
     if (!settings) {
       settings = await DataManagementSettings.create({
@@ -991,6 +1035,7 @@ exports.getDataManagementSettings = async (req, res, next) => {
 // @access  Private (Super Admin)
 exports.updateDataManagementSettings = async (req, res, next) => {
   try {
+    const { DataManagementSettings } = getTenantModels(req);
     const incoming = req.body || {};
     const autoExport = incoming.autoExport || {};
     const entities = Array.isArray(autoExport.entities)
@@ -1040,6 +1085,7 @@ exports.getDataImportTemplate = async (req, res, next) => {
 // @access  Private (Super Admin)
 exports.bulkImportData = async (req, res, next) => {
   try {
+    const models = getTenantModels(req);
     const entity = normalizeEntity(req.body?.entity);
     const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
     if (!['beds', 'doctors', 'nurses', 'medicines', 'tests'].includes(entity)) {
@@ -1048,7 +1094,7 @@ exports.bulkImportData = async (req, res, next) => {
     if (!rows.length) {
       throw new AppError('rows array is required', 400);
     }
-    const summary = await importRowsForEntity(entity, rows);
+    const summary = await importRowsForEntity(entity, rows, models);
     res.json({ success: true, message: `Bulk import completed for ${entity}`, data: { entity, ...summary } });
   } catch (error) {
     next(error);
@@ -1060,11 +1106,12 @@ exports.bulkImportData = async (req, res, next) => {
 // @access  Private (Super Admin)
 exports.exportDataByEntity = async (req, res, next) => {
   try {
+    const models = getTenantModels(req);
     const entity = normalizeEntity(req.query.entity);
     if (!DATA_ENTITIES.includes(entity)) {
       throw new AppError('Unsupported export entity', 400);
     }
-    const payload = await buildExportPayload(entity);
+    const payload = await buildExportPayload(entity, models);
     res.json({ success: true, data: { entity, ...payload } });
   } catch (error) {
     next(error);
@@ -1076,6 +1123,8 @@ exports.exportDataByEntity = async (req, res, next) => {
 // @access  Private (Super Admin)
 exports.runAutoExportNow = async (req, res, next) => {
   try {
+    const { DataManagementSettings } = getTenantModels(req);
+    const models = getTenantModels(req);
     let settings = await DataManagementSettings.findOne();
     if (!settings) {
       settings = await DataManagementSettings.create({
@@ -1085,7 +1134,7 @@ exports.runAutoExportNow = async (req, res, next) => {
     const entities = (settings.autoExport?.entities || []).filter((entity) => DATA_ENTITIES.includes(entity));
     const exportSummary = [];
     for (const entity of entities) {
-      const payload = await buildExportPayload(entity);
+      const payload = await buildExportPayload(entity, models);
       exportSummary.push({ entity, records: payload.rows.length });
     }
     settings.lastRunAt = new Date();
@@ -1114,7 +1163,8 @@ exports.runAutoExportNow = async (req, res, next) => {
 // @access  Private
 exports.getModuleOperationsSettings = async (req, res, next) => {
   try {
-    const settings = await getOrCreateModuleOperationsSettings();
+    const { ModuleOperationsSettings } = getTenantModels(req);
+    const settings = await getOrCreateModuleOperationsSettings({ ModuleOperationsSettingsModel: ModuleOperationsSettings });
     res.json({ success: true, data: settings });
   } catch (error) {
     next(error);
@@ -1126,7 +1176,8 @@ exports.getModuleOperationsSettings = async (req, res, next) => {
 // @access  Private (Super Admin, Hospital Admin)
 exports.updateModuleOperationsSettings = async (req, res, next) => {
   try {
-    const existing = await getOrCreateModuleOperationsSettings();
+    const { ModuleOperationsSettings } = getTenantModels(req);
+    const existing = await getOrCreateModuleOperationsSettings({ ModuleOperationsSettingsModel: ModuleOperationsSettings });
     const payload = sanitizeSettingsPayload(req.body, {
       deploymentMode: existing.deploymentMode || DEFAULT_MODULE_OPERATION_SETTINGS.deploymentMode,
       modules: existing.modules || DEFAULT_MODULE_OPERATION_SETTINGS.modules,
@@ -1159,6 +1210,15 @@ exports.updateModuleOperationsSettings = async (req, res, next) => {
 // @access  Private (Admin)
 exports.getAllSettings = async (req, res, next) => {
   try {
+    const {
+      HospitalSettings,
+      SecuritySettings,
+      NotificationSettings,
+      UserPreferences,
+      VisualAccessSettings,
+      ModuleOperationsSettings,
+      DataManagementSettings
+    } = getTenantModels(req);
     let hospital = await HospitalSettings.findOne();
     let security = await SecuritySettings.findOne();
     let notifications = await NotificationSettings.findOne();

@@ -233,7 +233,7 @@ exports.createPrescription = async (req, res, next) => {
     const payload = { ...req.body };
     const { mode = 'internal', externalPatient } = payload;
     const appointmentId = payload.appointment;
-    const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pharmacy', userId: req.user._id });
+    const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pharmacy', userId: req.user._id, req });
 
     if (!moduleConfig.enabled) {
       throw new AppError('Pharmacy module is disabled by settings', 403);
@@ -421,7 +421,7 @@ exports.dispensePrescription = async (req, res, next) => {
     const { Prescription, Medicine, Invoice, StockAdjustment, BillingLedger } = getModels(req);
     const rx = await Prescription.findById(req.params.id).populate('items.medicine');
     if (!rx) throw new AppError('Prescription not found', 404);
-    const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pharmacy', userId: req.user._id });
+    const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pharmacy', userId: req.user._id, req });
 
     if (!moduleConfig.enabled) {
       throw new AppError('Pharmacy module is disabled by settings', 403);

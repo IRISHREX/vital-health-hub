@@ -55,7 +55,7 @@ const getRadiologyOrderById = asyncHandler(async (req, res) => {
 const createRadiologyOrder = asyncHandler(async (req, res) => {
   const { RadiologyOrder } = getModels(req);
   const { mode = 'internal', externalPatient } = req.body;
-  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id });
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id, req });
 
   if (!moduleConfig.enabled) {
     throw new AppError('Radiology module is disabled by settings', 403);
@@ -231,7 +231,7 @@ const getRadiologyStats = asyncHandler(async (req, res) => {
 const generateRadiologyInvoice = asyncHandler(async (req, res) => {
   const { RadiologyOrder, Invoice } = getModels(req);
   const { orderIds } = req.body;
-  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id });
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'radiology', userId: req.user._id, req });
 
   if (!moduleConfig.enabled) {
     throw new AppError('Radiology module is disabled by settings', 403);

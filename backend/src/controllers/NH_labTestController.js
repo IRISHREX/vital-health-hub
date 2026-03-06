@@ -165,7 +165,7 @@ const getLabTestById = asyncHandler(async (req, res) => {
 const createLabTest = asyncHandler(async (req, res) => {
   const { LabTest, LabTestCatalog } = getModels(req);
   const { catalogTestId, catalogTestIds, mode = 'internal', externalPatient } = req.body;
-  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id, req });
 
   if (!moduleConfig.enabled) {
     throw new AppError('Pathology module is disabled by settings', 403);
@@ -423,7 +423,7 @@ const getLabStats = asyncHandler(async (req, res) => {
 const generateLabInvoice = asyncHandler(async (req, res) => {
   const { LabTest, Invoice } = getModels(req);
   const { testIds } = req.body;
-  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id });
+  const moduleConfig = await getEffectiveModuleConfig({ moduleKey: 'pathology', userId: req.user._id, req });
 
   if (!moduleConfig.enabled) {
     throw new AppError('Pathology module is disabled by settings', 403);

@@ -1,4 +1,5 @@
-const { ModuleOperationsSettings } = require('../models/NH_Settings');
+const { ModuleOperationsSettings: BaseModuleOperationsSettings } = require('../models/NH_Settings');
+const { getModel } = require('./tenantModel');
 
 const MODULE_KEYS = ['pathology', 'radiology', 'pharmacy'];
 
@@ -19,6 +20,12 @@ const DEFAULT_SETTINGS = {
     pharmacy: { ...DEFAULT_MODULE_CONFIG }
   },
   userOverrides: []
+};
+
+const resolveModuleOperationsSettingsModel = ({ req, ModuleOperationsSettingsModel } = {}) => {
+  if (ModuleOperationsSettingsModel) return ModuleOperationsSettingsModel;
+  if (req) return getModel(req, 'ModuleOperationsSettings', BaseModuleOperationsSettings);
+  return BaseModuleOperationsSettings;
 };
 
 const boolOrDefault = (value, fallback) => {
@@ -78,20 +85,21 @@ const sanitizeSettingsPayload = (payload = {}, fallback = DEFAULT_SETTINGS) => {
   };
 };
 
-const getOrCreateModuleOperationsSettings = async () => {
-  let settings = await ModuleOperationsSettings.findOne();
+const getOrCreateModuleOperationsSettings = async (options = {}) => {
+  const ModuleOperationsSettingsModel = resolveModuleOperationsSettingsModel(options);
+  let settings = await ModuleOperationsSettingsModel.findOne();
   if (!settings) {
-    settings = await ModuleOperationsSettings.create(DEFAULT_SETTINGS);
+    settings = await ModuleOperationsSettingsModel.create(DEFAULT_SETTINGS);
   }
   return settings;
 };
 
-const getEffectiveModuleConfig = async ({ moduleKey, userId }) => {
+const getEffectiveModuleConfig = async ({ moduleKey, userId, req, ModuleOperationsSettingsModel }) => {
   if (!MODULE_KEYS.includes(moduleKey)) {
     throw new Error(`Unsupported module key: ${moduleKey}`);
   }
 
-  const settings = await getOrCreateModuleOperationsSettings();
+  const settings = await getOrCreateModuleOperationsSettings({ req, ModuleOperationsSettingsModel });
   const base = {
     ...DEFAULT_MODULE_CONFIG,
     ...(settings.modules?.[moduleKey] || {})
