@@ -1,196 +1,63 @@
-# Future Scope & Roadmap
-## Vital Health Hub Platform
+# Future Scope and Roadmap
+## Vital Health Hub
 
-**Version:** 2.0  
-**Date:** 2026-03-06
+Version: 3.0  
+Date: March 6, 2026
 
----
+## P0 (Immediate)
+### 1. Verify Tenant-Safe Settings Refactor
+- Add integration tests to confirm settings and data-management operations are isolated per tenant.
+- Add regression tests for module operations settings in lab/radiology/pharmacy flows.
 
-## 1. Critical / P0 — Blocking Items
+### 2. Password Recovery Tenant Resolution
+- Extend controlled email-based tenant resolution to `POST /auth/forgot-password`.
+- Keep explicit slug override support for ambiguous email cases.
 
-### 1.1 Tenant-Aware Login Flow
-**Status:** Not Implemented  
-**Impact:** Multi-tenancy is non-functional without this
+### 3. Tenant Routing Test Suite
+- Add API tests for:
+  - slug-based routing
+  - subdomain routing
+  - email-based routing
+  - ambiguity and suspended-org branches
 
-- Implement `GM_UserOrgMapping` collection
-- Update `NH_authController.login()` to resolve tenant from email
-- Update Passport JWT strategy to be tenant-aware
-- Add `attachTenantModels` middleware to all NH routes
-- Refactor all NH controllers to use `req.tenantModels` instead of direct model imports
-- See `04_Tenant_Aware_Login_Analysis.md` for full design
+## P1 (High Priority)
+### 4. Token Tenant Claims
+- Include tenant identifier (`orgId` or `slug`) in NH JWT payload.
+- Validate claim against resolved tenant on each request.
 
-### 1.2 Subscription Enforcement
-**Status:** Schema exists, enforcement missing
+### 5. Subscription Enforcement Layer
+- Enforce enabled modules and subscription status at middleware level.
+- Return clear errors for disabled modules/expired subscriptions.
 
-- Middleware to check subscription validity on every authenticated request
-- Block access to modules not included in the subscription plan
-- Grace period handling with user-facing warnings
-- Auto-expire subscriptions via cron job
+### 6. Audit Logging
+- Add immutable audit logs for org lifecycle and auth-sensitive operations.
 
-### 1.3 Module Filtering on Frontend
-**Status:** Not Implemented
+## P2 (Medium)
+### 7. Platform Observability
+- Structured logs with tenant and request correlation IDs.
+- Metrics for tenant connection count, auth failures by cause, and latency.
 
-- Sidebar must filter navigation based on `organization.enabledModules`
-- Intersection of RBAC permissions AND org-enabled modules
-- Hide routes for disabled modules
+### 8. Operational Hardening
+- Brute-force login protection, rate limiting, and account lockout.
+- 2FA for high-privilege roles.
 
----
+### 9. Data Export and Compliance
+- Formal audit exports and compliance-ready reports.
+- Policy-driven retention and purge controls.
 
-## 2. High Priority / P1
+## P3 (Long-Term)
+### 10. Cross-Tenant Role Federation
+- Support users who belong to multiple organizations with explicit org-switching.
 
-### 2.1 Audit Logging
-- Track all Grandmaster actions (onboarding, suspensions, module changes)
-- Track tenant-level admin actions (user creation, role changes)
-- Immutable audit trail with timestamps, actor, and action details
+### 11. Mobile and Patient Portals
+- Mobile workflows for bedside operations.
+- Patient-facing portal for reports, appointments, and billing.
 
-### 2.2 Subscription Expiry Notifications
-- Automated email alerts at 7, 3, and 1 day(s) before expiry
-- In-app banner for hospital admins when subscription is expiring
-- Grandmaster dashboard widget for upcoming renewals
+### 12. Smart Clinical Features
+- Predictive alerts, triage prioritization, and anomaly detection on vitals.
 
-### 2.3 Tenant Model Registration
-- Currently only `User` and `Patient` models are registered on tenant connections
-- All 20+ NH_ models need to be registered in `registerTenantModels()`
-- Create a centralized model registry
-
-### 2.4 Walk-in to Internal Patient Conversion
-- One-click conversion of external/walk-in patient to registered patient
-- Link all existing external lab tests, radiology orders, and prescriptions
-- Merge billing records
-
-### 2.5 Payment Gateway Integration
-- Integrate Razorpay / Stripe for subscription payments
-- Auto-record payments on successful transactions
-- Invoice generation for subscription payments
-- Webhook-based status updates
-
----
-
-## 3. Medium Priority / P2
-
-### 3.1 Grandmaster Analytics Dashboard
-- Organization growth trends over time (line chart)
-- Revenue trends (monthly, quarterly, yearly)
-- Module adoption rates across organizations
-- Subscription churn analysis
-- Geographic distribution map
-
-### 3.2 Multi-Organization Login (SSO-like)
-- Users who work across multiple organizations (e.g., visiting doctors)
-- Organization selector after login
-- Switch between organizations without re-authentication
-
-### 3.3 White-Label / Branding
-- Per-organization logo, color scheme, and branding
-- Custom login page per organization
-- Organization-specific email templates
-
-### 3.4 Inventory Management Module
-- Medicine and consumable stock tracking
-- Purchase order management
-- Supplier management
-- Low stock alerts
-- Integration with pharmacy module
-
-### 3.5 IPD (In-Patient Department) Module
-- Detailed in-patient workflow
-- Nursing care plans
-- Medication administration records (MAR)
-- Diet management
-- Discharge planning
-
-### 3.6 OPD Enhancements
-- Token/queue management system
-- Wait time estimation
-- Online appointment booking for patients
-- Telemedicine integration
-
----
-
-## 4. Low Priority / P3
-
-### 4.1 Mobile Application
-- React Native app for doctors and nurses
-- Push notifications
-- Quick vital entry
-- Patient rounding checklists
-
-### 4.2 Patient Portal
-- Patient-facing web app
-- View own medical records
-- Book appointments online
-- View lab results and prescriptions
-- Payment history
-
-### 4.3 Insurance & TPA Integration
-- Insurance company master data
-- Cashless authorization workflow
-- Claim submission and tracking
-- TPA document management
-
-### 4.4 Advanced Reporting
-- Custom report builder (drag-and-drop)
-- Scheduled report generation and email delivery
-- Cross-tenant aggregated reports for Grandmaster
-- Compliance reports (NABH, HIPAA if applicable)
-
-### 4.5 Data Export & Interoperability
-- HL7 FHIR compliance for data exchange
-- DICOM integration for radiology images
-- CSV/Excel export for all data tables
-- API for third-party integrations
-
-### 4.6 AI-Powered Features
-- Predictive bed occupancy
-- Drug interaction warnings
-- Automated clinical decision support
-- Natural language search across patient records
-- Anomaly detection in vital signs
-
-### 4.7 Backup & Disaster Recovery
-- Automated per-tenant database backups
-- Point-in-time recovery
-- Cross-region replication
-- Backup monitoring and alerts in Grandmaster
-
-### 4.8 Rate Limiting & Security Hardening
-- API rate limiting per tenant
-- Brute-force login protection
-- Two-factor authentication (2FA)
-- Session management with refresh tokens
-- IP whitelisting for Grandmaster portal
-
----
-
-## 5. Technical Debt
-
-| Item | Current State | Target State |
-|------|--------------|--------------|
-| Controller size | Some controllers >300 lines | Split into service + controller layers |
-| Model registration | Only User + Patient in tenant manager | All NH_ models registered |
-| Error handling | Basic AppError | Structured error codes for frontend |
-| Testing | Minimal test coverage | Unit + integration tests for critical paths |
-| API documentation | None | Swagger/OpenAPI specification |
-| Environment config | Scattered env vars | Centralized config with validation |
-| Database migrations | None (schema evolution via mongoose) | Migration scripts for schema changes |
-| Logging | Console.log | Structured logging (Winston/Pino) |
-| Monitoring | Basic tenant count | APM integration (Datadog/NewRelic) |
-| CI/CD | None | GitHub Actions pipeline |
-
----
-
-## 6. Scalability Considerations
-
-### Current Limits
-- Connection pool: 5 connections per tenant
-- Connection cache: In-memory Map (lost on restart)
-- No connection idle timeout / cleanup
-
-### Recommended Improvements
-1. **Connection pooling limits:** Cap total tenant connections (e.g., 100) with LRU eviction
-2. **Redis-backed session:** Move JWT blacklist and tenant mapping cache to Redis
-3. **Horizontal scaling:** Sticky sessions for Socket.io, shared Redis for pub/sub
-4. **Database sharding:** Shard large tenant databases by collection
-5. **CDN:** Serve frontend from CDN edge locations
-6. **Containerization:** Docker + Kubernetes for auto-scaling API pods
-7. **Read replicas:** MongoDB read replicas for reporting queries
+## Technical Debt Register
+- Legacy/passive passport config cleanup.
+- Standardization of model registration for all NH models.
+- Improve frontend chunk splitting to reduce large bundle warnings.
+- Centralized env schema validation.
