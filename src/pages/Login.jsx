@@ -40,11 +40,11 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="orgSlug">Organization Slug</Label>
+              <Label htmlFor="orgSlug">Organization Slug (Optional)</Label>
               <Input
                 id="orgSlug"
                 type="text"
-                placeholder="e.g. acme-hospital"
+                placeholder="e.g. acme-hospital (leave blank for email auto-detect)"
                 value={orgSlug}
                 onChange={(e) => setOrgSlug(e.target.value)}
                 disabled={isLoading}

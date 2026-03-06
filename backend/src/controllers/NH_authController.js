@@ -119,12 +119,25 @@ exports.login = async (req, res, next) => {
       responseUser.availableViews = ['admin', 'doctor', 'nurse'];
     }
 
+    const tenantOrganization = req.tenant?.organization || null;
+    const organization = tenantOrganization
+      ? {
+          id: tenantOrganization._id,
+          name: tenantOrganization.name,
+          slug: tenantOrganization.slug,
+          type: tenantOrganization.type,
+          status: tenantOrganization.status,
+          enabledModules: tenantOrganization.enabledModules || [],
+        }
+      : null;
+
     res.json({
       success: true,
       message: 'Login successful',
       data: {
         user: responseUser,
         token,
+        organization,
       },
     });
   } catch (error) {

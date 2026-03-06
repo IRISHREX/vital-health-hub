@@ -1,5 +1,14 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { getAuthToken, setAuthToken, removeAuthToken, getUser, setUser, removeUser, setOrgSlug } from './api-client';
+import {
+  getAuthToken,
+  setAuthToken,
+  removeAuthToken,
+  getUser,
+  setUser,
+  removeUser,
+  setOrgSlug,
+  removeOrgSlug,
+} from './api-client';
 import { loginApi } from './auth';
 
 const AuthContext = createContext(undefined);
@@ -20,15 +29,24 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (credentials) => {
-    if (credentials?.orgSlug !== undefined) {
-      setOrgSlug(credentials.orgSlug);
+    const hintedOrgSlug = String(credentials?.orgSlug || '').trim().toLowerCase();
+    if (hintedOrgSlug) {
+      setOrgSlug(hintedOrgSlug);
     }
+
     const { data } = await loginApi(credentials);
+    const resolvedOrgSlug = String(data?.organization?.slug || hintedOrgSlug || '').trim().toLowerCase();
+    setOrgSlug(resolvedOrgSlug);
+
+    const resolvedUser = data?.organization
+      ? { ...data.user, organization: data.organization }
+      : data.user;
+
     if (data.token && data.user) {
         setAuthToken(data.token);
-        setUser(data.user);
+        setUser(resolvedUser);
         setTokenState(data.token);
-        setUserState(data.user);
+        setUserState(resolvedUser);
     } else {
         throw new Error("Login failed: No token or user returned.");
     }
@@ -37,6 +55,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     removeAuthToken();
     removeUser();
+    removeOrgSlug();
     setTokenState(null);
     setUserState(null);
   };

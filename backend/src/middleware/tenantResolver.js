@@ -2,6 +2,7 @@ const Organization = require('../models/GM_Organization');
 const { getTenantConnection, registerTenantModels } = require('../config/tenantManager');
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+const EMAIL_RESOLUTION_PATHS = new Set(['/auth/login']);
 
 const parseHost = (req) => {
   const forwarded = req.headers['x-forwarded-host'];
@@ -21,10 +22,48 @@ const getSubdomainSlug = (host) => {
   return subdomain;
 };
 
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+const resolveOrganizationByEmail = async (email) => {
+  if (!email) return null;
+
+  const matches = await Organization.find({
+    status: { $ne: 'deactivated' },
+    $or: [{ 'adminDetails.email': email }, { email }],
+  })
+    .select('+dbUri')
+    .limit(2);
+
+  if (matches.length > 1) {
+    const error = new Error('multiple_orgs');
+    error.code = 'MULTIPLE_ORGS';
+    throw error;
+  }
+
+  return matches[0] || null;
+};
+
+const attachTenantContext = (req, org) => {
+  const conn = getTenantConnection({ dbName: org.dbName, dbUri: org.dbUri });
+  registerTenantModels(conn);
+
+  req.tenant = {
+    slug: org.slug,
+    organizationId: org._id,
+    organization: org,
+    dbName: org.dbName,
+    dbUri: org.dbUri || null,
+    connection: conn,
+  };
+  req.tenantConn = conn;
+  req.tenantConnection = conn;
+};
+
 /**
  * Resolves tenant context from:
  * 1) x-org-slug header
  * 2) request subdomain
+ * 3) login email (POST /auth/login) when header/subdomain is missing
  *
  * When resolved, attaches:
  * - req.tenant
@@ -40,31 +79,46 @@ const resolveTenant = async (req, res, next) => {
     const host = parseHost(req);
     const subdomainSlug = getSubdomainSlug(host);
     const slug = headerSlug || subdomainSlug;
+    const path = String(req.path || '').toLowerCase();
+    const shouldTryEmailResolution =
+      !slug && req.method === 'POST' && EMAIL_RESOLUTION_PATHS.has(path);
 
-    if (!slug) return next();
+    let org = null;
 
-    const org = await Organization.findOne({ slug, status: { $ne: 'deactivated' } }).select('+dbUri');
+    if (slug) {
+      org = await Organization.findOne({ slug, status: { $ne: 'deactivated' } }).select('+dbUri');
+      if (!org) {
+        return res.status(404).json({ success: false, message: `Organization not found for slug '${slug}'` });
+      }
+    } else if (shouldTryEmailResolution) {
+      const email = normalizeEmail(req.body?.email);
+      if (email) {
+        try {
+          org = await resolveOrganizationByEmail(email);
+        } catch (error) {
+          if (error.code === 'MULTIPLE_ORGS') {
+            return res.status(409).json({
+              success: false,
+              message: 'Multiple organizations match this email. Please provide x-org-slug.',
+            });
+          }
+          throw error;
+        }
+      }
+    } else {
+      return next();
+    }
+
+    // If no organization is resolved from email, continue for backward compatibility.
     if (!org) {
-      return res.status(404).json({ success: false, message: `Organization not found for slug '${slug}'` });
+      return next();
     }
 
     if (org.status === 'suspended') {
       return res.status(403).json({ success: false, message: 'Organization is suspended' });
     }
 
-    const conn = getTenantConnection({ dbName: org.dbName, dbUri: org.dbUri });
-    registerTenantModels(conn);
-
-    req.tenant = {
-      slug: org.slug,
-      organizationId: org._id,
-      organization: org,
-      dbName: org.dbName,
-      dbUri: org.dbUri || null,
-      connection: conn,
-    };
-    req.tenantConn = conn;
-    req.tenantConnection = conn;
+    attachTenantContext(req, org);
 
     return next();
   } catch (error) {
