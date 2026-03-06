@@ -1,10 +1,14 @@
-const Facility = require('../models/NH_Facility');
+const BaseFacility = require('../models/NH_Facility');
 const asyncHandler = require('express-async-handler');
+const { getModel } = require('../utils/tenantModel');
+
+const getFacilityModel = (req) => getModel(req, 'Facility', BaseFacility);
 
 // @desc    Get all facilities
 // @route   GET /api/facilities
 // @access  Private
 exports.getFacilities = asyncHandler(async (req, res) => {
+  const Facility = getFacilityModel(req);
   const facilities = await Facility.find().populate('inCharge', 'name email');
   res.json(facilities);
 });
@@ -13,6 +17,7 @@ exports.getFacilities = asyncHandler(async (req, res) => {
 // @route   GET /api/facilities/:id
 // @access  Private
 exports.getFacilityById = asyncHandler(async (req, res) => {
+  const Facility = getFacilityModel(req);
   const facility = await Facility.findById(req.params.id).populate('inCharge', 'name email').populate('staff.user', 'name email');
   if (facility) {
     res.json(facility);
@@ -26,6 +31,7 @@ exports.getFacilityById = asyncHandler(async (req, res) => {
 // @route   POST /api/facilities
 // @access  Private/Admin
 exports.createFacility = asyncHandler(async (req, res) => {
+  const Facility = getFacilityModel(req);
   const {
     name,
     type,
@@ -62,6 +68,7 @@ exports.createFacility = asyncHandler(async (req, res) => {
 // @route   PUT /api/facilities/:id
 // @access  Private/Admin
 exports.updateFacility = asyncHandler(async (req, res) => {
+  const Facility = getFacilityModel(req);
   const {
     name,
     type,
@@ -109,6 +116,7 @@ exports.updateFacility = asyncHandler(async (req, res) => {
 // @route   DELETE /api/facilities/:id
 // @access  Private/Admin
 exports.deleteFacility = asyncHandler(async (req, res) => {
+  const Facility = getFacilityModel(req);
   const facility = await Facility.findById(req.params.id);
 
   if (facility) {
@@ -124,6 +132,7 @@ exports.deleteFacility = asyncHandler(async (req, res) => {
 // @route   POST /api/facilities/:id/services
 // @access  Private/Admin
 exports.addFacilityService = asyncHandler(async (req, res) => {
+    const Facility = getFacilityModel(req);
     const { name, price, duration, description } = req.body;
     const facility = await Facility.findById(req.params.id);
 
@@ -147,6 +156,7 @@ exports.addFacilityService = asyncHandler(async (req, res) => {
 // @route   PUT /api/facilities/:id/services/:serviceId
 // @access  Private/Admin
 exports.updateFacilityService = asyncHandler(async (req, res) => {
+    const Facility = getFacilityModel(req);
     const { name, price, duration, description } = req.body;
     const facility = await Facility.findById(req.params.id);
 
@@ -173,6 +183,7 @@ exports.updateFacilityService = asyncHandler(async (req, res) => {
 // @route   DELETE /api/facilities/:id/services/:serviceId
 // @access  Private/Admin
 exports.deleteFacilityService = asyncHandler(async (req, res) => {
+    const Facility = getFacilityModel(req);
     const facility = await Facility.findById(req.params.id);
     if (facility) {
         const service = facility.services.id(req.params.serviceId);

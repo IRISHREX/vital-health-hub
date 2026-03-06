@@ -1,7 +1,18 @@
-const { Bed, Patient, Admission, User } = require('../models');
+const BaseBed = require('../models/NH_Bed');
+const BasePatient = require('../models/NH_Patient');
+const BaseAdmission = require('../models/NH_Admission');
+const BaseUser = require('../models/NH_User');
 const { emitBedUpdate } = require('../config/socket');
 const { AppError } = require('../middleware/errorHandler');
 const { assertAssignmentAllowed } = require('../utils/assignmentPermissions');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Bed: getModel(req, 'Bed', BaseBed),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Admission: getModel(req, 'Admission', BaseAdmission),
+  User: getModel(req, 'User', BaseUser),
+});
 
 const isRoomAssignedToNurse = (nurse, bed) => {
   if (!nurse?.assignedRooms || nurse.assignedRooms.length === 0) return false;
@@ -12,7 +23,7 @@ const isRoomAssignedToNurse = (nurse, bed) => {
   );
 };
 
-const ensurePatientAssignedToNurse = async (patientId, nurseId) => {
+const ensurePatientAssignedToNurse = async (Patient, patientId, nurseId) => {
   if (!patientId || !nurseId) return;
   const patient = await Patient.findById(patientId).select('assignedNurses primaryNurse');
   if (!patient) return;
@@ -36,6 +47,7 @@ const ensurePatientAssignedToNurse = async (patientId, nurseId) => {
 // @access  Private
 exports.getBeds = async (req, res, next) => {
   try {
+    const { Bed } = getModels(req);
     const { status, bedType, ward, floor, page = 1, limit = 50 } = req.query;
     
     const query = { isActive: true };
@@ -74,6 +86,7 @@ exports.getBeds = async (req, res, next) => {
 // @access  Private
 exports.getBedStats = async (req, res, next) => {
   try {
+    const { Bed } = getModels(req);
     const total = await Bed.countDocuments({ isActive: true });
     const available = await Bed.countDocuments({ status: 'available', isActive: true });
     const occupied = await Bed.countDocuments({ status: 'occupied', isActive: true });
@@ -139,6 +152,7 @@ exports.getBedStats = async (req, res, next) => {
 // @access  Private
 exports.getBed = async (req, res, next) => {
   try {
+    const { Bed } = getModels(req);
     const bed = await Bed.findById(req.params.id)
       .populate('currentPatient')
       .populate('currentAdmission')
@@ -162,6 +176,7 @@ exports.getBed = async (req, res, next) => {
 // @access  Admin
 exports.createBed = async (req, res, next) => {
   try {
+    const { Bed } = getModels(req);
     const bed = await Bed.create(req.body);
 
     res.status(201).json({
@@ -179,6 +194,7 @@ exports.createBed = async (req, res, next) => {
 // @access  Admin
 exports.updateBed = async (req, res, next) => {
   try {
+    const { Bed, Patient, User } = getModels(req);
     const { currentPatient } = req.body;
     const bed = await Bed.findById(req.params.id);
 
@@ -227,7 +243,7 @@ exports.updateBed = async (req, res, next) => {
      .populate('nurseInCharge', 'firstName lastName email');
 
     if (req.body.nurseInCharge && updatedBed?.currentPatient) {
-      await ensurePatientAssignedToNurse(updatedBed.currentPatient._id || updatedBed.currentPatient, req.body.nurseInCharge);
+      await ensurePatientAssignedToNurse(Patient, updatedBed.currentPatient._id || updatedBed.currentPatient, req.body.nurseInCharge);
     }
 
     // Emit real-time update
@@ -248,6 +264,7 @@ exports.updateBed = async (req, res, next) => {
 // @access  Admin
 exports.assignNurse = async (req, res, next) => {
   try {
+    const { Bed, User, Patient } = getModels(req);
     const { nurseId } = req.body;
     const bed = await Bed.findById(req.params.id);
 
@@ -284,7 +301,7 @@ exports.assignNurse = async (req, res, next) => {
     await bed.populate('nurseInCharge', 'firstName lastName email');
 
     if (bed.currentPatient && nurseId) {
-      await ensurePatientAssignedToNurse(bed.currentPatient, nurseId);
+      await ensurePatientAssignedToNurse(Patient, bed.currentPatient, nurseId);
     }
 
     // Emit update to sockets
@@ -305,6 +322,7 @@ exports.assignNurse = async (req, res, next) => {
 // @access  Admin
 exports.assignNurseByFloor = async (req, res, next) => {
   try {
+    const { Bed, User, Patient } = getModels(req);
     const { nurseId, floor } = req.body;
     const ward = req.body.ward ? String(req.body.ward).trim() : '';
 
@@ -348,7 +366,7 @@ exports.assignNurseByFloor = async (req, res, next) => {
       await Promise.all(
         updatedBeds
           .filter((bed) => !!bed.currentPatient)
-          .map((bed) => ensurePatientAssignedToNurse(bed.currentPatient._id || bed.currentPatient, nurseValue))
+          .map((bed) => ensurePatientAssignedToNurse(Patient, bed.currentPatient._id || bed.currentPatient, nurseValue))
       );
     }
 
@@ -374,6 +392,7 @@ exports.assignNurseByFloor = async (req, res, next) => {
 // @access  Private
 exports.updateBedStatus = async (req, res, next) => {
   try {
+    const { Bed } = getModels(req);
     const { status } = req.body;
 
     const bed = await Bed.findByIdAndUpdate(
@@ -404,6 +423,7 @@ exports.updateBedStatus = async (req, res, next) => {
 // @access  Private
 exports.assignBed = async (req, res, next) => {
   try {
+    const { Bed, Patient, Admission } = getModels(req);
     const { patientId, admissionId } = req.body;
 
     const bed = await Bed.findById(req.params.id);
@@ -441,7 +461,7 @@ exports.assignBed = async (req, res, next) => {
     await bed.save();
 
     if (bed.nurseInCharge) {
-      await ensurePatientAssignedToNurse(patientId, bed.nurseInCharge);
+      await ensurePatientAssignedToNurse(Patient, patientId, bed.nurseInCharge);
     }
 
     // Bed assignment implies active IPD care.
@@ -476,6 +496,7 @@ exports.assignBed = async (req, res, next) => {
 // @access  Private
 exports.releaseBed = async (req, res, next) => {
   try {
+    const { Bed, Patient } = getModels(req);
     const bed = await Bed.findById(req.params.id);
     
     if (!bed) {
@@ -510,6 +531,7 @@ exports.releaseBed = async (req, res, next) => {
 // @access  Admin
 exports.deleteBed = async (req, res, next) => {
   try {
+    const { Bed } = getModels(req);
     const bed = await Bed.findById(req.params.id);
     
     if (!bed) {

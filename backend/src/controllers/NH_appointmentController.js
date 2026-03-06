@@ -1,9 +1,18 @@
-const { Appointment, Doctor, Patient } = require('../models');
+const BaseAppointment = require('../models/NH_Appointment');
+const BaseDoctor = require('../models/NH_Doctor');
+const BasePatient = require('../models/NH_Patient');
 const { sendEmail } = require('../config/email');
 const { emitNotification } = require('../config/socket');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
 
-const getLoggedInDoctorProfile = async (user) => {
+const getModels = (req) => ({
+  Appointment: getModel(req, 'Appointment', BaseAppointment),
+  Doctor: getModel(req, 'Doctor', BaseDoctor),
+  Patient: getModel(req, 'Patient', BasePatient),
+});
+
+const getLoggedInDoctorProfile = async (Doctor, user) => {
   if (!user) return null;
   const normalizedEmail = String(user.email || '').trim().toLowerCase();
   const orQuery = [{ user: user._id }];
@@ -18,6 +27,7 @@ const getLoggedInDoctorProfile = async (user) => {
 // @access  Private
 exports.getAppointments = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const { doctorId, patientId, status, type, date, startDate, endDate, page = 1, limit = 20 } = req.query;
     
     const query = {};
@@ -69,6 +79,7 @@ exports.getAppointments = async (req, res, next) => {
 // @access  Private
 exports.getTodayAppointments = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -98,6 +109,7 @@ exports.getTodayAppointments = async (req, res, next) => {
 // @access  Private
 exports.getAppointmentStats = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -154,6 +166,7 @@ exports.getAppointmentStats = async (req, res, next) => {
 // @access  Private
 exports.getAppointment = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const appointment = await Appointment.findById(req.params.id)
       .populate('patient')
       .populate({
@@ -179,12 +192,13 @@ exports.getAppointment = async (req, res, next) => {
 // @access  Private
 exports.createAppointment = async (req, res, next) => {
   try {
+    const { Appointment, Doctor, Patient } = getModels(req);
     const { patientId, doctorId, appointmentDate, appointmentTime, reason, notes, type, status, timeSlot } = req.body;
 
     let effectiveDoctorId = doctorId;
 
     if (req.user?.role === 'doctor') {
-      const loggedInDoctor = await getLoggedInDoctorProfile(req.user);
+      const loggedInDoctor = await getLoggedInDoctorProfile(Doctor, req.user);
       if (!loggedInDoctor) {
         throw new AppError('Doctor profile not found for current user', 403);
       }
@@ -283,13 +297,14 @@ exports.createAppointment = async (req, res, next) => {
 // @access  Private
 exports.updateAppointment = async (req, res, next) => {
   try {
+    const { Appointment, Doctor } = getModels(req);
     // if non-doctor user changes doctorId in body, propagate to `doctor` field
     if (req.body?.doctorId) {
       req.body.doctor = req.body.doctorId;
     }
 
     if (req.user?.role === 'doctor') {
-      const loggedInDoctor = await getLoggedInDoctorProfile(req.user);
+      const loggedInDoctor = await getLoggedInDoctorProfile(Doctor, req.user);
       if (!loggedInDoctor) {
         throw new AppError('Doctor profile not found for current user', 403);
       }
@@ -340,6 +355,7 @@ exports.updateAppointment = async (req, res, next) => {
 // @access  Private
 exports.updateStatus = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const { status, consultationNotes, prescription, followUpDate, cancelledReason } = req.body;
 
     const updateData = { status };
@@ -376,6 +392,7 @@ exports.updateStatus = async (req, res, next) => {
 // @access  Private
 exports.cancelAppointment = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const { reason } = req.body;
 
     const appointment = await Appointment.findByIdAndUpdate(
@@ -407,6 +424,7 @@ exports.cancelAppointment = async (req, res, next) => {
 // @access  Admin
 exports.deleteAppointment = async (req, res, next) => {
   try {
+    const { Appointment } = getModels(req);
     const appointment = await Appointment.findById(req.params.id);
 
     if (!appointment) {
@@ -429,6 +447,7 @@ exports.deleteAppointment = async (req, res, next) => {
 // @access  Private
 exports.getDoctorSchedule = async (req, res, next) => {
   try {
+    const { Appointment, Doctor } = getModels(req);
     const { date } = req.query;
     const { doctorId } = req.params;
 

@@ -1,5 +1,16 @@
-const { Vital, Patient, Notification, ActivityLog } = require('../models');
+const BaseVital = require('../models/NH_Vital');
+const BasePatient = require('../models/NH_Patient');
+const BaseNotification = require('../models/NH_Notification');
+const BaseActivityLog = require('../models/NH_ActivityLog');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Vital: getModel(req, 'Vital', BaseVital),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Notification: getModel(req, 'Notification', BaseNotification),
+  ActivityLog: getModel(req, 'ActivityLog', BaseActivityLog),
+});
 
 const normalizeVitalPayload = (body = {}) => {
   const vitalData = { ...body };
@@ -72,6 +83,7 @@ const getVitalPriority = (vital) => {
 // List vitals feed across patients with filters
 exports.getVitalsFeed = async (req, res, next) => {
   try {
+    const { Vital } = getModels(req);
     const {
       page = 1,
       limit = 200,
@@ -147,6 +159,7 @@ exports.getVitalsFeed = async (req, res, next) => {
 // Get vitals for a patient
 exports.getPatientVitals = async (req, res, next) => {
   try {
+    const { Vital } = getModels(req);
     const { limit = 50, startDate, endDate } = req.query;
 
     const query = { patient: req.params.patientId };
@@ -171,6 +184,7 @@ exports.getPatientVitals = async (req, res, next) => {
 // Get latest vital
 exports.getLatestVital = async (req, res, next) => {
   try {
+    const { Vital } = getModels(req);
     const vital = await Vital.findOne({ patient: req.params.patientId })
       .populate('recordedBy', 'firstName lastName')
       .sort('-recordedAt');
@@ -186,6 +200,7 @@ exports.getLatestVital = async (req, res, next) => {
 // Create vital
 exports.createVital = async (req, res, next) => {
   try {
+    const { Vital, Patient, Notification, ActivityLog } = getModels(req);
     const vitalData = normalizeVitalPayload(req.body);
 
     // Attach recorder
@@ -291,6 +306,7 @@ exports.createVital = async (req, res, next) => {
 // Update vital
 exports.updateVital = async (req, res, next) => {
   try {
+    const { Vital } = getModels(req);
     const vital = await Vital.findById(req.params.id);
     if (!vital) throw new AppError('Vital not found', 404);
     if (!canManageVital(req.user, vital)) throw new AppError('Unauthorized', 403);
@@ -314,6 +330,7 @@ exports.updateVital = async (req, res, next) => {
 // Delete vital
 exports.deleteVital = async (req, res, next) => {
   try {
+    const { Vital } = getModels(req);
     const vital = await Vital.findById(req.params.id);
     if (!vital) throw new AppError('Vital not found', 404);
     if (!canManageVital(req.user, vital)) throw new AppError('Unauthorized', 403);
@@ -328,6 +345,7 @@ exports.deleteVital = async (req, res, next) => {
 // Vital trends
 exports.getVitalTrends = async (req, res, next) => {
   try {
+    const { Vital } = getModels(req);
     const { hours = 24 } = req.query;
     const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
 

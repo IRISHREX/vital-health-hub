@@ -1,5 +1,8 @@
-const { User } = require('../models');
+const BaseUser = require('../models/NH_User');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
+
+const getUserModel = (req) => getModel(req, 'User', BaseUser);
 
 // Personal permission schema stored on User model as personalPermissions field
 // Doctor: { prescriptions: { view, edit, create, delete }, schedule: { view, edit } }
@@ -8,6 +11,7 @@ const { AppError } = require('../middleware/errorHandler');
 // Get my personal permissions
 exports.getMyPersonalPermissions = async (req, res, next) => {
   try {
+    const User = getUserModel(req);
     const user = await User.findById(req.user._id).select('personalPermissions role');
     res.json({ success: true, data: user?.personalPermissions || {} });
   } catch (error) { next(error); }
@@ -16,6 +20,7 @@ exports.getMyPersonalPermissions = async (req, res, next) => {
 // Get personal permissions for a specific user (admin/super_admin)
 exports.getUserPersonalPermissions = async (req, res, next) => {
   try {
+    const User = getUserModel(req);
     const user = await User.findById(req.params.id).select('personalPermissions role firstName lastName');
     if (!user) throw new AppError('User not found', 404);
     res.json({ success: true, data: { permissions: user.personalPermissions || {}, role: user.role, name: `${user.firstName} ${user.lastName}` } });
@@ -25,6 +30,7 @@ exports.getUserPersonalPermissions = async (req, res, next) => {
 // Update personal permissions (self or admin)
 exports.updatePersonalPermissions = async (req, res, next) => {
   try {
+    const User = getUserModel(req);
     const targetId = req.params.id || req.user._id;
     const isSelf = targetId.toString() === req.user._id.toString();
     const isAdmin = ['super_admin', 'hospital_admin'].includes(req.user.role);
@@ -48,6 +54,7 @@ exports.updatePersonalPermissions = async (req, res, next) => {
 // Check if a user grants permission to another user for a specific action
 exports.checkPermission = async (req, res, next) => {
   try {
+    const User = getUserModel(req);
     const { ownerId, module, action } = req.query;
     if (!ownerId || !module || !action) throw new AppError('ownerId, module, and action are required', 400);
 

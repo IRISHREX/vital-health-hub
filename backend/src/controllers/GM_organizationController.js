@@ -2,7 +2,6 @@ const Organization = require('../models/GM_Organization');
 const Subscription = require('../models/GM_Subscription');
 const { generateDbName, getTenantConnection } = require('../config/tenantManager');
 const { AppError } = require('../middleware/errorHandler');
-const bcrypt = require('bcryptjs');
 
 const isValidMongoUri = (value) => /^mongodb(\+srv)?:\/\//i.test(String(value || '').trim());
 
@@ -20,7 +19,9 @@ exports.list = async (req, res, next) => {
       ];
     }
 
+    console.log('📋 Listing organizations with filter:', filter);
     const organizations = await Organization.find(filter).sort({ createdAt: -1 });
+    console.log(`✅ Found ${organizations.length} organizations`);
 
     // Attach active subscription info
     const orgIds = organizations.map((o) => o._id);
@@ -39,8 +40,10 @@ exports.list = async (req, res, next) => {
       activeSubscription: subMap[org._id.toString()] || null,
     }));
 
+    console.log(`📤 Returning ${result.length} organizations in response`);
     res.json({ success: true, data: result, count: result.length });
   } catch (error) {
+    console.error('❌ Error listing organizations:', error.message);
     next(error);
   }
 };
@@ -81,6 +84,8 @@ exports.onboard = async (req, res, next) => {
       adminPassword,
     } = req.body;
 
+    console.log('🏥 Onboarding organization:', name);
+
     if (!name || !type || !adminDetails?.email || !adminDetails?.firstName || !adminDetails?.lastName) {
       throw new AppError('Missing required onboarding fields', 400);
     }
@@ -100,6 +105,7 @@ exports.onboard = async (req, res, next) => {
     if (existing) throw new AppError('Organization with a similar name already exists', 400);
 
     const dbName = generateDbName(slug);
+    console.log('📝 Generated DB name:', dbName);
 
     const org = await Organization.create({
       name,
@@ -120,6 +126,8 @@ exports.onboard = async (req, res, next) => {
       onboardedAt: new Date(),
     });
 
+    console.log('✅ Organization created:', org._id);
+
     // Create the hospital admin user in the tenant database.
     // This write guarantees the tenant DB is created during onboarding.
     try {
@@ -129,19 +137,20 @@ exports.onboard = async (req, res, next) => {
       const UserSchema = require('../models/NH_User').schema;
       const TenantUser = tenantConn.models.User || tenantConn.model('User', UserSchema);
 
-      const salt = await bcrypt.genSalt(12);
-      const hashedPassword = await bcrypt.hash(superAdminPassword, salt);
-
       await TenantUser.create({
         email: adminDetails.email,
-        password: hashedPassword,
+        // NH_User pre-save hook hashes password.
+        password: superAdminPassword,
         firstName: adminDetails.firstName,
         lastName: adminDetails.lastName,
         role: 'super_admin',
         phone: adminDetails.phone || '',
         isActive: true,
       });
+      
+      console.log('✅ Tenant database and super admin created');
     } catch (tenantErr) {
+      console.error('❌ Tenant setup failed:', tenantErr.message);
       await Organization.findByIdAndDelete(org._id);
       throw new AppError(`Database setup failed during onboarding: ${tenantErr.message}`, 400);
     }
@@ -149,9 +158,11 @@ exports.onboard = async (req, res, next) => {
     // Activate the organization
     org.status = 'active';
     await org.save();
+    console.log('✅ Organization activated:', org._id);
 
     res.status(201).json({ success: true, data: org, message: 'Organization onboarded successfully' });
   } catch (error) {
+    console.error('❌ Onboarding error:', error.message);
     next(error);
   }
 };

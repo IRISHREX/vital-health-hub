@@ -16,11 +16,20 @@ const nurseRoutes = require('./nurse');
 const dashboardRoutes = require('./dashboard');
 const serviceOrderRoutes = require('./serviceOrders');
 const billingRoutes = require('./billing');
+const { resolveTenant } = require('../middleware/tenantResolver');
 
 const router = express.Router();
 
 // API v1 routes with nh prefix
 const v1Router = express.Router();
+
+// Health check (kept before tenant resolution)
+v1Router.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Attach tenant context for NH routes using x-org-slug or subdomain
+v1Router.use(resolveTenant);
 
 v1Router.use('/auth', authRoutes);
 v1Router.use('/appointments', appointmentRoutes);
@@ -46,11 +55,6 @@ v1Router.use('/personal-permissions', require('./personalPermissions'));
 v1Router.use('/doctor-dashboard', require('./doctorDashboard'));
 v1Router.use('/radiology', require('./radiology'));
 v1Router.use('/ot', require('./ot'));
-
-// Health check
-v1Router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // Mount v1 routes under nh/api/v1
 router.use('/nh/api/v1', v1Router);

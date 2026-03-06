@@ -1,7 +1,14 @@
-const Invoice = require('../models/NH_Invoice');
-const Patient = require('../models/NH_Patient');
-const Admission = require('../models/NH_Admission');
+const BaseInvoice = require('../models/NH_Invoice');
+const BasePatient = require('../models/NH_Patient');
+const BaseAdmission = require('../models/NH_Admission');
 const asyncHandler = require('express-async-handler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+  Patient: getModel(req, 'Patient', BasePatient),
+  Admission: getModel(req, 'Admission', BaseAdmission),
+});
 
 const getComputedInvoiceStatus = (invoice) => {
   if (!invoice) return 'pending';
@@ -23,6 +30,7 @@ const getComputedInvoiceStatus = (invoice) => {
 // @route   GET /api/invoices
 // @access  Private
 const getInvoices = asyncHandler(async (req, res) => {
+  const { Invoice } = getModels(req);
   const { patientId, status, startDate, endDate, type, billingScope, sourceModule } = req.query;
   const query = {};
 
@@ -62,6 +70,7 @@ const getInvoices = asyncHandler(async (req, res) => {
 // @route   GET /api/invoices/:id
 // @access  Private
 const getInvoiceById = asyncHandler(async (req, res) => {
+  const { Invoice } = getModels(req);
   const invoice = await Invoice.findById(req.params.id)
     .populate('patient')
     .populate('admission')
@@ -81,6 +90,7 @@ const getInvoiceById = asyncHandler(async (req, res) => {
 // @route   POST /api/invoices
 // @access  Private/Admin
 const createInvoice = asyncHandler(async (req, res) => {
+  const { Invoice } = getModels(req);
   const {
     patient,
     admission,
@@ -177,6 +187,7 @@ const createInvoice = asyncHandler(async (req, res) => {
 // @route   PUT /api/invoices/:id
 // @access  Private/Admin
 const updateInvoice = asyncHandler(async (req, res) => {
+  const { Invoice } = getModels(req);
   const {
     status,
     notes,
@@ -235,6 +246,7 @@ const updateInvoice = asyncHandler(async (req, res) => {
 // @route   DELETE /api/invoices/:id
 // @access  Private/Admin
 const deleteInvoice = asyncHandler(async (req, res) => {
+  const { Invoice } = getModels(req);
   const invoice = await Invoice.findById(req.params.id);
 
   if (invoice) {
@@ -263,6 +275,7 @@ const deleteInvoice = asyncHandler(async (req, res) => {
 // @route   POST /api/invoices/:id/payments
 // @access  Private
 const addPayment = asyncHandler(async (req, res) => {
+    const { Invoice } = getModels(req);
     const { amount, method, reference } = req.body;
 
     // Validate required fields

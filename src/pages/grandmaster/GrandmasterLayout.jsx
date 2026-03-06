@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { getGmToken, getGmUser, removeGmToken, removeGmUser } from '@/lib/grandmaster-api';
+import { getOrgSlug, setOrgSlug } from '@/lib/api-client';
 import { NavLink } from '@/components/NavLink';
 import {
   LayoutDashboard, Building2, CreditCard, Activity, Bell,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 
 const navItems = [
   { title: 'Dashboard', url: '/grandmaster', icon: LayoutDashboard, end: true },
@@ -23,6 +25,9 @@ export default function GrandmasterLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [activeOrgSlug, setActiveOrgSlug] = useState(() => getOrgSlug());
+  const [isSwitchingOrg, setIsSwitchingOrg] = useState(false);
+  const [draftOrgSlug, setDraftOrgSlug] = useState(() => getOrgSlug());
   const user = getGmUser();
 
   useEffect(() => {
@@ -35,6 +40,19 @@ export default function GrandmasterLayout() {
     removeGmToken();
     removeGmUser();
     navigate('/grandmaster/login');
+  };
+
+  const handleSwitchOrganization = () => {
+    const normalized = String(draftOrgSlug || '').trim().toLowerCase();
+    setOrgSlug(normalized);
+    setActiveOrgSlug(normalized);
+    setIsSwitchingOrg(false);
+    window.location.reload();
+  };
+
+  const handleCancelSwitch = () => {
+    setDraftOrgSlug(activeOrgSlug);
+    setIsSwitchingOrg(false);
   };
 
   const isActive = (path, end) => {
@@ -85,6 +103,36 @@ export default function GrandmasterLayout() {
             <div className="mb-2 rounded-lg bg-accent/50 p-2">
               <p className="text-xs text-muted-foreground">Signed in as</p>
               <p className="text-sm font-medium text-foreground truncate">{user.firstName} {user.lastName}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Active org: <span className="font-medium text-foreground">{activeOrgSlug || 'none'}</span>
+              </p>
+              {isSwitchingOrg ? (
+                <div className="mt-2 space-y-2">
+                  <Input
+                    value={draftOrgSlug}
+                    onChange={(e) => setDraftOrgSlug(e.target.value)}
+                    placeholder="Enter org slug"
+                    className="h-8"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSwitchOrganization}>
+                      Apply
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={handleCancelSwitch}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 h-7 px-2 text-xs"
+                  onClick={() => setIsSwitchingOrg(true)}
+                >
+                  Switch Organization
+                </Button>
+              )}
             </div>
           )}
           <div className="flex items-center gap-2">

@@ -1,11 +1,25 @@
-const { Task, Patient, User, Notification, Vital } = require('../models');
+const BaseTask = require('../models/NH_Task');
+const BasePatient = require('../models/NH_Patient');
+const BaseUser = require('../models/NH_User');
+const BaseNotification = require('../models/NH_Notification');
+const BaseVital = require('../models/NH_Vital');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Task: getModel(req, 'Task', BaseTask),
+  Patient: getModel(req, 'Patient', BasePatient),
+  User: getModel(req, 'User', BaseUser),
+  Notification: getModel(req, 'Notification', BaseNotification),
+  Vital: getModel(req, 'Vital', BaseVital),
+});
 
 // @desc Create task (Admin/Doctor)
 // @route POST /api/tasks
 // @access Admin/Doctor
 exports.createTask = async (req, res, next) => {
   try {
+    const { Task, Patient, User, Notification } = getModels(req);
     const { title, description, type, priority, patient, assignedTo, dueDate, room } = req.body;
 
     if (!title) throw new AppError('Title is required', 400);
@@ -62,6 +76,7 @@ exports.createTask = async (req, res, next) => {
 // @access Admin
 exports.getTasks = async (req, res, next) => {
   try {
+    const { Task } = getModels(req);
     const { page = 1, limit = 20, status, assignedTo } = req.query;
     const query = {};
     if (status) query.status = status;
@@ -87,6 +102,7 @@ exports.getTasks = async (req, res, next) => {
 // @access Private
 exports.getMyTasks = async (req, res, next) => {
   try {
+    const { Task } = getModels(req);
     const tasks = await Task.find({ assignedTo: req.user._id }).populate('patient', 'firstName lastName patientId');
     res.json({ success: true, data: tasks });
   } catch (error) {
@@ -99,6 +115,7 @@ exports.getMyTasks = async (req, res, next) => {
 // @access Private (assigned user or admin)
 exports.getTask = async (req, res, next) => {
   try {
+    const { Task } = getModels(req);
     const task = await Task.findById(req.params.id)
       .populate('patient', 'firstName lastName patientId')
       .populate('assignedTo', 'firstName lastName email')
@@ -121,6 +138,7 @@ exports.getTask = async (req, res, next) => {
 // @access Admin or creator
 exports.updateTask = async (req, res, next) => {
   try {
+    const { Task } = getModels(req);
     const task = await Task.findById(req.params.id);
     if (!task) throw new AppError('Task not found', 404);
 
@@ -147,6 +165,7 @@ exports.updateTask = async (req, res, next) => {
 // @access Assigned user or admin
 exports.completeTask = async (req, res, next) => {
   try {
+    const { Task, Vital } = getModels(req);
     const task = await Task.findById(req.params.id);
     if (!task) throw new AppError('Task not found', 404);
 
@@ -184,6 +203,7 @@ exports.completeTask = async (req, res, next) => {
 // @access Admin
 exports.deleteTask = async (req, res, next) => {
   try {
+    const { Task } = getModels(req);
     const task = await Task.findById(req.params.id);
     if (!task) throw new AppError('Task not found', 404);
 

@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const BaseUser = require('../models/NH_User');
 const config = require('../config');
 const { sendEmail } = require('../config/email');
 const { AppError } = require('../middleware/errorHandler');
+const { getModel } = require('../utils/tenantModel');
 
 // Generate JWT token
 const generateToken = (user) => {
@@ -13,12 +14,15 @@ const generateToken = (user) => {
   );
 };
 
+const getUserModel = (req) => getModel(req, 'User', BaseUser);
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public (for super admin) or Admin only
 exports.register = async (req, res, next) => {
   try {
     const { email, password, firstName, lastName, role, phone, department } = req.body;
+    const User = getUserModel(req);
 
     // Check if user exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -40,7 +44,7 @@ exports.register = async (req, res, next) => {
       lastName,
       role: role || 'receptionist',
       phone,
-      department
+      department,
     });
 
     // Send welcome email
@@ -57,10 +61,10 @@ exports.register = async (req, res, next) => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.role
+          role: user.role,
         },
-        token
-      }
+        token,
+      },
     });
   } catch (error) {
     next(error);
@@ -73,10 +77,11 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    const User = getUserModel(req);
 
     // Find user with password
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    
+
     if (!user) {
       throw new AppError('Invalid email or password', 401);
     }
@@ -106,7 +111,7 @@ exports.login = async (req, res, next) => {
       role: user.role,
       department: user.department,
       avatar: user.avatar,
-      assignedRooms: user.assignedRooms || []
+      assignedRooms: user.assignedRooms || [],
     };
 
     // Admins can view multiple perspectives
@@ -119,8 +124,8 @@ exports.login = async (req, res, next) => {
       message: 'Login successful',
       data: {
         user: responseUser,
-        token
-      }
+        token,
+      },
     });
   } catch (error) {
     next(error);
@@ -132,8 +137,9 @@ exports.login = async (req, res, next) => {
 // @access  Private
 exports.getMe = async (req, res, next) => {
   try {
+    const User = getUserModel(req);
     const user = await User.findById(req.user._id);
-    
+
     res.json({
       success: true,
       data: {
@@ -149,9 +155,9 @@ exports.getMe = async (req, res, next) => {
           avatar: user.avatar,
           address: user.address,
           lastLogin: user.lastLogin,
-          assignedRooms: user.assignedRooms || []
-        }
-      }
+          assignedRooms: user.assignedRooms || [],
+        },
+      },
     });
   } catch (error) {
     next(error);
@@ -164,6 +170,7 @@ exports.getMe = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
   try {
     const { firstName, lastName, phone, address, avatar } = req.body;
+    const User = getUserModel(req);
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -174,7 +181,7 @@ exports.updateProfile = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: { user }
+      data: { user },
     });
   } catch (error) {
     next(error);
@@ -187,9 +194,10 @@ exports.updateProfile = async (req, res, next) => {
 exports.changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    const User = getUserModel(req);
 
     const user = await User.findById(req.user._id).select('+password');
-    
+
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       throw new AppError('Current password is incorrect', 400);
@@ -200,7 +208,7 @@ exports.changePassword = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Password changed successfully'
+      message: 'Password changed successfully',
     });
   } catch (error) {
     next(error);
@@ -213,14 +221,15 @@ exports.changePassword = async (req, res, next) => {
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
+    const User = getUserModel(req);
 
     const user = await User.findOne({ email: email.toLowerCase() });
-    
+
     if (!user) {
       // Don't reveal if email exists
       return res.json({
         success: true,
-        message: 'If an account exists, a password reset email has been sent'
+        message: 'If an account exists, a password reset email has been sent',
       });
     }
 
@@ -232,7 +241,7 @@ exports.forgotPassword = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'If an account exists, a password reset email has been sent'
+      message: 'If an account exists, a password reset email has been sent',
     });
   } catch (error) {
     next(error);
@@ -245,10 +254,11 @@ exports.forgotPassword = async (req, res, next) => {
 exports.resetPassword = async (req, res, next) => {
   try {
     const { token, newPassword } = req.body;
+    const User = getUserModel(req);
 
     const user = await User.findOne({
       passwordResetToken: token,
-      passwordResetExpires: { $gt: Date.now() }
+      passwordResetExpires: { $gt: Date.now() },
     });
 
     if (!user) {
@@ -262,7 +272,7 @@ exports.resetPassword = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Password reset successful'
+      message: 'Password reset successful',
     });
   } catch (error) {
     next(error);

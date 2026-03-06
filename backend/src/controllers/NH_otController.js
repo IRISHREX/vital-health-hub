@@ -1,13 +1,25 @@
-const Surgery = require('../models/NH_Surgery');
-const OTRoom = require('../models/NH_OTRoom');
-const Invoice = require('../models/NH_Invoice');
-const BillingLedger = require('../models/NH_BillingLedger');
-const { Admission, Doctor } = require('../models');
+const BaseSurgery = require('../models/NH_Surgery');
+const BaseOTRoom = require('../models/NH_OTRoom');
+const BaseInvoice = require('../models/NH_Invoice');
+const BaseBillingLedger = require('../models/NH_BillingLedger');
+const BaseAdmission = require('../models/NH_Admission');
+const BaseDoctor = require('../models/NH_Doctor');
 const asyncHandler = require('express-async-handler');
+const { getModel } = require('../utils/tenantModel');
+
+const getModels = (req) => ({
+  Surgery: getModel(req, 'Surgery', BaseSurgery),
+  OTRoom: getModel(req, 'OTRoom', BaseOTRoom),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
+  BillingLedger: getModel(req, 'BillingLedger', BaseBillingLedger),
+  Admission: getModel(req, 'Admission', BaseAdmission),
+  Doctor: getModel(req, 'Doctor', BaseDoctor),
+});
 
 // ==================== OT ROOMS ====================
 
 const getOTRooms = asyncHandler(async (req, res) => {
+  const { OTRoom } = getModels(req);
   const { status, type } = req.query;
   const query = {};
   if (status) query.status = status;
@@ -17,17 +29,20 @@ const getOTRooms = asyncHandler(async (req, res) => {
 });
 
 const createOTRoom = asyncHandler(async (req, res) => {
+  const { OTRoom } = getModels(req);
   const room = await OTRoom.create(req.body);
   res.status(201).json({ success: true, data: room });
 });
 
 const updateOTRoom = asyncHandler(async (req, res) => {
+  const { OTRoom } = getModels(req);
   const room = await OTRoom.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!room) { res.status(404); throw new Error('OT Room not found'); }
   res.json({ success: true, data: room });
 });
 
 const deleteOTRoom = asyncHandler(async (req, res) => {
+  const { OTRoom } = getModels(req);
   const room = await OTRoom.findById(req.params.id);
   if (!room) { res.status(404); throw new Error('OT Room not found'); }
   room.isActive = false;
@@ -38,6 +53,7 @@ const deleteOTRoom = asyncHandler(async (req, res) => {
 // ==================== SURGERIES CRUD ====================
 
 const getSurgeries = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const { patientId, status, urgency, surgeonId, otRoomId, startDate, endDate } = req.query;
   const query = {};
   if (patientId) query.patient = patientId;
@@ -64,6 +80,7 @@ const getSurgeries = asyncHandler(async (req, res) => {
 });
 
 const getSurgeryById = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findById(req.params.id)
     .populate('patient')
     .populate('primarySurgeon', 'name specialization')
@@ -82,6 +99,7 @@ const getSurgeryById = asyncHandler(async (req, res) => {
 });
 
 const createSurgery = asyncHandler(async (req, res) => {
+  const { Surgery, Admission, Doctor } = getModels(req);
   if (!req.body?.patient) {
     res.status(400);
     throw new Error('Patient is required');
@@ -140,6 +158,7 @@ const createSurgery = asyncHandler(async (req, res) => {
 });
 
 const updateSurgery = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
     .populate('patient', 'firstName lastName patientId')
     .populate('primarySurgeon', 'name')
@@ -149,6 +168,7 @@ const updateSurgery = asyncHandler(async (req, res) => {
 });
 
 const deleteSurgery = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
   if (!['requested', 'approved'].includes(surgery.status)) {
@@ -163,6 +183,7 @@ const deleteSurgery = asyncHandler(async (req, res) => {
 // ==================== WORKFLOW ====================
 
 const approveSurgery = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
   surgery.status = 'approved';
@@ -171,6 +192,7 @@ const approveSurgery = asyncHandler(async (req, res) => {
 });
 
 const scheduleSurgery = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const { otRoom, scheduledDate, scheduledStartTime, scheduledEndTime, team } = req.body;
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
@@ -208,6 +230,7 @@ const scheduleSurgery = asyncHandler(async (req, res) => {
 });
 
 const updateChecklist = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const { itemId, completed, notes } = req.body;
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
@@ -231,6 +254,7 @@ const updateChecklist = asyncHandler(async (req, res) => {
 });
 
 const patientInOT = asyncHandler(async (req, res) => {
+  const { Surgery, OTRoom } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
 
@@ -247,6 +271,7 @@ const patientInOT = asyncHandler(async (req, res) => {
 });
 
 const startAnesthesia = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
   surgery.status = 'anesthesia_started';
@@ -257,6 +282,7 @@ const startAnesthesia = asyncHandler(async (req, res) => {
 });
 
 const startSurgery = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
   surgery.status = 'surgery_started';
@@ -266,6 +292,7 @@ const startSurgery = asyncHandler(async (req, res) => {
 });
 
 const endSurgery = asyncHandler(async (req, res) => {
+  const { Surgery, OTRoom } = getModels(req);
   const { operativeNotes, complications, bloodLoss, consumables, implants } = req.body;
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
@@ -288,6 +315,7 @@ const endSurgery = asyncHandler(async (req, res) => {
 });
 
 const moveToRecovery = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
 
@@ -300,6 +328,7 @@ const moveToRecovery = asyncHandler(async (req, res) => {
 });
 
 const completeRecovery = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
 
@@ -312,6 +341,7 @@ const completeRecovery = asyncHandler(async (req, res) => {
 });
 
 const completeSurgery = asyncHandler(async (req, res) => {
+  const { Surgery, BillingLedger } = getModels(req);
   const surgery = await Surgery.findById(req.params.id);
   if (!surgery) { res.status(404); throw new Error('Surgery not found'); }
   surgery.status = 'completed';
@@ -334,6 +364,7 @@ const completeSurgery = asyncHandler(async (req, res) => {
 // ==================== STATS ====================
 
 const getOTStats = asyncHandler(async (req, res) => {
+  const { Surgery, OTRoom } = getModels(req);
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
   const [total, scheduled, inProgress, completed, todayCount, rooms] = await Promise.all([
     Surgery.countDocuments(),
@@ -371,6 +402,7 @@ const getOTStats = asyncHandler(async (req, res) => {
 // ==================== OT SCHEDULE ====================
 
 const getOTSchedule = asyncHandler(async (req, res) => {
+  const { Surgery } = getModels(req);
   const { date, otRoomId } = req.query;
   const query = { status: { $nin: ['cancelled'] } };
 
@@ -393,6 +425,7 @@ const getOTSchedule = asyncHandler(async (req, res) => {
 // ==================== INVOICE ====================
 
 const generateOTInvoice = asyncHandler(async (req, res) => {
+  const { Surgery, Invoice } = getModels(req);
   const { surgeryId } = req.body;
   const surgery = await Surgery.findById(surgeryId)
     .populate('patient', 'firstName lastName patientId')
