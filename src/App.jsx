@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { AuthProvider } from "./lib/AuthContext";
 import { ThemeProvider } from "./lib/ThemeContext";
+import { LayoutModeProvider } from "./lib/LayoutModeContext";
 import AuthorizedRoute from "./components/AuthorizedRoute";
 import Dashboard from "./pages/Dashboard";
 import Beds from "./pages/Beds";
@@ -52,6 +53,7 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <ThemeProvider>
+        <LayoutModeProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -147,6 +149,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+        </LayoutModeProvider>
         </ThemeProvider>
       </AuthProvider>
     </TooltipProvider>
