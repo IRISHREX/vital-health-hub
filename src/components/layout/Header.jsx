@@ -25,7 +25,7 @@ export function Header() {
   const { user, logout } = useAuth();
   const { canView } = useVisualAuth();
   const { theme, toggleTheme, resolvedTheme } = useTheme();
-  const { mode, setMode } = useLayoutMode();
+  const { mode, setMode, widgetOverlayOpen, setWidgetOverlayOpen } = useLayoutMode();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const canViewNotifications = canView("notifications");
@@ -102,7 +102,7 @@ export function Header() {
             variant={mode === "sidebar" ? "default" : "ghost"}
             size="sm"
             className="h-7 gap-1.5 px-2.5 text-xs"
-            onClick={() => setMode("sidebar")}
+            onClick={() => { setMode("sidebar"); setWidgetOverlayOpen(false); }}
           >
             <PanelLeft className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Sidebar</span>
@@ -111,12 +111,22 @@ export function Header() {
             variant={mode === "widget" ? "default" : "ghost"}
             size="sm"
             className="h-7 gap-1.5 px-2.5 text-xs"
-            onClick={() => setMode("widget")}
+            onClick={() => { setMode("widget"); setWidgetOverlayOpen(false); }}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Widgets</span>
           </Button>
         </div>
+        {/* Widget nav overlay toggle (works on any page) */}
+        <Button
+          variant={widgetOverlayOpen ? "secondary" : "ghost"}
+          size="icon"
+          className="h-8 w-8"
+          title="Open module navigator"
+          onClick={() => setWidgetOverlayOpen((prev) => !prev)}
+        >
+          <LayoutGrid className="h-4 w-4" />
+        </Button>
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
