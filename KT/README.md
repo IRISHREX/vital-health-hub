@@ -1,28 +1,54 @@
 # KT (Knowledge Transfer) Documentation
-## Vital Health Hub - Multi-Tenant Healthcare Platform
+## Vital Health Hub — Multi-Tenant Healthcare Management Platform
 
-Last Updated: March 6, 2026
+---
 
-## Document Index
-1. [SRS - Software Requirements Specification](./01_SRS_Software_Requirements_Specification.md)
-2. [Architecture Document](./02_Architecture_Document.md)
-3. [Data Flow Diagrams (DFD)](./03_Data_Flow_Diagrams.md)
-4. [Tenant-Aware Login Analysis & Bug Hunt](./04_Tenant_Aware_Login_Analysis.md)
-5. [Operational Flow Diagrams](./05_Flow_Diagrams.md)
-6. [Future Scope & Roadmap](./06_Future_Scope.md)
-7. [Module Functionality Reference](./07_Module_Functionality_Reference.md)
+## 📁 Document Index
 
-## Current Implementation Status (as of March 6, 2026)
-- Multi-tenant DB-per-organization architecture is implemented.
-- `POST /nh/api/v1/auth/login` now supports tenant auto-resolution by email when org slug/subdomain is not provided.
-- Login response now includes organization context (`organization.slug`, modules, status, etc.).
-- Frontend now persists resolved tenant slug after login for subsequent authenticated API calls.
+| # | Document | Description |
+|---|----------|-------------|
+| 01 | [SRS — Software Requirements Specification](./01_SRS_Software_Requirements_Specification.md) | Complete functional & non-functional requirements, API endpoints, data models |
+| 02 | [Architecture Document](./02_Architecture_Document.md) | System architecture, multi-tenancy strategy, auth design, deployment topology |
+| 03 | [Data Flow Diagrams](./03_Data_Flow_Diagrams.md) | Level 0-2 DFDs covering all major subsystems and data stores |
+| 04 | [Tenant-Aware Login Analysis](./04_Tenant_Aware_Login_Analysis.md) | Gap analysis of the current login flow, proposed solution, impact assessment |
+| 05 | [Flow Diagrams](./05_Flow_Diagrams.md) | Operational flows: onboarding, login, admission, RBAC, subscription lifecycle |
+| 06 | [Future Scope & Roadmap](./06_Future_Scope.md) | Prioritized roadmap (P0-P3), technical debt, scalability considerations |
+| 07 | [Module Functionality Reference](./07_Module_Functionality_Reference.md) | Detailed per-module capability guide for both Grandmaster and Hospital portals |
 
-## Critical Open Risks
-- Email-based tenant resolution currently applies only to `/auth/login` (not full password-reset lifecycle).
-- Passport strategies are still configured but not the primary auth path; technical debt remains.
+---
 
-## Suggested Reading Order
-1. Start with `04_Tenant_Aware_Login_Analysis.md` for bug-hunt findings.
-2. Review `02_Architecture_Document.md` for system-level design.
-3. Use `01_SRS_Software_Requirements_Specification.md` and `07_Module_Functionality_Reference.md` for requirements and feature map.
+## 🏗️ Quick Architecture Summary
+
+```
+Frontend (React + Vite + Tailwind)
+  ├── /grandmaster/*  → Platform admin portal
+  └── /*              → Hospital management portal
+
+Backend (Node.js + Express)
+  ├── /gm/api/v1/*    → Grandmaster API (GM_ models)
+  └── /nh/api/v1/*    → Hospital API (NH_ models)
+
+Database (MongoDB Atlas)
+  ├── hospital_management     → Platform DB (GM_ collections)
+  ├── nh_tenant_hospital_a    → Tenant DB
+  ├── nh_tenant_hospital_b    → Tenant DB
+  └── ...                     → N tenant databases
+```
+
+## ⚠️ Critical Gap
+
+**The tenant-aware login flow is not yet implemented.** Hospital users created during onboarding (stored in tenant databases) cannot log in via `/login`. See document #04 for the full analysis and proposed solution.
+
+## 🔑 Default Credentials
+
+### Grandmaster Portal (`/grandmaster/login`)
+Run `node backend/src/seeders/seedGrandmaster.js` first.
+- Email: `grandmaster@vitalhub.com`
+- Password: `Grandmaster@2024!`
+
+### Hospital Portal (`/login`) — Main DB only
+Run `node backend/src/seeders/seed.js` first.
+- Super Admin: `superadmin@example.com` / `Sohel@34892`
+- Doctor: `doctor@example.com` / `Sohel@34892`
+- Nurse: `nurse@example.com` / `Sohel@34892`
+- See `backend/src/seeders/credentials.md` for all roles

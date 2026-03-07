@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Search, User, LogOut, Sun, Moon } from "lucide-react";
+import { Bell, Search, User, LogOut, Sun, Moon, PanelLeft, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useLayoutMode } from "@/lib/LayoutModeContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,7 @@ export function Header() {
   const { user, logout } = useAuth();
   const { canView } = useVisualAuth();
   const { theme, toggleTheme, resolvedTheme } = useTheme();
+  const { mode, setMode } = useLayoutMode();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const canViewNotifications = canView("notifications");
@@ -91,7 +93,30 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-3 sm:px-4 lg:px-6 shadow-sm">
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+        {mode === "sidebar" && (
+          <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+        )}
+        {/* Layout Mode Toggle */}
+        <div className="flex items-center gap-0.5 rounded-lg border bg-muted/40 p-0.5">
+          <Button
+            variant={mode === "sidebar" ? "default" : "ghost"}
+            size="sm"
+            className="h-7 gap-1.5 px-2.5 text-xs"
+            onClick={() => setMode("sidebar")}
+          >
+            <PanelLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sidebar</span>
+          </Button>
+          <Button
+            variant={mode === "widget" ? "default" : "ghost"}
+            size="sm"
+            className="h-7 gap-1.5 px-2.5 text-xs"
+            onClick={() => setMode("widget")}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Widgets</span>
+          </Button>
+        </div>
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
