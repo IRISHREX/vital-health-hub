@@ -14,6 +14,7 @@
 | 05 | [Flow Diagrams](./05_Flow_Diagrams.md) | Operational flows: onboarding, login, admission, RBAC, subscription lifecycle |
 | 06 | [Future Scope & Roadmap](./06_Future_Scope.md) | Prioritized roadmap (P0-P3), technical debt, scalability considerations |
 | 07 | [Module Functionality Reference](./07_Module_Functionality_Reference.md) | Detailed per-module capability guide for both Grandmaster and Hospital portals |
+| 08 | [Unit Test Case Catalog](./08_Unit_Test_Cases.md) | Backend-focused unit test catalog and module-wise coverage distribution |
 
 ---
 
