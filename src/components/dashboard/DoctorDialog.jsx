@@ -100,7 +100,7 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add doctor." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add doctor." }); playSound('error');
     },
   });
 
