@@ -18,6 +18,21 @@ export function DashboardLayout() {
     setWidgetOverlayOpen(false);
   }, [location.pathname, setWidgetOverlayOpen]);
 
+  // Ctrl+K / Cmd+K to toggle widget overlay
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setWidgetOverlayOpen((prev) => !prev);
+      }
+      if (e.key === "Escape" && widgetOverlayOpen) {
+        setWidgetOverlayOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [widgetOverlayOpen, setWidgetOverlayOpen]);
+
   useEffect(() => {
     const performHealthCheck = async () => {
       try {
