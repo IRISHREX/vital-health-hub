@@ -165,7 +165,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update bed." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update bed." }); playSound('error');
     },
   });
 
