@@ -41,6 +41,7 @@ import { createInvoice, updateInvoice } from "@/lib/invoices";
 import { getPatients } from "@/lib/patients";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
+import { playSound } from "@/lib/sounds";
 
 const invoiceSchema = z.object({
   patient: z.string().min(1, "Patient is required"),

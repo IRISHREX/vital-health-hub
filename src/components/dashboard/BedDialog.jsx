@@ -9,6 +9,7 @@ import { getNurses } from "@/lib/users";
 import { createInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/AuthContext";
+import { playSound } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,

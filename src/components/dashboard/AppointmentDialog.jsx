@@ -7,6 +7,7 @@ import { createAppointment, updateAppointment } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { useToast } from "@/hooks/use-toast";
+import { playSound } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,

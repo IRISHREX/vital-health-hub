@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createDoctor, updateDoctor } from "@/lib/doctors";
 import { useToast } from "@/hooks/use-toast";
+import { playSound } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,
