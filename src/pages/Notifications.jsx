@@ -84,6 +84,7 @@ const priorityBadgeVariants = {
 export default function Notifications() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { play } = useSound();
   const [notifications, setNotifications] = useState([]);
   const [stats, setStats] = useState({
     unreadCount: 0,
