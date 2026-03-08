@@ -995,8 +995,30 @@ export default function Billing() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{paymentTarget?.mode === "single" ? `Invoice: ${paymentTarget?.invoice?.invoiceNumber || "-"}` : `Patient: ${paymentTarget?.row?.patientName || "-"}`}</p>
             <p className="text-sm text-muted-foreground">Total Due: Rs {Number(paymentTarget?.due || 0).toLocaleString()}</p>
-            <div className="space-y-2"><Label>Amount</Label><Input type="number" min="0" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Method</Label><Select value={paymentForm.method} onValueChange={(value) => setPaymentForm((prev) => ({ ...prev, method: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="card">Card</SelectItem><SelectItem value="upi">UPI</SelectItem><SelectItem value="net_banking">Net Banking</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="insurance">Insurance</SelectItem></SelectContent></Select></div>
+            {!enablePartialPayment && paymentTarget?.mode === "single" && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">Partial payments are disabled. Full amount will be charged.</p>
+            )}
+            <div className="space-y-2">
+              <Label>Amount</Label>
+              <Input
+                type="number"
+                min="0"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
+                disabled={!enablePartialPayment && paymentTarget?.mode === "single"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Method</Label>
+              <Select value={paymentForm.method} onValueChange={(value) => setPaymentForm((prev) => ({ ...prev, method: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {allowedPaymentMethods.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2"><Label>Reference</Label><Input placeholder="Txn/Ref No." value={paymentForm.reference} onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))} /></div>
             <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button><Button onClick={submitPayment} disabled={paying}>{paying ? "Saving..." : "Save Payment"}</Button></div>
           </div>
