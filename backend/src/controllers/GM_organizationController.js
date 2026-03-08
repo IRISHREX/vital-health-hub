@@ -161,6 +161,7 @@ exports.onboard = async (req, res, next) => {
     await org.save();
     console.log('✅ Organization activated:', org._id);
 
+    await logAudit(req, 'onboard_org', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug }, details: { type: org.type, modules: org.enabledModules } });
     res.status(201).json({ success: true, data: org, message: 'Organization onboarded successfully' });
   } catch (error) {
     console.error('❌ Onboarding error:', error.message);
