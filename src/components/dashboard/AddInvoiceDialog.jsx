@@ -152,8 +152,8 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to create invoice.",
-      }); playSound('error');
       });
+      playSound('error');
     },
   });
 
@@ -176,8 +176,8 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       toast({
         title: "Invoice Updated",
         description: "The invoice has been updated successfully.",
-      }); playSound('update');
       });
+      playSound('update');
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
@@ -186,8 +186,8 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to update invoice.",
-      }); playSound('error');
       });
+      playSound('error');
     },
   });
 
