@@ -1092,6 +1092,10 @@ export default function Settings() {
               Permissions
             </TabsTrigger>
           )}
+          <TabsTrigger value="sounds" className="gap-2">
+            <Volume2 className="h-4 w-4" />
+            Sounds
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">

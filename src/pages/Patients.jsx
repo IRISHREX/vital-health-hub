@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getBeds } from "@/lib/beds";
+import { deletePatient } from "@/lib/patients";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,10 +28,15 @@ import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "luci
 import PatientDialog from "@/components/dashboard/PatientDialog";
 import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import { Pagination } from "@/components/ui/pagination";
+import { PageSkeleton } from "@/components/ui/table-skeleton";
+import { useSound } from "@/hooks/useSound";
+import { toast } from "sonner";
 
 export default function Patients() {
   const { getModulePermissions } = useVisualAuth();
   const permissions = getModulePermissions("patients");
+  const { play } = useSound();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -45,19 +51,28 @@ export default function Patients() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedViewPatient, setSelectedViewPatient] = useState(null);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+
   const openCreateDialog = () => {
+    play("click");
     setSelectedPatient(null);
     setDialogMode("create");
     setDialogOpen(true);
   };
 
   const openEditDialog = (patient) => {
+    play("click");
     setSelectedPatient(patient);
     setDialogMode("edit");
     setDialogOpen(true);
   };
 
   const openViewDialog = (patient) => {
+    play("click");
     setSelectedViewPatient(patient);
     setViewDialogOpen(true);
   };
@@ -65,32 +80,57 @@ export default function Patients() {
   const handleDialogClose = () => {
     setDialogOpen(false);
     setSelectedPatient(null);
-    console.info("[Patients] dialog closed - refetching patients");
     fetchData();
   };
 
-  const fetchData = async () => {
+  const handleDelete = async (patient) => {
+    if (!window.confirm(`Delete patient ${patient.firstName} ${patient.lastName}?`)) return;
     try {
-      console.info("[Patients] fetching patients/doctors/beds");
+      await deletePatient(patient._id);
+      play("delete");
+      toast.success("Patient deleted");
+      fetchData();
+    } catch (err) {
+      play("error");
+      toast.error(err.message || "Failed to delete patient");
+    }
+  };
+
+  const fetchData = useCallback(async () => {
+    try {
       setLoading(true);
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("limit", String(limit));
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (typeFilter !== "all") params.set("registrationType", typeFilter);
+
       const [patientsData, doctorsData, bedsData] = await Promise.all([
-        getPatients(),
+        getPatients(params.toString()),
         getDoctors(),
         getBeds(),
       ]);
-      setPatients(patientsData.data.patients || []);
-      setDoctors(doctorsData.data.doctors || []);
-      setBeds(bedsData.data.beds || []);
+      const pData = patientsData.data || patientsData;
+      setPatients(pData.patients || []);
+      setTotalPages(pData.pagination?.pages || 1);
+      setTotalRecords(pData.pagination?.total || pData.patients?.length || 0);
+      setDoctors(doctorsData.data?.doctors || doctorsData.doctors || []);
+      setBeds(bedsData.data?.beds || bedsData.beds || []);
     } catch (err) {
       setError(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, searchQuery, typeFilter]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  // Debounce search: reset to page 1 on search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, typeFilter]);
 
   const getDoctorName = (doctorId) => {
     if (!doctorId) return "-";
@@ -104,22 +144,13 @@ export default function Patients() {
     return bed?.bedNumber || "-";
   };
 
-  const filteredPatients = patients ? patients.filter((patient) => {
-    const matchesSearch =
-      `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (patient.contactNumber && patient.contactNumber.includes(searchQuery)) ||
-      (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = typeFilter === "all" || patient.registrationType === typeFilter;
-    return matchesSearch && matchesType;
-  }) : [];
-
   const stats = {
-    total: patients?.length || 0,
+    total: totalRecords,
     ipd: patients ? patients.filter((p) => p.registrationType === "ipd").length : 0,
     opd: patients ? patients.filter((p) => p.registrationType === "opd").length : 0,
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading && patients.length === 0) return <PageSkeleton statCards={3} tableColumns={7} tableRows={10} />;
   if (error) return <div>Error: {error.message}</div>;
 
   return (
@@ -226,53 +257,45 @@ export default function Patients() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPatients.length > 0 ? (
-                filteredPatients.map((patient) => (
+              {patients.length > 0 ? (
+                patients.map((patient) => (
                   <TableRow key={patient._id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
                           <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {`${patient.firstName[0]}${patient.lastName[0]}`}
+                            {`${(patient.firstName || '?')[0]}${(patient.lastName || '?')[0]}`}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">{`${patient.firstName} ${patient.lastName}`}</p>
                           <p className="text-sm text-muted-foreground">
-                            {`${new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()} yrs, ${patient.gender}`}
+                            {patient.dateOfBirth ? `${new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()} yrs, ${patient.gender}` : patient.gender}
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-sm">{patient.contactNumber}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {patient.email}
-                        </p>
+                        <p className="text-sm">{patient.contactNumber || patient.phone}</p>
+                        <p className="text-xs text-muted-foreground">{patient.email}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant={patient.registrationType === "ipd" ? "default" : patient.registrationType === 'emergency' ? 'destructive' : "secondary"}
                       >
-                        {patient.registrationType.toUpperCase()}
+                        {(patient.registrationType || 'opd').toUpperCase()}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">
-                        {patient.diagnosis || "General Checkup"}
-                      </span>
+                      <span className="text-sm">{patient.diagnosis || "General Checkup"}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">
-                        {getDoctorName(patient.assignedDoctor)}
-                      </span>
+                      <span className="text-sm">{getDoctorName(patient.assignedDoctor)}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm font-medium">
-                        {getBedNumber(patient.assignedBed)}
-                      </span>
+                      <span className="text-sm font-medium">{getBedNumber(patient.assignedBed)}</span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -285,11 +308,12 @@ export default function Patients() {
                           </Button>
                         )}
                         {permissions.canDelete && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             title="Delete"
-                            className="text-destructive hover:bg-destructive"
+                            className="text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(patient)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -300,13 +324,22 @@ export default function Patients() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No patients found.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={totalRecords}
+            limit={limit}
+            loading={loading}
+            onPageChange={setPage}
+            onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+          />
         </CardContent>
       </Card>
     </div>
