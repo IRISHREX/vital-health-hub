@@ -885,7 +885,7 @@ export default function Billing() {
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="overdue">Overdue</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="refunded">Refunded</SelectItem>
+              {enableRefunds && <SelectItem value="refunded">Refunded</SelectItem>}
             </SelectContent>
           </Select>
           <Select value={billingScopeFilter} onValueChange={setBillingScopeFilter}>
