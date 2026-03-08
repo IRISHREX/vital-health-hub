@@ -206,7 +206,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
     <div className="w-full space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{isEdit ? 'Edit Admission' : 'Quick Admission'}</h2>
-        <p className="text-sm text-gray-500 mt-1">{isEdit ? 'Update the details for this admission' : 'Complete admission in one step'}</p>
+        <p className="text-sm text-muted-foreground mt-1">{isEdit ? 'Update the details for this admission' : 'Complete admission in one step'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
