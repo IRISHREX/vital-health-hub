@@ -85,6 +85,7 @@ const App = () => (
                 <Route path="monitoring" element={<Monitoring />} />
                 <Route path="admins" element={<Admins />} />
                 <Route path="notices" element={<Notices />} />
+                <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="settings" element={<PlatformSettings />} />
               </Route>
 
