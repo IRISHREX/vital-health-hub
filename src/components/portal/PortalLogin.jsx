@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Heart } from "lucide-react";
 import { getOrgSlug } from "@/lib/api-client";
+
+const HospitalScene3D = lazy(() => import("@/components/login/HospitalScene3D"));
 
 export default function PortalLogin({ portal }) {
   const navigate = useNavigate();
@@ -34,19 +36,30 @@ export default function PortalLogin({ portal }) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${portal.color}`}>
-            <Icon className="h-7 w-7 text-white" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[hsl(215,30%,8%)]">
+      <Suspense fallback={null}>
+        <HospitalScene3D />
+      </Suspense>
+
+      <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[hsl(215,30%,8%,0.3)] via-transparent to-[hsl(215,30%,8%,0.7)]" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-r from-[hsl(215,30%,8%,0.5)] via-transparent to-[hsl(215,30%,8%,0.5)]" />
+
+      <Card className="relative z-10 w-full max-w-md border border-[hsl(215,25%,20%)] bg-[hsl(215,25%,12%,0.85)] backdrop-blur-xl shadow-2xl">
+        <CardHeader className="text-center pb-2">
+          <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${portal.color} shadow-lg`}>
+            <Icon className="h-8 w-8 text-white" />
           </div>
-          <CardTitle className="text-2xl">{portal.label}</CardTitle>
-          <CardDescription>{portal.tagline}</CardDescription>
+          <CardTitle className="text-3xl font-bold tracking-tight text-white">
+            {portal.label}
+          </CardTitle>
+          <CardDescription className="text-[hsl(210,15%,60%)] text-base">
+            {portal.tagline}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+        <CardContent className="pt-2">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="orgSlug">Organization Slug</Label>
+              <Label htmlFor="orgSlug" className="text-[hsl(210,20%,80%)] text-sm font-medium">Organization Slug</Label>
               <Input
                 id="orgSlug"
                 type="text"
@@ -54,10 +67,11 @@ export default function PortalLogin({ portal }) {
                 value={orgSlug}
                 onChange={(e) => setOrgSlug(e.target.value)}
                 disabled={isLoading}
+                className="h-11 border-[hsl(215,25%,22%)] bg-[hsl(215,25%,15%)] text-white placeholder:text-[hsl(210,15%,40%)] focus-visible:ring-[hsl(174,75%,42%)] focus-visible:border-[hsl(174,75%,42%)]"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-[hsl(210,20%,80%)] text-sm font-medium">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -66,10 +80,11 @@ export default function PortalLogin({ portal }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
+                className="h-11 border-[hsl(215,25%,22%)] bg-[hsl(215,25%,15%)] text-white placeholder:text-[hsl(210,15%,40%)] focus-visible:ring-[hsl(174,75%,42%)] focus-visible:border-[hsl(174,75%,42%)]"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-[hsl(210,20%,80%)] text-sm font-medium">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -77,14 +92,28 @@ export default function PortalLogin({ portal }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                className="h-11 border-[hsl(215,25%,22%)] bg-[hsl(215,25%,15%)] text-white placeholder:text-[hsl(210,15%,40%)] focus-visible:ring-[hsl(174,75%,42%)] focus-visible:border-[hsl(174,75%,42%)]"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {error && (
+              <div className="rounded-lg border border-[hsl(0,72%,51%,0.3)] bg-[hsl(0,72%,51%,0.1)] px-4 py-2.5">
+                <p className="text-sm text-[hsl(0,72%,65%)]">{error}</p>
+              </div>
+            )}
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[hsl(210,85%,45%)] to-[hsl(174,75%,42%)] hover:from-[hsl(210,85%,50%)] hover:to-[hsl(174,75%,47%)] text-white shadow-lg shadow-[hsl(210,85%,45%,0.25)] transition-all duration-300 hover:shadow-xl hover:shadow-[hsl(210,85%,45%,0.35)]"
+              disabled={isLoading}
+            >
+              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               Sign In
             </Button>
           </form>
+
+          <div className="mt-6 flex items-center justify-center gap-1.5 text-[hsl(210,15%,45%)] text-xs">
+            <Heart className="h-3 w-3" />
+            <span>Powered by Vital Health Hub</span>
+          </div>
         </CardContent>
       </Card>
     </div>
