@@ -186,6 +186,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to update invoice.",
+      }); playSound('error');
       });
     },
   });

@@ -88,7 +88,7 @@ export default function UserDialog({ isOpen, onClose, mode = "create", user }) {
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to create user." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to create user." }); playSound('error');
     },
   });
 

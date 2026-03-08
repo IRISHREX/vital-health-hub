@@ -100,7 +100,7 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
       setMode("internal");
       onClose();
     } catch (err) {
-      toast.error(err.message || "Failed to order test");
+      toast.error(err.message || "Failed to order test"); playSound('error');
     } finally {
       setSubmitting(false);
     }

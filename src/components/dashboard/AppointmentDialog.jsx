@@ -169,7 +169,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update appointment." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update appointment." }); playSound('error');
     },
   });
 
