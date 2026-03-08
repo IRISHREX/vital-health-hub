@@ -104,7 +104,7 @@ export default function Appointments() {
     if (!ok) return;
     try {
       await deleteAppointment(appointmentId);
-      toast({ title: "Success", description: "Appointment deleted" });
+      toast({ title: "Success", description: "Appointment deleted" }); playSound('delete');
       fetchData();
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: err.message || "Failed to delete appointment" });
