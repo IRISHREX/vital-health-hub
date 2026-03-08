@@ -1055,7 +1055,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-9">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profile

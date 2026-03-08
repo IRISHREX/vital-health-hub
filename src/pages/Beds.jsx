@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { getBeds } from "@/lib/beds";
+import { PageSkeleton } from "@/components/ui/table-skeleton";
+import { useSound } from "@/hooks/useSound";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
