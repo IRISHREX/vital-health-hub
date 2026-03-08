@@ -1,6 +1,10 @@
 const Organization = require('../models/GM_Organization');
 const { getTenantConnection } = require('../config/tenantManager');
 const { AppError } = require('../middleware/errorHandler');
+const { logAudit } = require('../utils/auditLog');
+
+// Helper to build targetOrg object
+const orgTarget = (org) => ({ orgId: org._id, name: org.name, slug: org.slug });
 
 // ─── Settings Control ───
 
@@ -27,6 +31,12 @@ exports.updateSettingsTabs = async (req, res, next) => {
       { new: true, runValidators: true }
     );
     if (!org) throw new AppError('Organization not found', 404);
+
+    await logAudit(req, 'update_settings_tabs', {
+      targetOrg: orgTarget(org),
+      details: { allowedSettingsTabs },
+    });
+
     res.json({ success: true, data: org, message: 'Settings tabs updated' });
   } catch (error) { next(error); }
 };
@@ -45,6 +55,11 @@ exports.updatePaymentConfig = async (req, res, next) => {
     org.paymentConfig.set(module, config);
     await org.save();
 
+    await logAudit(req, 'update_payment_config', {
+      targetOrg: orgTarget(org),
+      details: { module, config },
+    });
+
     res.json({ success: true, data: org, message: 'Payment config updated' });
   } catch (error) { next(error); }
 };
@@ -57,6 +72,11 @@ exports.updateBulkPaymentConfig = async (req, res, next) => {
 
     org.paymentConfig = new Map(Object.entries(paymentConfig));
     await org.save();
+
+    await logAudit(req, 'update_payment_config', {
+      targetOrg: orgTarget(org),
+      details: { modules: Object.keys(paymentConfig) },
+    });
 
     res.json({ success: true, data: org, message: 'Payment config updated' });
   } catch (error) { next(error); }
@@ -78,16 +98,19 @@ exports.getImpersonationToken = async (req, res, next) => {
     const UserSchema = require('../models/NH_User').schema;
     const TenantUser = conn.models.User || conn.model('User', UserSchema);
 
-    // Find the super_admin for this org
     const adminUser = await TenantUser.findOne({ role: 'super_admin', isActive: true });
     if (!adminUser) throw new AppError('No active super admin found for this organization', 404);
 
-    // Generate a short-lived token for impersonation
     const token = jwt.sign(
       { id: adminUser._id, role: adminUser.role, orgSlug: org.slug, impersonated: true, gmUserId: req.user._id },
       jwtConfig.jwt.secret,
       { expiresIn: '2h' }
     );
+
+    await logAudit(req, 'impersonate_org', {
+      targetOrg: orgTarget(org),
+      details: { impersonatedUserId: adminUser._id, impersonatedRole: adminUser.role },
+    });
 
     res.json({
       success: true,
@@ -201,6 +224,12 @@ exports.proxyCreate = async (req, res, next) => {
     if (!Model) throw new AppError(`Unknown resource: ${resource}`, 400);
 
     const record = await Model.create(req.body);
+
+    await logAudit(req, 'proxy_create', {
+      targetOrg: orgTarget(org),
+      details: { resource, recordId: record._id },
+    });
+
     res.status(201).json({ success: true, data: record });
   } catch (error) { next(error); }
 };
@@ -219,6 +248,12 @@ exports.proxyUpdate = async (req, res, next) => {
 
     const record = await Model.findByIdAndUpdate(recordId, req.body, { new: true, runValidators: true });
     if (!record) throw new AppError('Record not found', 404);
+
+    await logAudit(req, 'proxy_update', {
+      targetOrg: orgTarget(org),
+      details: { resource, recordId, updatedFields: Object.keys(req.body) },
+    });
+
     res.json({ success: true, data: record });
   } catch (error) { next(error); }
 };
@@ -237,6 +272,12 @@ exports.proxyDelete = async (req, res, next) => {
 
     const record = await Model.findByIdAndDelete(recordId);
     if (!record) throw new AppError('Record not found', 404);
+
+    await logAudit(req, 'proxy_delete', {
+      targetOrg: orgTarget(org),
+      details: { resource, recordId, deletedRecord: { name: record.name || record.firstName || record.email || recordId } },
+    });
+
     res.json({ success: true, message: 'Record deleted' });
   } catch (error) { next(error); }
 };

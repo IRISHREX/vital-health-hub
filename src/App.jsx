@@ -56,6 +56,7 @@ import Monitoring from "./pages/grandmaster/Monitoring";
 import Admins from "./pages/grandmaster/Admins";
 import Notices from "./pages/grandmaster/Notices";
 import PlatformSettings from "./pages/grandmaster/PlatformSettings";
+import AuditLogs from "./pages/grandmaster/AuditLogs";
 import ImpersonationBanner from "./components/grandmaster/ImpersonationBanner";
 
 const queryClient = new QueryClient();
@@ -84,6 +85,7 @@ const App = () => (
                 <Route path="monitoring" element={<Monitoring />} />
                 <Route path="admins" element={<Admins />} />
                 <Route path="notices" element={<Notices />} />
+                <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="settings" element={<PlatformSettings />} />
               </Route>
 

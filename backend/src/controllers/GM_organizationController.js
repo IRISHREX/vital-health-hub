@@ -2,6 +2,7 @@ const Organization = require('../models/GM_Organization');
 const Subscription = require('../models/GM_Subscription');
 const { generateDbName, getTenantConnection } = require('../config/tenantManager');
 const { AppError } = require('../middleware/errorHandler');
+const { logAudit } = require('../utils/auditLog');
 
 const isValidMongoUri = (value) => /^mongodb(\+srv)?:\/\//i.test(String(value || '').trim());
 
@@ -160,6 +161,7 @@ exports.onboard = async (req, res, next) => {
     await org.save();
     console.log('✅ Organization activated:', org._id);
 
+    await logAudit(req, 'onboard_org', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug }, details: { type: org.type, modules: org.enabledModules } });
     res.status(201).json({ success: true, data: org, message: 'Organization onboarded successfully' });
   } catch (error) {
     console.error('❌ Onboarding error:', error.message);
@@ -177,6 +179,7 @@ exports.update = async (req, res, next) => {
 
     const org = await Organization.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     if (!org) throw new AppError('Organization not found', 404);
+    await logAudit(req, 'update_org', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug }, details: { updatedFields: Object.keys(updates) } });
     res.json({ success: true, data: org });
   } catch (error) {
     next(error);
@@ -193,6 +196,7 @@ exports.updateModules = async (req, res, next) => {
       { new: true, runValidators: true }
     );
     if (!org) throw new AppError('Organization not found', 404);
+    await logAudit(req, 'update_org_modules', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug }, details: { enabledModules } });
     res.json({ success: true, data: org, message: 'Modules updated' });
   } catch (error) {
     next(error);
@@ -209,6 +213,7 @@ exports.suspend = async (req, res, next) => {
       { new: true }
     );
     if (!org) throw new AppError('Organization not found', 404);
+    await logAudit(req, 'suspend_org', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug }, details: { reason } });
     res.json({ success: true, data: org, message: 'Organization suspended' });
   } catch (error) {
     next(error);
@@ -224,6 +229,7 @@ exports.reactivate = async (req, res, next) => {
       { new: true }
     );
     if (!org) throw new AppError('Organization not found', 404);
+    await logAudit(req, 'reactivate_org', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug } });
     res.json({ success: true, data: org, message: 'Organization reactivated' });
   } catch (error) {
     next(error);
@@ -238,8 +244,9 @@ exports.remove = async (req, res, next) => {
 
     // Remove subscriptions
     await Subscription.deleteMany({ organization: org._id });
+    const orgInfo = { orgId: org._id, name: org.name, slug: org.slug };
     await org.deleteOne();
-
+    await logAudit(req, 'delete_org', { targetOrg: orgInfo });
     res.json({ success: true, message: 'Organization removed' });
   } catch (error) {
     next(error);

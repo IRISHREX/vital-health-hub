@@ -8,6 +8,7 @@ const monCtrl = require('../controllers/GM_monitoringController');
 const noticeCtrl = require('../controllers/GM_noticeController');
 const configCtrl = require('../controllers/GM_configController');
 const powerCtrl = require('../controllers/GM_orgPowerController');
+const auditCtrl = require('../controllers/GM_auditController');
 
 // ─── Auth (public) ───
 router.post('/auth/login', authCtrl.login);
@@ -82,5 +83,10 @@ router.get('/config', configCtrl.list);
 router.get('/config/:key', configCtrl.get);
 router.put('/config', configCtrl.upsert);
 router.delete('/config/:key', requireGrandmaster, configCtrl.remove);
+
+// Audit Logs
+router.get('/audit-logs', auditCtrl.list);
+router.get('/audit-logs/stats', auditCtrl.stats);
+router.get('/audit-logs/:id', auditCtrl.getById);
 
 module.exports = router;
