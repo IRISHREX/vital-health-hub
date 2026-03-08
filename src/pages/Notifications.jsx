@@ -196,6 +196,7 @@ export default function Notifications() {
           unreadCount: Math.max(0, prev.unreadCount - 1),
         }));
       }
+      play('delete');
       toast({
         title: "Deleted",
         description: "Notification removed",
