@@ -179,6 +179,7 @@ exports.update = async (req, res, next) => {
 
     const org = await Organization.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     if (!org) throw new AppError('Organization not found', 404);
+    await logAudit(req, 'update_org', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug }, details: { updatedFields: Object.keys(updates) } });
     res.json({ success: true, data: org });
   } catch (error) {
     next(error);
