@@ -2,6 +2,7 @@ const Organization = require('../models/GM_Organization');
 const Subscription = require('../models/GM_Subscription');
 const { generateDbName, getTenantConnection } = require('../config/tenantManager');
 const { AppError } = require('../middleware/errorHandler');
+const { logAudit } = require('../utils/auditLog');
 
 const isValidMongoUri = (value) => /^mongodb(\+srv)?:\/\//i.test(String(value || '').trim());
 
