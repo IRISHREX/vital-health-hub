@@ -6,6 +6,7 @@ import { getHospitalSettings } from "@/lib/settings";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
+import { PageSkeleton } from "@/components/ui/table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
