@@ -47,9 +47,11 @@ export function DashboardLayout() {
 
   const showWidgetHome = mode === "widget" && isHome;
 
+  const isImpersonating = !!localStorage.getItem('gm_impersonation');
+
   return (
     <SidebarProvider defaultOpen={mode === "sidebar"}>
-      <div className="flex min-h-screen w-full bg-background overflow-x-hidden">
+      <div className={`flex min-h-screen w-full bg-background overflow-x-hidden ${isImpersonating ? 'pt-10' : ''}`}>
         {mode === "sidebar" && <AppSidebar />}
         <div className="flex min-w-0 flex-1 flex-col relative">
           <Header />
