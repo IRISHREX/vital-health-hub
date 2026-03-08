@@ -63,5 +63,7 @@ module.exports = {
   AccessRequest,
   RadiologyOrder,
   OTRoom,
-  Surgery
+  Surgery,
+  ServiceCatalog,
+  RoomTypeService
 };
