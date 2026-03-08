@@ -172,7 +172,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
   const assignNurseMutation = useMutation({
     mutationFn: (nurseId) => assignNurse(bed._id, nurseId),
     onSuccess: () => {
-      toast({ title: "Success", description: "Nurse assigned to bed." });
+      toast({ title: "Success", description: "Nurse assigned to bed." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       handleClose();
