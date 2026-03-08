@@ -79,6 +79,7 @@ import {
   bulkImportData,
   exportDataByEntity,
   runAutoExportNow,
+  getAllowedSettingsTabs,
 } from "@/lib/settings";
 import { getNotifications } from "@/lib/notifications";
 import { updateProfile } from "@/lib/auth";
