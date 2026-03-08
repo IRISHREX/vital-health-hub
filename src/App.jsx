@@ -68,6 +68,7 @@ const App = () => (
         <LayoutModeProvider>
           <Toaster />
           <Sonner />
+          <ImpersonationBanner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               {/* Hospital Login */}
