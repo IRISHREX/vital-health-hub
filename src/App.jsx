@@ -146,7 +146,6 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="billing" />}>
                   <Route path="/service-catalog" element={<ErrorBoundary><ServiceCatalogPage /></ErrorBoundary>} />
                 </Route>
-                </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/prescriptions/:id/preview" element={<ErrorBoundary><PrescriptionPreview /></ErrorBoundary>} />
                 </Route>
@@ -159,8 +158,7 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
                 </Route>
-
-
+              </Route>
               {/* ===== Standalone Portal: Lab ===== */}
               <Route path="/lab-portal/login" element={<PortalLogin portal={portalDefinitions.lab} />} />
               <Route path="/lab-portal" element={<PortalLayout portal={portalDefinitions.lab} />}>
