@@ -115,7 +115,7 @@ export default function NurseDashboard() {
   const deleteVitalMutation = useMutation({
     mutationFn: (id) => deleteVitalApi(id),
     onSuccess: () => {
-      toast.success('Vital deleted');
+      toast.success('Vital deleted'); playSound('delete');
       refreshData();
       if (isVitalsFeedOpen) vitalsFeedQuery.refetch();
     },
