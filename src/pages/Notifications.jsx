@@ -112,8 +112,20 @@ export default function Notifications() {
         getNotificationStats(),
       ]);
 
-      setNotifications(notifResponse.data.notifications || []);
+      const newNotifs = notifResponse.data.notifications || [];
+      setNotifications(newNotifs);
       setStats(statsResponse.data || {});
+      
+      // Play sound based on highest priority notification
+      if (newNotifs.length > 0) {
+        const hasEmergency = newNotifs.some(n => !n.isRead && n.priority === 'urgent' && n.type?.includes('emergency'));
+        const hasUrgent = newNotifs.some(n => !n.isRead && n.priority === 'urgent');
+        const hasBroadcast = newNotifs.some(n => !n.isRead && n.type === 'system');
+        if (hasEmergency) play('emergency');
+        else if (hasUrgent) play('urgent');
+        else if (hasBroadcast) play('broadcast');
+        else if (newNotifs.some(n => !n.isRead)) play('notification');
+      }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
       toast({
