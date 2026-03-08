@@ -107,7 +107,7 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
   const updateMutation = useMutation({
     mutationFn: (data) => updateDoctor(doctor._id, data),
     onSuccess: () => {
-      toast({ title: "Success", description: "Doctor updated successfully." });
+      toast({ title: "Success", description: "Doctor updated successfully." }); playSound('update');
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
       handleClose();
     },
