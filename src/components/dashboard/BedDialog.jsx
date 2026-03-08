@@ -178,7 +178,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to assign nurse." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to assign nurse." }); playSound('error');
     },
   });
 
