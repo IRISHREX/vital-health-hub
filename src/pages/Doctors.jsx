@@ -89,7 +89,7 @@ export default function Doctors() {
     if (!ok) return;
     try {
       await deleteDoctor(doctor._id);
-      sonnerToast.success("Doctor deleted");
+      sonnerToast.success("Doctor deleted"); playSound('delete');
       fetchData();
     } catch (err) {
       sonnerToast.error(err?.message || "Failed to delete doctor");
