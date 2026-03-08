@@ -198,6 +198,32 @@
     @apply bg-[hsl(var(--status-reserved))] text-[hsl(var(--status-reserved-foreground))];
   }
 
+  /* Soft status backgrounds for cards (dark-mode safe) */
+  .status-bg-available {
+    @apply bg-[hsl(var(--status-available)/0.1)] border-[hsl(var(--status-available)/0.3)];
+  }
+  .status-text-available {
+    @apply text-[hsl(var(--status-available))];
+  }
+  .status-bg-occupied {
+    @apply bg-[hsl(var(--status-occupied)/0.1)] border-[hsl(var(--status-occupied)/0.3)];
+  }
+  .status-text-occupied {
+    @apply text-[hsl(var(--status-occupied))];
+  }
+  .status-bg-cleaning {
+    @apply bg-[hsl(var(--status-cleaning)/0.1)] border-[hsl(var(--status-cleaning)/0.3)];
+  }
+  .status-text-cleaning {
+    @apply text-[hsl(var(--status-cleaning))];
+  }
+  .status-bg-reserved {
+    @apply bg-[hsl(var(--status-reserved)/0.1)] border-[hsl(var(--status-reserved)/0.3)];
+  }
+  .status-text-reserved {
+    @apply text-[hsl(var(--status-reserved))];
+  }
+
   /* Gradient backgrounds */
   .bg-gradient-primary {
     background: var(--gradient-primary);
