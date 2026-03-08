@@ -99,7 +99,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
 
   // Filter patients by registration type
   const filteredPatients = patients.filter(
-    (patient) => patient.registrationType !== registrationType
+    (patient) => patient.registrationType === registrationType
   );
 
   const handleSubmit = async (e) => {
