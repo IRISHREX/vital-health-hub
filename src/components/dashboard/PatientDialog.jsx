@@ -224,6 +224,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
     onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to register patient." });
+      playSound('error');
     },
   });
 
