@@ -1044,6 +1044,26 @@ export default function Settings() {
   const canEditVisualPermissions = user?.role === "super_admin" || canManageVisualPermissions;
   const canEditDelegation = user?.role === "super_admin";
 
+  // Fetch allowed settings tabs from grandmaster config
+  const { data: allowedTabsRes } = useQuery({
+    queryKey: ["allowed-settings-tabs"],
+    queryFn: getAllowedSettingsTabs,
+  });
+  const allowedGmTabs = allowedTabsRes?.data;
+
+  // Map GM tab values to frontend tab values
+  // GM uses: general, users, security, notifications, data, visual_access, module_operations
+  // Frontend uses: general, users, security, notifications, data, permissions (=visual_access), modules (=module_operations)
+  const isTabAllowed = (frontendTab) => {
+    if (!allowedGmTabs) return true; // default: show all until loaded
+    const mapping = {
+      permissions: 'visual_access',
+      modules: 'module_operations',
+    };
+    const gmKey = mapping[frontendTab] || frontendTab;
+    return allowedGmTabs.includes(gmKey);
+  };
+
   return (
     <div className="space-y-6">
       <div>
