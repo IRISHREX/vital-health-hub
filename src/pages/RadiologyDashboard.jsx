@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getRadiologyOrders, getRadiologyStats, deleteRadiologyOrder, scheduleOrder, startStudy, completeStudy, deliverRadiologyReport, generateRadiologyInvoice } from "@/lib/radiology";
+import { playSound } from "@/lib/sounds";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { Badge } from "@/components/ui/badge";
