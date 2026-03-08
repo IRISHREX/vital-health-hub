@@ -131,3 +131,11 @@ export const listConfigs = (category) => gmApi.get(`/config${category ? `?catego
 export const getConfig = (key) => gmApi.get(`/config/${key}`);
 export const upsertConfig = (data) => gmApi.put('/config', data);
 export const deleteConfig = (key) => gmApi.delete(`/config/${key}`);
+
+// Audit Logs
+export const listAuditLogs = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return gmApi.get(`/audit-logs${qs ? `?${qs}` : ''}`);
+};
+export const getAuditLogStats = () => gmApi.get('/audit-logs/stats');
+export const getAuditLog = (id) => gmApi.get(`/audit-logs/${id}`);
