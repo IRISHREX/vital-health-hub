@@ -9,6 +9,9 @@ router.use(authenticate);
 // Allowed settings tabs (from grandmaster org config)
 router.get('/allowed-tabs', settingsController.getAllowedSettingsTabs);
 
+// Payment config (from grandmaster org config)
+router.get('/payment-config', settingsController.getPaymentConfig);
+
 // Get all settings (for initial load)
 router.get('/', authorize('super_admin', 'hospital_admin'), settingsController.getAllSettings);
 

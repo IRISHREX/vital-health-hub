@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { addPayment, createInvoice, getInvoices } from "@/lib/invoices";
-import { getHospitalSettings } from "@/lib/settings";
+import { getHospitalSettings, getPaymentConfig } from "@/lib/settings";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
@@ -471,9 +471,38 @@ export default function Billing() {
     queryKey: ["hospital-settings"],
     queryFn: () => getHospitalSettings()
   });
+  const { data: paymentConfigRes } = useQuery({
+    queryKey: ["payment-config"],
+    queryFn: () => getPaymentConfig()
+  });
 
   const invoices = Array.isArray(invoicesRes?.data?.invoices) ? invoicesRes.data.invoices : Array.isArray(invoicesRes?.invoices) ? invoicesRes.invoices : Array.isArray(invoicesRes) ? invoicesRes : [];
   const hospitalSettings = hospitalRes?.data || defaultHospital;
+  const orgPaymentConfig = paymentConfigRes?.data || {};
+
+  // All possible payment methods with labels
+  const ALL_PAYMENT_METHODS = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'card', label: 'Card' },
+    { value: 'upi', label: 'UPI' },
+    { value: 'insurance', label: 'Insurance' },
+    { value: 'bank_transfer', label: 'Bank Transfer' },
+    { value: 'cheque', label: 'Cheque' },
+    { value: 'wallet', label: 'Wallet' },
+    { value: 'credit', label: 'Credit/Ledger' },
+  ];
+
+  // Derive allowed payment methods for the billing module
+  const billingPaymentConfig = orgPaymentConfig?.billing || null;
+  const allowedPaymentMethods = useMemo(() => {
+    if (!billingPaymentConfig?.allowedMethods?.length) {
+      // Default: all standard methods when no config is set
+      return ALL_PAYMENT_METHODS;
+    }
+    return ALL_PAYMENT_METHODS.filter(m => billingPaymentConfig.allowedMethods.includes(m.value));
+  }, [billingPaymentConfig]);
+  const enablePartialPayment = billingPaymentConfig ? billingPaymentConfig.enablePartialPayment !== false : true;
+  const enableRefunds = billingPaymentConfig ? billingPaymentConfig.enableRefunds !== false : true;
 
   const allowedBillingOptions = useMemo(() => {
     return Object.keys(billingOptionConfig).filter((option) =>
@@ -647,8 +676,10 @@ export default function Billing() {
 
   const openPayment = ({ mode, invoice, row }) => {
     const due = mode === "single" ? Number(invoice?.dueAmount || 0) : Number(row?.due || 0);
+    const effectiveAmount = (!enablePartialPayment && mode === "single") ? String(due) : String(due);
+    const defaultMethod = allowedPaymentMethods[0]?.value || 'cash';
     setPaymentTarget({ mode, invoice, row, due });
-    setPaymentForm({ amount: String(due), method: "cash", reference: "" });
+    setPaymentForm({ amount: effectiveAmount, method: defaultMethod, reference: "" });
     setPaymentDialogOpen(true);
   };
 
@@ -854,7 +885,7 @@ export default function Billing() {
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="overdue">Overdue</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="refunded">Refunded</SelectItem>
+              {enableRefunds && <SelectItem value="refunded">Refunded</SelectItem>}
             </SelectContent>
           </Select>
           <Select value={billingScopeFilter} onValueChange={setBillingScopeFilter}>
@@ -966,8 +997,30 @@ export default function Billing() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{paymentTarget?.mode === "single" ? `Invoice: ${paymentTarget?.invoice?.invoiceNumber || "-"}` : `Patient: ${paymentTarget?.row?.patientName || "-"}`}</p>
             <p className="text-sm text-muted-foreground">Total Due: Rs {Number(paymentTarget?.due || 0).toLocaleString()}</p>
-            <div className="space-y-2"><Label>Amount</Label><Input type="number" min="0" value={paymentForm.amount} onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Method</Label><Select value={paymentForm.method} onValueChange={(value) => setPaymentForm((prev) => ({ ...prev, method: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="card">Card</SelectItem><SelectItem value="upi">UPI</SelectItem><SelectItem value="net_banking">Net Banking</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="insurance">Insurance</SelectItem></SelectContent></Select></div>
+            {!enablePartialPayment && paymentTarget?.mode === "single" && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">Partial payments are disabled. Full amount will be charged.</p>
+            )}
+            <div className="space-y-2">
+              <Label>Amount</Label>
+              <Input
+                type="number"
+                min="0"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
+                disabled={!enablePartialPayment && paymentTarget?.mode === "single"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Method</Label>
+              <Select value={paymentForm.method} onValueChange={(value) => setPaymentForm((prev) => ({ ...prev, method: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {allowedPaymentMethods.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2"><Label>Reference</Label><Input placeholder="Txn/Ref No." value={paymentForm.reference} onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))} /></div>
             <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button><Button onClick={submitPayment} disabled={paying}>{paying ? "Saving..." : "Save Payment"}</Button></div>
           </div>
