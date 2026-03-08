@@ -366,6 +366,17 @@ export default function InvoicePreview({ invoice, admission, onClose }) {
                 variant="outline"
                 size="sm"
                 className="gap-2"
+                onClick={() => {
+                  const printWindow = window.open('', '_blank');
+                  const content = document.getElementById('invoice-print-area');
+                  if (printWindow && content) {
+                    printWindow.document.write('<html><head><title>Invoice</title><style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}</style></head><body>');
+                    printWindow.document.write(content.innerHTML);
+                    printWindow.document.write('</body></html>');
+                    printWindow.document.close();
+                    printWindow.print();
+                  }
+                }}
               >
                 <Download className="h-4 w-4" />
                 Download PDF

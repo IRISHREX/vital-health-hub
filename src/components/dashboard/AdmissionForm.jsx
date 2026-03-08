@@ -192,7 +192,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
           <CardTitle>Loading Admission Form...</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </CardContent>
       </Card>
     );
