@@ -173,7 +173,7 @@ export default function Beds() {
     reserved: beds ? beds.filter((b) => b.status === "reserved").length : 0,
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <PageSkeleton statCards={4} tableColumns={8} tableRows={8} />;
   if (error) return <div>Error: {error.message}</div>;
 
   const currentWardStats = wardStats[selectedWard] || stats;
