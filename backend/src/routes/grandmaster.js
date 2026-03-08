@@ -7,6 +7,7 @@ const subCtrl = require('../controllers/GM_subscriptionController');
 const monCtrl = require('../controllers/GM_monitoringController');
 const noticeCtrl = require('../controllers/GM_noticeController');
 const configCtrl = require('../controllers/GM_configController');
+const powerCtrl = require('../controllers/GM_orgPowerController');
 
 // ─── Auth (public) ───
 router.post('/auth/login', authCtrl.login);
@@ -32,6 +33,25 @@ router.put('/organizations/:id/modules', orgCtrl.updateModules);
 router.post('/organizations/:id/suspend', orgCtrl.suspend);
 router.post('/organizations/:id/reactivate', orgCtrl.reactivate);
 router.delete('/organizations/:id', requireGrandmaster, orgCtrl.remove);
+
+// ─── Grandmaster Power Routes ───
+// Settings control per org
+router.get('/organizations/:id/settings-config', powerCtrl.getSettingsConfig);
+router.put('/organizations/:id/settings-tabs', powerCtrl.updateSettingsTabs);
+
+// Payment config per org per module
+router.put('/organizations/:id/payment-config', powerCtrl.updatePaymentConfig);
+router.put('/organizations/:id/payment-config/bulk', powerCtrl.updateBulkPaymentConfig);
+
+// Impersonation
+router.post('/organizations/:id/impersonate', powerCtrl.getImpersonationToken);
+
+// Remote CRUD proxy
+router.get('/organizations/:id/data/:resource', powerCtrl.proxyList);
+router.get('/organizations/:id/data/:resource/:recordId', powerCtrl.proxyGetById);
+router.post('/organizations/:id/data/:resource', powerCtrl.proxyCreate);
+router.put('/organizations/:id/data/:resource/:recordId', powerCtrl.proxyUpdate);
+router.delete('/organizations/:id/data/:resource/:recordId', powerCtrl.proxyDelete);
 
 // Subscription Plans
 router.get('/plans', subCtrl.listPlans);

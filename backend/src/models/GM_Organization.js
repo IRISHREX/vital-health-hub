@@ -67,6 +67,30 @@ const organizationSchema = new mongoose.Schema(
     maxUsers: { type: Number, default: 50 },
     maxBeds: { type: Number, default: 100 },
 
+    // ─── Grandmaster Controls ───
+
+    // Which settings tabs are visible to this hospital
+    allowedSettingsTabs: {
+      type: [String],
+      default: ['general', 'users', 'security', 'notifications', 'data', 'visual_access', 'module_operations'],
+      enum: ['general', 'users', 'security', 'notifications', 'data', 'visual_access', 'module_operations'],
+    },
+
+    // Payment methods allowed per module
+    paymentConfig: {
+      type: Map,
+      of: {
+        allowedMethods: {
+          type: [String],
+          default: ['cash', 'card', 'upi', 'insurance', 'bank_transfer'],
+          enum: ['cash', 'card', 'upi', 'insurance', 'bank_transfer', 'cheque', 'wallet', 'credit'],
+        },
+        enablePartialPayment: { type: Boolean, default: true },
+        enableRefunds: { type: Boolean, default: true },
+      },
+      default: {},
+    },
+
     // Metadata
     onboardedAt: Date,
     suspendedAt: Date,
