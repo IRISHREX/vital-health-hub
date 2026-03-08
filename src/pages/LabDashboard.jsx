@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { PageSkeleton } from "@/components/ui/table-skeleton";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getLabTests, getLabStats, collectSample, startProcessing, deleteLabTest, generateLabInvoice } from "@/lib/labTests";
 import { getPatients } from "@/lib/patients";
@@ -257,7 +258,7 @@ export default function LabDashboard() {
     ? [...selectedPatientAllTests].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     : (selectedPatientGroup?.tests || []);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Clock className="animate-spin h-8 w-8 text-primary" /></div>;
+  if (loading) return <PageSkeleton statCards={5} tableColumns={7} tableRows={8} />;
 
   return (
     <div className="space-y-6">

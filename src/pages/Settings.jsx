@@ -58,6 +58,7 @@ import {
   Copy,
   AlertCircle,
   Eye,
+  Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -89,6 +90,7 @@ import { getUsers } from "@/lib/users";
 import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
+import SoundSettings from "@/components/settings/SoundSettings";
 
 const assignmentRoleOptions = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"];
 const assignmentTypeLabels = {
@@ -1053,7 +1055,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-9">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profile
@@ -1092,6 +1094,10 @@ export default function Settings() {
               Permissions
             </TabsTrigger>
           )}
+          <TabsTrigger value="sounds" className="gap-2">
+            <Volume2 className="h-4 w-4" />
+            Sounds
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -2352,6 +2358,10 @@ export default function Settings() {
             </Card>
           </TabsContent>
         )}
+
+        <TabsContent value="sounds">
+          <SoundSettings />
+        </TabsContent>
       </Tabs>
     </div>
   );

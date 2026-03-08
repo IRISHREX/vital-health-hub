@@ -4,8 +4,8 @@ export const createPatient = async (patientData) => {
   return await apiClient.post('/patients', patientData);
 };
 
-export const getPatients = async () => {
-  return await apiClient.get('/patients');
+export const getPatients = async (queryString = '') => {
+  return await apiClient.get(`/patients${queryString ? `?${queryString}` : ''}`);
 };
 
 export const getPatientById = async (id) => {

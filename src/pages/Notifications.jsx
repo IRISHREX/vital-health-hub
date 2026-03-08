@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageSkeleton } from "@/components/ui/table-skeleton";
+import { useSound } from "@/hooks/useSound";
 import { useToast } from "@/hooks/use-toast";
 import {
   getNotifications,
@@ -82,6 +84,7 @@ const priorityBadgeVariants = {
 export default function Notifications() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { play } = useSound();
   const [notifications, setNotifications] = useState([]);
   const [stats, setStats] = useState({
     unreadCount: 0,
@@ -109,8 +112,20 @@ export default function Notifications() {
         getNotificationStats(),
       ]);
 
-      setNotifications(notifResponse.data.notifications || []);
+      const newNotifs = notifResponse.data.notifications || [];
+      setNotifications(newNotifs);
       setStats(statsResponse.data || {});
+      
+      // Play sound based on highest priority notification
+      if (newNotifs.length > 0) {
+        const hasEmergency = newNotifs.some(n => !n.isRead && n.priority === 'urgent' && n.type?.includes('emergency'));
+        const hasUrgent = newNotifs.some(n => !n.isRead && n.priority === 'urgent');
+        const hasBroadcast = newNotifs.some(n => !n.isRead && n.type === 'system');
+        if (hasEmergency) play('emergency');
+        else if (hasUrgent) play('urgent');
+        else if (hasBroadcast) play('broadcast');
+        else if (newNotifs.some(n => !n.isRead)) play('notification');
+      }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
       toast({
@@ -181,6 +196,7 @@ export default function Notifications() {
           unreadCount: Math.max(0, prev.unreadCount - 1),
         }));
       }
+      play('delete');
       toast({
         title: "Deleted",
         description: "Notification removed",

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { getBeds } from "@/lib/beds";
+import { PageSkeleton } from "@/components/ui/table-skeleton";
+import { useSound } from "@/hooks/useSound";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,7 +173,7 @@ export default function Beds() {
     reserved: beds ? beds.filter((b) => b.status === "reserved").length : 0,
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <PageSkeleton statCards={4} tableColumns={8} tableRows={8} />;
   if (error) return <div>Error: {error.message}</div>;
 
   const currentWardStats = wardStats[selectedWard] || stats;
