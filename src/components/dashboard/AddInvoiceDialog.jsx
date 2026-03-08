@@ -41,6 +41,7 @@ import { createInvoice, updateInvoice } from "@/lib/invoices";
 import { getPatients } from "@/lib/patients";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
+import { playSound } from "@/lib/sounds";
 
 const invoiceSchema = z.object({
   patient: z.string().min(1, "Patient is required"),
@@ -141,6 +142,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       toast({
         title: "Invoice Created",
         description: "The new invoice has been created successfully.",
+      }); playSound('success');
       });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
@@ -150,6 +152,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to create invoice.",
+      }); playSound('error');
       });
     },
   });
@@ -173,6 +176,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       toast({
         title: "Invoice Updated",
         description: "The invoice has been updated successfully.",
+      }); playSound('update');
       });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
@@ -182,6 +186,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to update invoice.",
+      }); playSound('error');
       });
     },
   });

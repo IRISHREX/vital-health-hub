@@ -9,6 +9,7 @@ import { getNurses } from "@/lib/users";
 import { createInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/AuthContext";
+import { playSound } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,
@@ -142,12 +143,12 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       return createBed(payload);
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Bed added successfully." });
+      toast({ title: "Success", description: "Bed added successfully." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add bed." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add bed." }); playSound('error');
     },
   });
 
@@ -158,26 +159,26 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       return updateBed(bed._id, payload);
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Bed updated successfully." });
+      toast({ title: "Success", description: "Bed updated successfully." }); playSound('update');
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update bed." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update bed." }); playSound('error');
     },
   });
 
   const assignNurseMutation = useMutation({
     mutationFn: (nurseId) => assignNurse(bed._id, nurseId),
     onSuccess: () => {
-      toast({ title: "Success", description: "Nurse assigned to bed." });
+      toast({ title: "Success", description: "Nurse assigned to bed." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to assign nurse." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to assign nurse." }); playSound('error');
     },
   });
 

@@ -7,6 +7,7 @@ import { createAppointment, updateAppointment } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { useToast } from "@/hooks/use-toast";
+import { playSound } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,
@@ -137,12 +138,12 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       });
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Appointment booked successfully." });
+      toast({ title: "Success", description: "Appointment booked successfully." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to book appointment." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to book appointment." }); playSound('error');
     },
   });
 
@@ -163,12 +164,12 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       });
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Appointment updated successfully." });
+      toast({ title: "Success", description: "Appointment updated successfully." }); playSound('update');
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update appointment." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update appointment." }); playSound('error');
     },
   });
 

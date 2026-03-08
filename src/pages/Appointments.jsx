@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { deleteAppointment, getAppointments, updateAppointment } from "@/lib/appointments";
+import { playSound } from "@/lib/sounds";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { useAuth } from "@/lib/AuthContext";
@@ -103,10 +104,10 @@ export default function Appointments() {
     if (!ok) return;
     try {
       await deleteAppointment(appointmentId);
-      toast({ title: "Success", description: "Appointment deleted" });
+      toast({ title: "Success", description: "Appointment deleted" }); playSound('delete');
       fetchData();
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to delete appointment" });
+      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to delete appointment" }); playSound('error');
     }
   };
 

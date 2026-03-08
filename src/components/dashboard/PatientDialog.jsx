@@ -10,6 +10,7 @@ import { getNurses } from "@/lib/users";
 import { createInvoice, getInvoices, updateInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/AuthContext";
+import { playSound } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,
@@ -216,12 +217,14 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Patient registered successfully." });
+      playSound('success');
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
     onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to register patient." });
+      playSound('error');
     },
   });
 
@@ -299,12 +302,14 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Patient updated successfully." });
+      playSound('update');
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
     },
     onError: (error) => {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update patient." });
+      playSound('error');
     },
   });
 

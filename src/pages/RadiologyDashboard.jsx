@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getRadiologyOrders, getRadiologyStats, deleteRadiologyOrder, scheduleOrder, startStudy, completeStudy, deliverRadiologyReport, generateRadiologyInvoice } from "@/lib/radiology";
+import { playSound } from "@/lib/sounds";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { Badge } from "@/components/ui/badge";
@@ -95,7 +96,7 @@ export default function RadiologyDashboard() {
   };
 
   const handleDelete = async (id) => {
-    try { await deleteRadiologyOrder(id); toast.success("Order cancelled"); fetchData(); } catch (err) { toast.error(err.message); }
+    try { await deleteRadiologyOrder(id); toast.success("Order cancelled"); playSound('delete'); fetchData(); } catch (err) { toast.error(err.message); playSound('error'); }
   };
 
   const handleGenerateInvoice = async (orderIds) => {

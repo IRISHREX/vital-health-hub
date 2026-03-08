@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { deleteDoctor, getDoctors, updateAvailability } from "@/lib/doctors";
+import { playSound } from "@/lib/sounds";
 import { getDoctorProfile } from "@/lib/doctorDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,10 +89,10 @@ export default function Doctors() {
     if (!ok) return;
     try {
       await deleteDoctor(doctor._id);
-      sonnerToast.success("Doctor deleted");
+      sonnerToast.success("Doctor deleted"); playSound('delete');
       fetchData();
     } catch (err) {
-      sonnerToast.error(err?.message || "Failed to delete doctor");
+      sonnerToast.error(err?.message || "Failed to delete doctor"); playSound('error');
     }
   };
 

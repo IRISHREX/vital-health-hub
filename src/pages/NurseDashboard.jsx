@@ -8,6 +8,7 @@ import { getDashboard } from '@/lib/dashboard';
 import { getAssignedPatients, getAssignedAppointments, handoverPatient } from '@/lib/nurse';
 import { getMyTasks, getTasks, completeTask, updateTask } from '@/lib/tasks';
 import { getVitalsFeed, updateVital as updateVitalApi, deleteVital as deleteVitalApi } from '@/lib/vitals';
+import { playSound } from '@/lib/sounds';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -114,11 +115,11 @@ export default function NurseDashboard() {
   const deleteVitalMutation = useMutation({
     mutationFn: (id) => deleteVitalApi(id),
     onSuccess: () => {
-      toast.success('Vital deleted');
+      toast.success('Vital deleted'); playSound('delete');
       refreshData();
       if (isVitalsFeedOpen) vitalsFeedQuery.refetch();
     },
-    onError: (err) => toast.error(err?.message || 'Failed to delete vital')
+    onError: (err) => { toast.error(err?.message || 'Failed to delete vital'); playSound('error'); }
   });
 
   const handleCompleteTask = (task) => {

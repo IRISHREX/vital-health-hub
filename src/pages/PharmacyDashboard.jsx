@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPharmacyStats, getMedicines, getPrescriptions, getStockHistory, getPharmacyInvoices, deleteMedicine } from "@/lib/pharmacy";
 import { toast } from "sonner";
+import { playSound } from "@/lib/sounds";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -114,12 +115,12 @@ export default function PharmacyDashboard() {
   const deleteMutation = useMutation({
     mutationFn: (id) => deleteMedicine(id),
     onSuccess: () => {
-      toast.success("Medicine deleted");
+      toast.success("Medicine deleted"); playSound('delete');
       queryClient.invalidateQueries(["medicines"]);
       queryClient.invalidateQueries(["pharmacy-stats"]);
     },
     onError: (err) => {
-      toast.error(err?.message || "Failed to delete medicine");
+      toast.error(err?.message || "Failed to delete medicine"); playSound('error');
     }
   });
 

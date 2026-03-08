@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api-client";
+import { playSound } from "@/lib/sounds";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,10 +68,10 @@ export default function Nurses() {
     if (!ok) return;
     try {
       await deleteUser(nurse._id);
-      toast.success("Nurse deleted");
+      toast.success("Nurse deleted"); playSound('delete');
       fetchData();
     } catch (err) {
-      toast.error(err?.message || "Failed to delete nurse");
+      toast.error(err?.message || "Failed to delete nurse"); playSound('error');
     }
   };
 

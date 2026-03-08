@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { getLabCatalog, createLabTest } from "@/lib/labTests";
 import { toast } from "sonner";
+import { playSound } from "@/lib/sounds";
 import { Badge } from "@/components/ui/badge";
 import ModeToggle from "@/components/shared/ModeToggle";
 import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
@@ -99,7 +100,7 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
       setMode("internal");
       onClose();
     } catch (err) {
-      toast.error(err.message || "Failed to order test");
+      toast.error(err.message || "Failed to order test"); playSound('error');
     } finally {
       setSubmitting(false);
     }

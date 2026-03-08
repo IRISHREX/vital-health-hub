@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createDoctor, updateDoctor } from "@/lib/doctors";
 import { useToast } from "@/hooks/use-toast";
+import { playSound } from "@/lib/sounds";
 import {
   Dialog,
   DialogContent,
@@ -94,24 +95,24 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
   const createMutation = useMutation({
     mutationFn: createDoctor,
     onSuccess: () => {
-      toast({ title: "Success", description: "Doctor added successfully." });
+      toast({ title: "Success", description: "Doctor added successfully." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add doctor." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add doctor." }); playSound('error');
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: (data) => updateDoctor(doctor._id, data),
     onSuccess: () => {
-      toast({ title: "Success", description: "Doctor updated successfully." });
+      toast({ title: "Success", description: "Doctor updated successfully." }); playSound('update');
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update doctor." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to update doctor." }); playSound('error');
     },
   });
 
