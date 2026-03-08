@@ -196,6 +196,7 @@ exports.updateModules = async (req, res, next) => {
       { new: true, runValidators: true }
     );
     if (!org) throw new AppError('Organization not found', 404);
+    await logAudit(req, 'update_org_modules', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug }, details: { enabledModules } });
     res.json({ success: true, data: org, message: 'Modules updated' });
   } catch (error) {
     next(error);
