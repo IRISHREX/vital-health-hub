@@ -176,6 +176,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       toast({
         title: "Invoice Updated",
         description: "The invoice has been updated successfully.",
+      }); playSound('update');
       });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
