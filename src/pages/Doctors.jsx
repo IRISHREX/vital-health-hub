@@ -92,7 +92,7 @@ export default function Doctors() {
       sonnerToast.success("Doctor deleted"); playSound('delete');
       fetchData();
     } catch (err) {
-      sonnerToast.error(err?.message || "Failed to delete doctor");
+      sonnerToast.error(err?.message || "Failed to delete doctor"); playSound('error');
     }
   };
 

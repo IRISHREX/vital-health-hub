@@ -107,7 +107,7 @@ export default function Appointments() {
       toast({ title: "Success", description: "Appointment deleted" }); playSound('delete');
       fetchData();
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to delete appointment" });
+      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to delete appointment" }); playSound('error');
     }
   };
 

@@ -71,7 +71,7 @@ export default function Nurses() {
       toast.success("Nurse deleted"); playSound('delete');
       fetchData();
     } catch (err) {
-      toast.error(err?.message || "Failed to delete nurse");
+      toast.error(err?.message || "Failed to delete nurse"); playSound('error');
     }
   };
 
