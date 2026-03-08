@@ -99,7 +99,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
 
   // Filter patients by registration type
   const filteredPatients = patients.filter(
-    (patient) => patient.registrationType !== registrationType
+    (patient) => patient.registrationType === registrationType
   );
 
   const handleSubmit = async (e) => {
@@ -134,7 +134,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
         // Doctor is optional
         ...(formData.admittingDoctorId && { admittingDoctorId: formData.admittingDoctorId }),
         // Map registrationType to admissionType: emergency/opd -> 'emergency', ipd -> 'elective'
-        admissionType: registrationType === 'ipd' ? 'elective' : 'emergency',
+        admissionType: registrationType === 'ipd' ? 'elective' : registrationType === 'opd' ? 'opd' : 'emergency',
         diagnosis: formData.diagnosis,
         treatmentPlan: formData.treatmentPlan,
         facility: formData.facility,
@@ -192,7 +192,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
           <CardTitle>Loading Admission Form...</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </CardContent>
       </Card>
     );
@@ -206,7 +206,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
     <div className="w-full space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{isEdit ? 'Edit Admission' : 'Quick Admission'}</h2>
-        <p className="text-sm text-gray-500 mt-1">{isEdit ? 'Update the details for this admission' : 'Complete admission in one step'}</p>
+        <p className="text-sm text-muted-foreground mt-1">{isEdit ? 'Update the details for this admission' : 'Complete admission in one step'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

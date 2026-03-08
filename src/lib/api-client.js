@@ -69,13 +69,19 @@ export const apiClient = {
     };
 
     const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-    const data = await response.json();
+    const raw = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || 'API Error');
+      throw new Error(raw.message || 'API Error');
     }
-    // Normalize to axios-like response: { data: <parsed JSON> }
-    return data;
+
+    // Normalize: backend may return { success, data, ... } or plain object/array
+    // Always return the inner data when wrapped, or raw otherwise
+    if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'success' in raw && 'data' in raw) {
+      return raw; // Already structured: { success, data, message?, meta? }
+    }
+
+    return raw;
   },
 
   get: (endpoint) => apiClient.request(endpoint),

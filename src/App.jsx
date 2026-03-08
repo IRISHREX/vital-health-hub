@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -84,74 +85,74 @@ const App = () => (
               {/* Hospital Dashboard */}
               <Route element={<DashboardLayout />}>
                 <Route element={<AuthorizedRoute module="dashboard" />}>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/" element={<ErrorBoundary fallbackMessage="Dashboard failed to load."><Dashboard /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="beds" />}>
-                  <Route path="/beds" element={<Beds />} />
+                  <Route path="/beds" element={<ErrorBoundary><Beds /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="admissions" />}>
-                  <Route path="/admissions" element={<Admissions />} />
+                  <Route path="/admissions" element={<ErrorBoundary><Admissions /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
-                  <Route path="/patients" element={<Patients />} />
-                  <Route path="/patients/:id" element={<PatientDetails />} />
+                  <Route path="/patients" element={<ErrorBoundary><Patients /></ErrorBoundary>} />
+                  <Route path="/patients/:id" element={<ErrorBoundary><PatientDetails /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="doctors" />}>
-                  <Route path="/doctors" element={<Doctors />} />
+                  <Route path="/doctors" element={<ErrorBoundary><Doctors /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="nurses" />}>
-                  <Route path="/nurses" element={<Nurses />} />
+                  <Route path="/nurses" element={<ErrorBoundary><Nurses /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="appointments" />}>
-                  <Route path="/appointments" element={<Appointments />} />
+                  <Route path="/appointments" element={<ErrorBoundary><Appointments /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="tasks" />}>
-                  <Route path="/tasks" element={<Tasks />} />
+                  <Route path="/tasks" element={<ErrorBoundary><Tasks /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="facilities" />}>
-                  <Route path="/facilities" element={<Facilities />} />
+                  <Route path="/facilities" element={<ErrorBoundary><Facilities /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="billing" />}>
-                  <Route path="/billing" element={<Billing />} />
+                  <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="reports" />}>
-                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/reports" element={<ErrorBoundary><Reports /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="notifications" />}>
-                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/notifications" element={<ErrorBoundary><Notifications /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="nurses" />}>
-                  <Route path="/nurse" element={<NurseDashboard />} />
+                  <Route path="/nurse" element={<ErrorBoundary><NurseDashboard /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
-                  <Route path="/nurse/patients" element={<NursePatients />} />
+                  <Route path="/nurse/patients" element={<ErrorBoundary><NursePatients /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
-                  <Route path="/opd" element={<OpdDashboard />} />
+                  <Route path="/opd" element={<ErrorBoundary><OpdDashboard /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="lab" />}>
-                  <Route path="/lab" element={<LabDashboard />} />
+                  <Route path="/lab" element={<ErrorBoundary><LabDashboard /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="radiology" />}>
-                  <Route path="/radiology" element={<RadiologyDashboard />} />
+                  <Route path="/radiology" element={<ErrorBoundary><RadiologyDashboard /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
-                  <Route path="/pharmacy" element={<PharmacyDashboard />} />
+                  <Route path="/pharmacy" element={<ErrorBoundary><PharmacyDashboard /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="ot" />}>
-                  <Route path="/ot" element={<OTDashboard />} />
+                  <Route path="/ot" element={<ErrorBoundary><OTDashboard /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
-                  <Route path="/prescriptions/:id/preview" element={<PrescriptionPreview />} />
+                  <Route path="/prescriptions/:id/preview" element={<ErrorBoundary><PrescriptionPreview /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="lab" />}>
-                  <Route path="/lab/:id/preview" element={<LabReportPreview />} />
+                  <Route path="/lab/:id/preview" element={<ErrorBoundary><LabReportPreview /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="radiology" />}>
-                  <Route path="/radiology/:id/preview" element={<RadiologyReportPreview />} />
+                  <Route path="/radiology/:id/preview" element={<ErrorBoundary><RadiologyReportPreview /></ErrorBoundary>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
-                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
                 </Route>
               </Route>
 

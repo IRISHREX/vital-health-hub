@@ -471,7 +471,7 @@ export default function Billing() {
     queryFn: () => getHospitalSettings()
   });
 
-  const invoices = Array.isArray(invoicesRes) ? invoicesRes : [];
+  const invoices = Array.isArray(invoicesRes?.data?.invoices) ? invoicesRes.data.invoices : Array.isArray(invoicesRes?.invoices) ? invoicesRes.invoices : Array.isArray(invoicesRes) ? invoicesRes : [];
   const hospitalSettings = hospitalRes?.data || defaultHospital;
 
   const allowedBillingOptions = useMemo(() => {

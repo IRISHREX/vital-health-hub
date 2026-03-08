@@ -299,7 +299,6 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Patient updated successfully." });
-      toast({ title: "Debug", description: "Patient update sent. Check console for payload.", duration: 2500 });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();

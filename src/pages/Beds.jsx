@@ -231,46 +231,46 @@ export default function Beds() {
             <div className="text-2xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card className="border-emerald-300/30 bg-emerald-50">
+        <Card className="status-bg-available">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Available</CardTitle>
-            <div className="h-3 w-3 rounded-full bg-emerald-500" />
+            <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-available))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
+            <div className="text-2xl font-bold status-text-available">
               {currentWardStats.available}
             </div>
           </CardContent>
         </Card>
-        <Card className="border-red-300/30 bg-red-50">
+        <Card className="status-bg-occupied">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Occupied</CardTitle>
-            <div className="h-3 w-3 rounded-full bg-red-500" />
+            <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-occupied))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold status-text-occupied">
               {currentWardStats.occupied}
             </div>
           </CardContent>
         </Card>
-        <Card className="border-yellow-300/30 bg-yellow-50">
+        <Card className="status-bg-cleaning">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Cleaning</CardTitle>
-            <div className="h-3 w-3 rounded-full bg-yellow-500" />
+            <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-cleaning))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
+            <div className="text-2xl font-bold status-text-cleaning">
               {currentWardStats.cleaning}
             </div>
           </CardContent>
         </Card>
-        <Card className="border-blue-300/30 bg-blue-50">
+        <Card className="status-bg-reserved">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Reserved</CardTitle>
-            <div className="h-3 w-3 rounded-full bg-blue-500" />
+            <div className="h-3 w-3 rounded-full bg-[hsl(var(--status-reserved))]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold status-text-reserved">
               {currentWardStats.reserved}
             </div>
           </CardContent>
