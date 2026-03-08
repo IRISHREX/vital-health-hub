@@ -159,7 +159,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       return updateBed(bed._id, payload);
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Bed updated successfully." });
+      toast({ title: "Success", description: "Bed updated successfully." }); playSound('update');
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       handleClose();
