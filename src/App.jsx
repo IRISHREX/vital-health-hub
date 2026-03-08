@@ -154,6 +154,44 @@ const App = () => (
                   <Route path="/settings" element={<Settings />} />
                 </Route>
               </Route>
+
+              {/* ===== Standalone Portal: Lab ===== */}
+              <Route path="/lab-portal/login" element={<PortalLogin portal={portalDefinitions.lab} />} />
+              <Route path="/lab-portal" element={<PortalLayout portal={portalDefinitions.lab} />}>
+                <Route index element={<LabPortalDashboard />} />
+                <Route path="tests" element={<LabDashboard />} />
+                <Route path="patients" element={<Patients />} />
+                <Route path="billing" element={<Billing />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+
+              {/* ===== Standalone Portal: Pharmacy ===== */}
+              <Route path="/pharmacy-portal/login" element={<PortalLogin portal={portalDefinitions.pharmacy} />} />
+              <Route path="/pharmacy-portal" element={<PortalLayout portal={portalDefinitions.pharmacy} />}>
+                <Route index element={<PharmacyPortalDashboard />} />
+                <Route path="medicines" element={<PharmacyDashboard />} />
+                <Route path="prescriptions" element={<PharmacyDashboard />} />
+                <Route path="patients" element={<Patients />} />
+                <Route path="billing" element={<Billing />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+
+              {/* ===== Standalone Portal: Radiology ===== */}
+              <Route path="/radiology-portal/login" element={<PortalLogin portal={portalDefinitions.radiology} />} />
+              <Route path="/radiology-portal" element={<PortalLayout portal={portalDefinitions.radiology} />}>
+                <Route index element={<RadiologyPortalDashboard />} />
+                <Route path="orders" element={<RadiologyDashboard />} />
+                <Route path="patients" element={<Patients />} />
+                <Route path="billing" element={<Billing />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
