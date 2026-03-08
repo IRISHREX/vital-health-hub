@@ -8,10 +8,10 @@ import { getHospitalSettings } from "@/lib/settings";
 import { Download, FileText, Printer, Eye, EyeOff } from 'lucide-react';
 
 const invoiceStatusColors = {
-  paid: 'bg-green-100 text-green-800 border-green-300',
-  pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  overdue: 'bg-red-100 text-red-800 border-red-300',
-  cancelled: 'bg-gray-100 text-gray-800 border-gray-300',
+  paid: 'bg-[hsl(var(--status-available)/0.15)] text-[hsl(var(--status-available))] border-[hsl(var(--status-available)/0.3)]',
+  pending: 'bg-[hsl(var(--status-cleaning)/0.15)] text-[hsl(var(--status-cleaning))] border-[hsl(var(--status-cleaning)/0.3)]',
+  overdue: 'bg-[hsl(var(--status-occupied)/0.15)] text-[hsl(var(--status-occupied))] border-[hsl(var(--status-occupied)/0.3)]',
+  cancelled: 'bg-muted text-muted-foreground border-border',
 };
 
 const defaultHospital = {
