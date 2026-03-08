@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { PageSkeleton } from "@/components/ui/table-skeleton";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getLabTests, getLabStats, collectSample, startProcessing, deleteLabTest, generateLabInvoice } from "@/lib/labTests";
 import { getPatients } from "@/lib/patients";
