@@ -143,6 +143,10 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="ot" />}>
                   <Route path="/ot" element={<ErrorBoundary><OTDashboard /></ErrorBoundary>} />
                 </Route>
+                <Route element={<AuthorizedRoute module="billing" />}>
+                  <Route path="/service-catalog" element={<ErrorBoundary><ServiceCatalogPage /></ErrorBoundary>} />
+                </Route>
+                </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/prescriptions/:id/preview" element={<ErrorBoundary><PrescriptionPreview /></ErrorBoundary>} />
                 </Route>

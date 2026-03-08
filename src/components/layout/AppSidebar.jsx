@@ -57,6 +57,7 @@ const managementItems = [
   { title: "Radiology", url: "/radiology", icon: ScanLine, module: "radiology" },
   { title: "Pharmacy", url: "/pharmacy", icon: Pill, module: "pharmacy" },
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
+  { title: "Service Catalog", url: "/service-catalog", icon: PackageSearch, module: "billing" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];
