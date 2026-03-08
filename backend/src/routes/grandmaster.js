@@ -84,4 +84,9 @@ router.get('/config/:key', configCtrl.get);
 router.put('/config', configCtrl.upsert);
 router.delete('/config/:key', requireGrandmaster, configCtrl.remove);
 
+// Audit Logs
+router.get('/audit-logs', auditCtrl.list);
+router.get('/audit-logs/stats', auditCtrl.stats);
+router.get('/audit-logs/:id', auditCtrl.getById);
+
 module.exports = router;
