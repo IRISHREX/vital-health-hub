@@ -90,6 +90,7 @@ import { getUsers } from "@/lib/users";
 import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
+import SoundSettings from "@/components/settings/SoundSettings";
 
 const assignmentRoleOptions = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"];
 const assignmentTypeLabels = {
