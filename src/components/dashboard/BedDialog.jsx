@@ -143,7 +143,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       return createBed(payload);
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Bed added successfully." });
+      toast({ title: "Success", description: "Bed added successfully." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["beds"] });
       handleClose();
     },
