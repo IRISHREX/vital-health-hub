@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPharmacyStats, getMedicines, getPrescriptions, getStockHistory, getPharmacyInvoices, deleteMedicine } from "@/lib/pharmacy";
 import { toast } from "sonner";
+import { playSound } from "@/lib/sounds";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
