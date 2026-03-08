@@ -30,6 +30,7 @@ const ORG_TYPES = [
 const statusColor = { active: 'default', suspended: 'destructive', onboarding: 'secondary', deactivated: 'outline' };
 
 export default function Organizations() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
