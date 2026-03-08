@@ -79,6 +79,7 @@ const App = () => (
               <Route path="/grandmaster" element={<GrandmasterLayout />}>
                 <Route index element={<GrandmasterDashboard />} />
                 <Route path="organizations" element={<Organizations />} />
+                <Route path="organizations/:id" element={<OrgControlPanel />} />
                 <Route path="subscriptions" element={<Subscriptions />} />
                 <Route path="monitoring" element={<Monitoring />} />
                 <Route path="admins" element={<Admins />} />
