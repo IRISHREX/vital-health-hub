@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { deleteAppointment, getAppointments, updateAppointment } from "@/lib/appointments";
+import { playSound } from "@/lib/sounds";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { useAuth } from "@/lib/AuthContext";
