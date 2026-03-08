@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { addPayment, createInvoice, getInvoices } from "@/lib/invoices";
-import { getHospitalSettings } from "@/lib/settings";
+import { getHospitalSettings, getPaymentConfig } from "@/lib/settings";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
