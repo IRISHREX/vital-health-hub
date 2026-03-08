@@ -18,6 +18,7 @@ import {
   Pill,
   ScanLine,
   Scissors,
+  PackageSearch,
 } from "lucide-react";
 import {
   Sidebar,
