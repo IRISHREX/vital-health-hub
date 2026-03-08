@@ -2356,6 +2356,10 @@ export default function Settings() {
             </Card>
           </TabsContent>
         )}
+
+        <TabsContent value="sounds">
+          <SoundSettings />
+        </TabsContent>
       </Tabs>
     </div>
   );
