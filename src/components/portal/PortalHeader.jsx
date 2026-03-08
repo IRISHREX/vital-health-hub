@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, User, LogOut, Sun, Moon } from "lucide-react";
+import { Bell, User, LogOut, Sun, Moon, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { usePortal } from "@/lib/PortalContext";
 import { getNotifications, markAsRead } from "@/lib/notifications";
+import { portalDefinitions } from "@/lib/portal-config";
 
 export function PortalHeader() {
   const navigate = useNavigate();
