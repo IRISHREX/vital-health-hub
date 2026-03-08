@@ -152,8 +152,8 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to create invoice.",
-      }); playSound('error');
       });
+      playSound('error');
     },
   });
 
