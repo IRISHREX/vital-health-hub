@@ -159,7 +159,7 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="settings" />}>
                   <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
                 </Route>
-              </Route>
+
 
               {/* ===== Standalone Portal: Lab ===== */}
               <Route path="/lab-portal/login" element={<PortalLogin portal={portalDefinitions.lab} />} />
