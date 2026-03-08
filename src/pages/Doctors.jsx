@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { deleteDoctor, getDoctors, updateAvailability } from "@/lib/doctors";
+import { playSound } from "@/lib/sounds";
 import { getDoctorProfile } from "@/lib/doctorDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
