@@ -148,7 +148,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add bed." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to add bed." }); playSound('error');
     },
   });
 
