@@ -217,6 +217,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Patient registered successfully." });
+      playSound('success');
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
