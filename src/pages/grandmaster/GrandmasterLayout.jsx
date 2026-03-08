@@ -18,6 +18,7 @@ const navItems = [
   { title: 'Monitoring', url: '/grandmaster/monitoring', icon: Activity },
   { title: 'Admins', url: '/grandmaster/admins', icon: Users },
   { title: 'Notices', url: '/grandmaster/notices', icon: Bell },
+  { title: 'Audit Logs', url: '/grandmaster/audit-logs', icon: ScrollText },
   { title: 'Settings', url: '/grandmaster/settings', icon: Settings },
 ];
 
