@@ -142,6 +142,7 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
       toast({
         title: "Invoice Created",
         description: "The new invoice has been created successfully.",
+      }); playSound('success');
       });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       handleClose();
