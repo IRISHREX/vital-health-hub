@@ -164,7 +164,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       });
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Appointment updated successfully." });
+      toast({ title: "Success", description: "Appointment updated successfully." }); playSound('update');
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       handleClose();
     },
