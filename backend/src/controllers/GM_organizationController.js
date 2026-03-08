@@ -229,6 +229,7 @@ exports.reactivate = async (req, res, next) => {
       { new: true }
     );
     if (!org) throw new AppError('Organization not found', 404);
+    await logAudit(req, 'reactivate_org', { targetOrg: { orgId: org._id, name: org.name, slug: org.slug } });
     res.json({ success: true, data: org, message: 'Organization reactivated' });
   } catch (error) {
     next(error);
