@@ -83,7 +83,7 @@ export default function UserDialog({ isOpen, onClose, mode = "create", user }) {
   const createMutation = useMutation({
     mutationFn: (data) => registerApi(data),
     onSuccess: () => {
-      toast({ title: "Success", description: "User created successfully." });
+      toast({ title: "Success", description: "User created successfully." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["user-stats"] });
       handleClose();
     },
