@@ -471,9 +471,38 @@ export default function Billing() {
     queryKey: ["hospital-settings"],
     queryFn: () => getHospitalSettings()
   });
+  const { data: paymentConfigRes } = useQuery({
+    queryKey: ["payment-config"],
+    queryFn: () => getPaymentConfig()
+  });
 
   const invoices = Array.isArray(invoicesRes?.data?.invoices) ? invoicesRes.data.invoices : Array.isArray(invoicesRes?.invoices) ? invoicesRes.invoices : Array.isArray(invoicesRes) ? invoicesRes : [];
   const hospitalSettings = hospitalRes?.data || defaultHospital;
+  const orgPaymentConfig = paymentConfigRes?.data || {};
+
+  // All possible payment methods with labels
+  const ALL_PAYMENT_METHODS = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'card', label: 'Card' },
+    { value: 'upi', label: 'UPI' },
+    { value: 'insurance', label: 'Insurance' },
+    { value: 'bank_transfer', label: 'Bank Transfer' },
+    { value: 'cheque', label: 'Cheque' },
+    { value: 'wallet', label: 'Wallet' },
+    { value: 'credit', label: 'Credit/Ledger' },
+  ];
+
+  // Derive allowed payment methods for the billing module
+  const billingPaymentConfig = orgPaymentConfig?.billing || null;
+  const allowedPaymentMethods = useMemo(() => {
+    if (!billingPaymentConfig?.allowedMethods?.length) {
+      // Default: all standard methods when no config is set
+      return ALL_PAYMENT_METHODS;
+    }
+    return ALL_PAYMENT_METHODS.filter(m => billingPaymentConfig.allowedMethods.includes(m.value));
+  }, [billingPaymentConfig]);
+  const enablePartialPayment = billingPaymentConfig ? billingPaymentConfig.enablePartialPayment !== false : true;
+  const enableRefunds = billingPaymentConfig ? billingPaymentConfig.enableRefunds !== false : true;
 
   const allowedBillingOptions = useMemo(() => {
     return Object.keys(billingOptionConfig).filter((option) =>
