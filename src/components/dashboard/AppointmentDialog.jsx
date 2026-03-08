@@ -143,7 +143,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       handleClose();
     },
     onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to book appointment." });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to book appointment." }); playSound('error');
     },
   });
 
