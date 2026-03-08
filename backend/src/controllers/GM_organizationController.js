@@ -244,8 +244,9 @@ exports.remove = async (req, res, next) => {
 
     // Remove subscriptions
     await Subscription.deleteMany({ organization: org._id });
+    const orgInfo = { orgId: org._id, name: org.name, slug: org.slug };
     await org.deleteOne();
-
+    await logAudit(req, 'delete_org', { targetOrg: orgInfo });
     res.json({ success: true, message: 'Organization removed' });
   } catch (error) {
     next(error);
