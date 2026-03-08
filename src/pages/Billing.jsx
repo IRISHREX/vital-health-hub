@@ -676,8 +676,10 @@ export default function Billing() {
 
   const openPayment = ({ mode, invoice, row }) => {
     const due = mode === "single" ? Number(invoice?.dueAmount || 0) : Number(row?.due || 0);
+    const effectiveAmount = (!enablePartialPayment && mode === "single") ? String(due) : String(due);
+    const defaultMethod = allowedPaymentMethods[0]?.value || 'cash';
     setPaymentTarget({ mode, invoice, row, due });
-    setPaymentForm({ amount: String(due), method: "cash", reference: "" });
+    setPaymentForm({ amount: effectiveAmount, method: defaultMethod, reference: "" });
     setPaymentDialogOpen(true);
   };
 
