@@ -134,7 +134,7 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
         // Doctor is optional
         ...(formData.admittingDoctorId && { admittingDoctorId: formData.admittingDoctorId }),
         // Map registrationType to admissionType: emergency/opd -> 'emergency', ipd -> 'elective'
-        admissionType: registrationType === 'ipd' ? 'elective' : 'emergency',
+        admissionType: registrationType === 'ipd' ? 'elective' : registrationType === 'opd' ? 'opd' : 'emergency',
         diagnosis: formData.diagnosis,
         treatmentPlan: formData.treatmentPlan,
         facility: formData.facility,
