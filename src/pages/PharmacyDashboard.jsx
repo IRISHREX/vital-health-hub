@@ -115,7 +115,7 @@ export default function PharmacyDashboard() {
   const deleteMutation = useMutation({
     mutationFn: (id) => deleteMedicine(id),
     onSuccess: () => {
-      toast.success("Medicine deleted");
+      toast.success("Medicine deleted"); playSound('delete');
       queryClient.invalidateQueries(["medicines"]);
       queryClient.invalidateQueries(["pharmacy-stats"]);
     },
