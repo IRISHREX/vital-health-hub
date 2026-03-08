@@ -8,6 +8,7 @@ import { getDashboard } from '@/lib/dashboard';
 import { getAssignedPatients, getAssignedAppointments, handoverPatient } from '@/lib/nurse';
 import { getMyTasks, getTasks, completeTask, updateTask } from '@/lib/tasks';
 import { getVitalsFeed, updateVital as updateVitalApi, deleteVital as deleteVitalApi } from '@/lib/vitals';
+import { playSound } from '@/lib/sounds';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLocation, useNavigate } from 'react-router-dom';
