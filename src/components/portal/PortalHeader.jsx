@@ -43,10 +43,44 @@ export function PortalHeader() {
     ? user.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
 
+  const otherPortals = Object.values(portalDefinitions).filter((p) => p.key !== portal?.key);
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-3 sm:px-4 lg:px-6 shadow-sm">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+
+        {/* Portal Switcher */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              {portal && <portal.icon className="h-4 w-4" />}
+              <span className="hidden sm:inline">{portal?.label}</span>
+              <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuLabel>Switch Portal</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {/* Current */}
+            <DropdownMenuItem disabled className="opacity-70">
+              {portal && <portal.icon className="mr-2 h-4 w-4" />}
+              {portal?.label}
+              <Badge variant="secondary" className="ml-auto text-[10px]">Current</Badge>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {otherPortals.map((p) => (
+              <DropdownMenuItem key={p.key} onClick={() => navigate(p.basePath)}>
+                <p.icon className="mr-2 h-4 w-4" />
+                {p.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/")}>
+              <span className="mr-2">🏥</span> Full Hospital Dashboard
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-3">
