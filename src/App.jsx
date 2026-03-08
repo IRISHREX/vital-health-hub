@@ -32,6 +32,7 @@ import LabDashboard from './pages/LabDashboard';
 import RadiologyDashboard from './pages/RadiologyDashboard';
 import PharmacyDashboard from './pages/PharmacyDashboard';
 import OTDashboard from './pages/OTDashboard';
+import ServiceCatalogPage from './pages/ServiceCatalogPage';
 import PrescriptionPreview from "./pages/PrescriptionPreview";
 import LabReportPreview from "./pages/LabReportPreview";
 import RadiologyReportPreview from "./pages/RadiologyReportPreview";
