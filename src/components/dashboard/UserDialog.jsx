@@ -52,7 +52,7 @@ export default function UserDialog({ isOpen, onClose, mode = "create", user }) {
       lastName: "",
       email: "",
       phone: "",
-      password: "nurse123",
+      password: "",
       role: "nurse",
     },
   });
