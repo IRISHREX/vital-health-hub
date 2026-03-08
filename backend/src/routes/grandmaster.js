@@ -8,6 +8,7 @@ const monCtrl = require('../controllers/GM_monitoringController');
 const noticeCtrl = require('../controllers/GM_noticeController');
 const configCtrl = require('../controllers/GM_configController');
 const powerCtrl = require('../controllers/GM_orgPowerController');
+const auditCtrl = require('../controllers/GM_auditController');
 
 // ─── Auth (public) ───
 router.post('/auth/login', authCtrl.login);
