@@ -64,6 +64,29 @@ export const suspendOrganization = (id, reason) => gmApi.post(`/organizations/${
 export const reactivateOrganization = (id) => gmApi.post(`/organizations/${id}/reactivate`);
 export const deleteOrganization = (id) => gmApi.delete(`/organizations/${id}`);
 
+// ─── Grandmaster Power APIs ───
+
+// Settings control
+export const getOrgSettingsConfig = (id) => gmApi.get(`/organizations/${id}/settings-config`);
+export const updateOrgSettingsTabs = (id, tabs) => gmApi.put(`/organizations/${id}/settings-tabs`, { allowedSettingsTabs: tabs });
+
+// Payment config
+export const updateOrgPaymentConfig = (id, module, config) => gmApi.put(`/organizations/${id}/payment-config`, { module, config });
+export const updateOrgBulkPaymentConfig = (id, paymentConfig) => gmApi.put(`/organizations/${id}/payment-config/bulk`, { paymentConfig });
+
+// Impersonation
+export const impersonateOrg = (id) => gmApi.post(`/organizations/${id}/impersonate`);
+
+// Remote CRUD proxy
+export const proxyList = (orgId, resource, params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return gmApi.get(`/organizations/${orgId}/data/${resource}${qs ? `?${qs}` : ''}`);
+};
+export const proxyGetById = (orgId, resource, recordId) => gmApi.get(`/organizations/${orgId}/data/${resource}/${recordId}`);
+export const proxyCreate = (orgId, resource, data) => gmApi.post(`/organizations/${orgId}/data/${resource}`, data);
+export const proxyUpdate = (orgId, resource, recordId, data) => gmApi.put(`/organizations/${orgId}/data/${resource}/${recordId}`, data);
+export const proxyDelete = (orgId, resource, recordId) => gmApi.delete(`/organizations/${orgId}/data/${resource}/${recordId}`);
+
 // Plans
 export const listPlans = (params) => {
   const qs = new URLSearchParams(params).toString();
