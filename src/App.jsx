@@ -32,6 +32,7 @@ import LabDashboard from './pages/LabDashboard';
 import RadiologyDashboard from './pages/RadiologyDashboard';
 import PharmacyDashboard from './pages/PharmacyDashboard';
 import OTDashboard from './pages/OTDashboard';
+import ServiceCatalogPage from './pages/ServiceCatalogPage';
 import PrescriptionPreview from "./pages/PrescriptionPreview";
 import LabReportPreview from "./pages/LabReportPreview";
 import RadiologyReportPreview from "./pages/RadiologyReportPreview";
@@ -141,6 +142,10 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="ot" />}>
                   <Route path="/ot" element={<ErrorBoundary><OTDashboard /></ErrorBoundary>} />
+                </Route>
+                <Route element={<AuthorizedRoute module="billing" />}>
+                  <Route path="/service-catalog" element={<ErrorBoundary><ServiceCatalogPage /></ErrorBoundary>} />
+                </Route>
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
                   <Route path="/prescriptions/:id/preview" element={<ErrorBoundary><PrescriptionPreview /></ErrorBoundary>} />

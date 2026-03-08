@@ -30,6 +30,8 @@ const AccessRequest = require('./NH_AccessRequest');
 const RadiologyOrder = require('./NH_RadiologyOrder');
 const OTRoom = require('./NH_OTRoom');
 const Surgery = require('./NH_Surgery');
+const ServiceCatalog = require('./NH_ServiceCatalog');
+const RoomTypeService = require('./NH_RoomTypeService');
 
 module.exports = {
   User,
@@ -61,5 +63,7 @@ module.exports = {
   AccessRequest,
   RadiologyOrder,
   OTRoom,
-  Surgery
+  Surgery,
+  ServiceCatalog,
+  RoomTypeService
 };
