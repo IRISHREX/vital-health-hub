@@ -803,7 +803,7 @@ export default function Billing() {
     }
   };
 
-  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoading) return <PageSkeleton statCards={4} tableColumns={9} tableRows={8} />;
   if (isError) return <div className="text-red-500 text-center py-8">Error loading billing data.</div>;
 
   return (
