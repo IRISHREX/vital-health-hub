@@ -58,6 +58,7 @@ import {
   Copy,
   AlertCircle,
   Eye,
+  Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
