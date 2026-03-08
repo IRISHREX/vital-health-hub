@@ -68,7 +68,7 @@ export default function Nurses() {
     if (!ok) return;
     try {
       await deleteUser(nurse._id);
-      toast.success("Nurse deleted");
+      toast.success("Nurse deleted"); playSound('delete');
       fetchData();
     } catch (err) {
       toast.error(err?.message || "Failed to delete nurse");
