@@ -35,6 +35,14 @@ import PrescriptionPreview from "./pages/PrescriptionPreview";
 import LabReportPreview from "./pages/LabReportPreview";
 import RadiologyReportPreview from "./pages/RadiologyReportPreview";
 
+// Standalone Portals
+import PortalLogin from "./components/portal/PortalLogin";
+import PortalLayout from "./components/portal/PortalLayout";
+import LabPortalDashboard from "./pages/portal/LabPortalDashboard";
+import PharmacyPortalDashboard from "./pages/portal/PharmacyPortalDashboard";
+import RadiologyPortalDashboard from "./pages/portal/RadiologyPortalDashboard";
+import { portalDefinitions } from "./lib/portal-config";
+
 // Grandmaster Module
 import GrandmasterLogin from "./pages/grandmaster/GrandmasterLogin";
 import GrandmasterLayout from "./pages/grandmaster/GrandmasterLayout";
