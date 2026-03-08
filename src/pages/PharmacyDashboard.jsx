@@ -120,7 +120,7 @@ export default function PharmacyDashboard() {
       queryClient.invalidateQueries(["pharmacy-stats"]);
     },
     onError: (err) => {
-      toast.error(err?.message || "Failed to delete medicine");
+      toast.error(err?.message || "Failed to delete medicine"); playSound('error');
     }
   });
 

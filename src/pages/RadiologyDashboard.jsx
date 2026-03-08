@@ -96,7 +96,7 @@ export default function RadiologyDashboard() {
   };
 
   const handleDelete = async (id) => {
-    try { await deleteRadiologyOrder(id); toast.success("Order cancelled"); fetchData(); } catch (err) { toast.error(err.message); }
+    try { await deleteRadiologyOrder(id); toast.success("Order cancelled"); playSound('delete'); fetchData(); } catch (err) { toast.error(err.message); playSound('error'); }
   };
 
   const handleGenerateInvoice = async (orderIds) => {
