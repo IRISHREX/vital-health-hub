@@ -119,7 +119,7 @@ export default function NurseDashboard() {
       refreshData();
       if (isVitalsFeedOpen) vitalsFeedQuery.refetch();
     },
-    onError: (err) => toast.error(err?.message || 'Failed to delete vital')
+    onError: (err) => { toast.error(err?.message || 'Failed to delete vital'); playSound('error'); }
   });
 
   const handleCompleteTask = (task) => {
