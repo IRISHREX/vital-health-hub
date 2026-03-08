@@ -59,9 +59,24 @@ exports.getAllowedSettingsTabs = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+// ============ PAYMENT CONFIG (from Org) ============
 
-// ============ HOSPITAL SETTINGS ============
+// @desc    Get payment config from grandmaster org config
+// @route   GET /api/settings/payment-config
+// @access  Private (any authenticated user)
+exports.getPaymentConfig = async (req, res, next) => {
+  try {
+    const org = req.tenant?.organization;
+    const raw = org?.paymentConfig;
+    // paymentConfig is a Mongoose Map, convert to plain object
+    const paymentConfig = raw instanceof Map
+      ? Object.fromEntries(raw)
+      : (raw && typeof raw === 'object' ? { ...raw } : {});
+    res.json({ success: true, data: paymentConfig });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // @desc    Get hospital settings
 // @route   GET /api/settings/hospital

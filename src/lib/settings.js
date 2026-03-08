@@ -6,6 +6,9 @@ export const getAllSettings = () => apiClient.get('/settings');
 // Get allowed settings tabs (grandmaster config)
 export const getAllowedSettingsTabs = () => apiClient.get('/settings/allowed-tabs');
 
+// Get payment config (grandmaster config per module)
+export const getPaymentConfig = () => apiClient.get('/settings/payment-config');
+
 // Hospital settings
 export const getHospitalSettings = () => apiClient.get('/settings/hospital');
 export const updateHospitalSettings = (data) => apiClient.put('/settings/hospital', data);
