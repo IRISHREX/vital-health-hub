@@ -44,6 +44,23 @@ const getTenantModels = (req) => ({
   Invoice: getModel(req, 'Invoice', BaseInvoice),
 });
 
+// ============ ALLOWED SETTINGS TABS ============
+
+// @desc    Get allowed settings tabs from grandmaster org config
+// @route   GET /api/settings/allowed-tabs
+// @access  Private (any authenticated user)
+exports.getAllowedSettingsTabs = async (req, res, next) => {
+  try {
+    const org = req.tenant?.organization;
+    const allowedTabs = org?.allowedSettingsTabs || [
+      'general', 'users', 'security', 'notifications', 'data', 'visual_access', 'module_operations',
+    ];
+    res.json({ success: true, data: allowedTabs });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ============ HOSPITAL SETTINGS ============
 
 // @desc    Get hospital settings

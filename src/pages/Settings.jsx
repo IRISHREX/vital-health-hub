@@ -79,6 +79,7 @@ import {
   bulkImportData,
   exportDataByEntity,
   runAutoExportNow,
+  getAllowedSettingsTabs,
 } from "@/lib/settings";
 import { getNotifications } from "@/lib/notifications";
 import { updateProfile } from "@/lib/auth";
@@ -1043,6 +1044,26 @@ export default function Settings() {
   const canEditVisualPermissions = user?.role === "super_admin" || canManageVisualPermissions;
   const canEditDelegation = user?.role === "super_admin";
 
+  // Fetch allowed settings tabs from grandmaster config
+  const { data: allowedTabsRes } = useQuery({
+    queryKey: ["allowed-settings-tabs"],
+    queryFn: getAllowedSettingsTabs,
+  });
+  const allowedGmTabs = allowedTabsRes?.data;
+
+  // Map GM tab values to frontend tab values
+  // GM uses: general, users, security, notifications, data, visual_access, module_operations
+  // Frontend uses: general, users, security, notifications, data, permissions (=visual_access), modules (=module_operations)
+  const isTabAllowed = (frontendTab) => {
+    if (!allowedGmTabs) return true; // default: show all until loaded
+    const mapping = {
+      permissions: 'visual_access',
+      modules: 'module_operations',
+    };
+    const gmKey = mapping[frontendTab] || frontendTab;
+    return allowedGmTabs.includes(gmKey);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -1055,40 +1076,48 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-9">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-none lg:flex">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profile
           </TabsTrigger>
-          {isAdmin && (
-            <>
-              <TabsTrigger value="general" className="gap-2">
-                <Building2 className="h-4 w-4" />
-                General
-              </TabsTrigger>
-              <TabsTrigger value="users" className="gap-2">
-                <Users className="h-4 w-4" />
-                Users
-              </TabsTrigger>
-              <TabsTrigger value="security" className="gap-2">
-                <Shield className="h-4 w-4" />
-                Security
-              </TabsTrigger>
-              <TabsTrigger value="notifications" className="gap-2">
-                <Bell className="h-4 w-4" />
-                Notifications
-              </TabsTrigger>
-              <TabsTrigger value="modules" className="gap-2">
-                <Database className="h-4 w-4" />
-                Modules
-              </TabsTrigger>
-              <TabsTrigger value="data" className="gap-2">
-                <Database className="h-4 w-4" />
-                Data
-              </TabsTrigger>
-            </>
+          {isAdmin && isTabAllowed('general') && (
+            <TabsTrigger value="general" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              General
+            </TabsTrigger>
           )}
-          {canSeeVisualPermissionsTab && (
+          {isAdmin && isTabAllowed('users') && (
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="h-4 w-4" />
+              Users
+            </TabsTrigger>
+          )}
+          {isAdmin && isTabAllowed('security') && (
+            <TabsTrigger value="security" className="gap-2">
+              <Shield className="h-4 w-4" />
+              Security
+            </TabsTrigger>
+          )}
+          {isAdmin && isTabAllowed('notifications') && (
+            <TabsTrigger value="notifications" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+          )}
+          {isAdmin && isTabAllowed('modules') && (
+            <TabsTrigger value="modules" className="gap-2">
+              <Database className="h-4 w-4" />
+              Modules
+            </TabsTrigger>
+          )}
+          {isAdmin && isTabAllowed('data') && (
+            <TabsTrigger value="data" className="gap-2">
+              <Database className="h-4 w-4" />
+              Data
+            </TabsTrigger>
+          )}
+          {canSeeVisualPermissionsTab && isTabAllowed('permissions') && (
             <TabsTrigger value="permissions" className="gap-2">
               <Shield className="h-4 w-4" />
               Permissions

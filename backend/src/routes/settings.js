@@ -6,6 +6,9 @@ const { authenticate, authorize } = require('../middleware/auth');
 // All settings routes require authentication
 router.use(authenticate);
 
+// Allowed settings tabs (from grandmaster org config)
+router.get('/allowed-tabs', settingsController.getAllowedSettingsTabs);
+
 // Get all settings (for initial load)
 router.get('/', authorize('super_admin', 'hospital_admin'), settingsController.getAllSettings);
 

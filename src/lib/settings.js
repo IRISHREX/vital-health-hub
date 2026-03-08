@@ -3,6 +3,9 @@ import { apiClient } from './api-client';
 // Get all settings at once
 export const getAllSettings = () => apiClient.get('/settings');
 
+// Get allowed settings tabs (grandmaster config)
+export const getAllowedSettingsTabs = () => apiClient.get('/settings/allowed-tabs');
+
 // Hospital settings
 export const getHospitalSettings = () => apiClient.get('/settings/hospital');
 export const updateHospitalSettings = (data) => apiClient.put('/settings/hospital', data);
