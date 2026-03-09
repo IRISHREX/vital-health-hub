@@ -59,6 +59,7 @@ exports.getAllowedSettingsTabs = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
 // ============ PAYMENT CONFIG (from Org) ============
 
 // @desc    Get payment config from grandmaster org config
