@@ -1019,6 +1019,13 @@ export default function Settings() {
     });
   };
 
+  // Fetch allowed settings tabs from grandmaster config
+  const { data: allowedTabsRes } = useQuery({
+    queryKey: ["allowed-settings-tabs"],
+    queryFn: getAllowedSettingsTabs,
+  });
+  const allowedGmTabs = allowedTabsRes?.data;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -1043,13 +1050,6 @@ export default function Settings() {
   const canSeeVisualPermissionsTab = true;
   const canEditVisualPermissions = user?.role === "super_admin" || canManageVisualPermissions;
   const canEditDelegation = user?.role === "super_admin";
-
-  // Fetch allowed settings tabs from grandmaster config
-  const { data: allowedTabsRes } = useQuery({
-    queryKey: ["allowed-settings-tabs"],
-    queryFn: getAllowedSettingsTabs,
-  });
-  const allowedGmTabs = allowedTabsRes?.data;
 
   // Map GM tab values to frontend tab values
   // GM uses: general, users, security, notifications, data, visual_access, module_operations
