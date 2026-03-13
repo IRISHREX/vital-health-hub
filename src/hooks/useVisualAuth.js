@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
-import { getVisualAccessSettings } from "@/lib/settings";
+import { getVisualAccessSettings, getEnabledModules } from "@/lib/settings";
 import { getPermissions, mergePermissions } from "@/lib/rbac";
 import { moduleFeatureCatalog } from "@/lib/advanced-permissions";
 
 const emptyPermissions = { canView: false, canCreate: false, canEdit: false, canDelete: false };
+
+// Modules that are always available regardless of GM config (core system modules)
+const ALWAYS_ENABLED_MODULES = ["dashboard", "notifications", "settings"];
 
 export function useVisualAuth() {
   const { user } = useAuth();
@@ -18,6 +21,32 @@ export function useVisualAuth() {
     staleTime: 5 * 1000,
     refetchInterval: 15 * 1000
   });
+
+  // Fetch GM-level enabled modules for this organization
+  const { data: enabledModulesRes, isLoading: isModulesLoading } = useQuery({
+    queryKey: ["org-enabled-modules"],
+    queryFn: getEnabledModules,
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000
+  });
+
+  // Resolve enabled modules: from API > from user.organization > fallback to all
+  const enabledModules = useMemo(() => {
+    const fromApi = enabledModulesRes?.data;
+    if (Array.isArray(fromApi) && fromApi.length > 0) return fromApi;
+    const fromUser = user?.organization?.enabledModules;
+    if (Array.isArray(fromUser) && fromUser.length > 0) return fromUser;
+    return null; // null means no restriction (backwards compat / no GM config)
+  }, [enabledModulesRes, user]);
+
+  const isModuleEnabled = (module) => {
+    // Always-enabled system modules bypass GM restriction
+    if (ALWAYS_ENABLED_MODULES.includes(module)) return true;
+    // If no GM config, allow all (backwards compatibility)
+    if (!enabledModules) return true;
+    return enabledModules.includes(module);
+  };
 
   const overrides = useMemo(() => data?.data?.overrides || [], [data]);
 
@@ -39,11 +68,15 @@ export function useVisualAuth() {
   }, [emailOverride]);
 
   const getModulePermissions = (module) => {
+    // GM-level gate: if module is not enabled by grandmaster, deny all access
+    if (!isModuleEnabled(module)) {
+      return emptyPermissions;
+    }
+
     const hasEmailOverride = !!emailOverride;
     const override = overrideMap[module];
 
     // Enforce strict mode only when this module has an explicit override.
-    // Unspecified modules should fall back to role-based permissions.
     if (hasEmailOverride && override) {
       return mergePermissions(emptyPermissions, override);
     }
@@ -77,7 +110,7 @@ export function useVisualAuth() {
   );
 
   return {
-    isLoading,
+    isLoading: isLoading || isModulesLoading,
     getModulePermissions,
     can,
     canManageVisualPermissions,
@@ -86,6 +119,8 @@ export function useVisualAuth() {
     isFeatureRestricted,
     canUseFeature,
     moduleFeatureCatalog,
+    enabledModules,
+    isModuleEnabled,
     canView: (module) => can(module, "canView"),
     canCreate: (module) => can(module, "canCreate"),
     canEdit: (module) => can(module, "canEdit"),
