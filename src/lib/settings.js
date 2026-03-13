@@ -3,6 +3,9 @@ import { apiClient } from './api-client';
 // Get all settings at once
 export const getAllSettings = () => apiClient.get('/settings');
 
+// Get enabled modules (grandmaster org config)
+export const getEnabledModules = () => apiClient.get('/settings/enabled-modules');
+
 // Get allowed settings tabs (grandmaster config)
 export const getAllowedSettingsTabs = () => apiClient.get('/settings/allowed-tabs');
 

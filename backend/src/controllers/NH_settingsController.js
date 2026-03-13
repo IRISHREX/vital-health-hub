@@ -44,6 +44,21 @@ const getTenantModels = (req) => ({
   Invoice: getModel(req, 'Invoice', BaseInvoice),
 });
 
+// ============ ENABLED MODULES (from GM org config) ============
+
+// @desc    Get enabled modules from grandmaster org config
+// @route   GET /api/settings/enabled-modules
+// @access  Private (any authenticated user)
+exports.getEnabledModules = async (req, res, next) => {
+  try {
+    const org = req.tenant?.organization;
+    const enabledModules = org?.enabledModules || [];
+    res.json({ success: true, data: enabledModules });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ============ ALLOWED SETTINGS TABS ============
 
 // @desc    Get allowed settings tabs from grandmaster org config
