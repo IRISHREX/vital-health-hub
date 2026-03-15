@@ -31,12 +31,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { phoneSchema } from "@/lib/phoneValidation";
 import { Loader2 } from "lucide-react";
 
 const doctorSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   email: z.string().email("Valid email required"),
-  phone: z.string().min(10, "Valid phone number required").max(15),
+  phone: phoneSchema,
   specialization: z.string().min(1, "Specialization is required"),
   department: z.string().min(1, "Department is required"),
   qualification: z.string().min(1, "Qualification is required"),

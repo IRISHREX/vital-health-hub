@@ -1,9 +1,27 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { isValidPhone } from "@/lib/phoneValidation";
 
 export default function ExternalPatientForm({ data, onChange }) {
+  const [phoneError, setPhoneError] = useState("");
+  
   const update = (field, value) => onChange({ ...data, [field]: value });
+  
+  const handlePhoneChange = (e) => {
+    const value = e.target.value;
+    update("phone", value);
+    
+    // Validate phone number
+    if (value.trim() === "") {
+      setPhoneError("");
+    } else if (!isValidPhone(value)) {
+      setPhoneError("Phone number must contain exactly 10 digits");
+    } else {
+      setPhoneError("");
+    }
+  };
 
   return (
     <div className="space-y-3 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
@@ -20,10 +38,12 @@ export default function ExternalPatientForm({ data, onChange }) {
         <div className="space-y-1">
           <Label className="text-xs">Phone</Label>
           <Input
-            placeholder="Phone number"
+            placeholder="Enter 10-digit phone number"
             value={data.phone || ""}
-            onChange={(e) => update("phone", e.target.value)}
+            onChange={handlePhoneChange}
+            className={phoneError ? "border-red-500" : ""}
           />
+          {phoneError && <p className="text-xs text-red-500 mt-0.5">{phoneError}</p>}
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">

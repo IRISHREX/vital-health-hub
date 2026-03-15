@@ -31,13 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { phoneSchema } from "@/lib/phoneValidation";
 import { Loader2 } from "lucide-react";
 
 const userSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email required"),
-  phone: z.string().optional(),
+  phone: phoneSchema.optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["super_admin", "hospital_admin", "doctor", "nurse", "receptionist", "billing_staff"]).optional(),
 });

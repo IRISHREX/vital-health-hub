@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, Building2, Pencil, Ban, Play, Trash2, Settings2, Eye, ExternalLink } from 'lucide-react';
+import { isValidPhone } from '@/lib/phoneValidation';
 
 const ALL_MODULES = [
   'dashboard', 'beds', 'admissions', 'patients', 'doctors', 'nurses',
@@ -38,6 +39,7 @@ export default function Organizations() {
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [moduleDialogOrg, setModuleDialogOrg] = useState(null);
   const [selectedModules, setSelectedModules] = useState([]);
+  const [phoneErrors, setPhoneErrors] = useState({});
 
   const { data: orgRes, isLoading, error } = useQuery({
     queryKey: ['gm-orgs', search, statusFilter],
@@ -79,6 +81,25 @@ export default function Organizations() {
   const handleOnboard = (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    
+    // Validate phone numbers
+    const errors = {};
+    const phone = fd.get('phone');
+    const adminPhone = fd.get('adminPhone');
+    
+    if (phone && !isValidPhone(phone)) {
+      errors.phone = 'Organization phone must contain exactly 10 digits';
+    }
+    if (adminPhone && !isValidPhone(adminPhone)) {
+      errors.adminPhone = 'Admin phone must contain exactly 10 digits';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setPhoneErrors(errors);
+      return;
+    }
+    
+    setPhoneErrors({});
     onboardMut.mutate({
       name: fd.get('name'),
       type: fd.get('type'),
@@ -118,7 +139,7 @@ export default function Organizations() {
                     <SelectContent>{ORG_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>Phone</Label><Input name="phone" /></div>
+                <div><Label>Phone</Label><Input name="phone" placeholder="Enter 10-digit phone number" className={phoneErrors.phone ? "border-red-500" : ""} /></div>
                 <div><Label>Email</Label><Input name="email" type="email" /></div>
                 <div className="col-span-2">
                   <Label>Database URL (optional)</Label>
@@ -133,13 +154,15 @@ export default function Organizations() {
                   <div><Label>First Name</Label><Input name="adminFirst" required /></div>
                   <div><Label>Last Name</Label><Input name="adminLast" required /></div>
                   <div><Label>Email</Label><Input name="adminEmail" type="email" required /></div>
-                  <div><Label>Phone</Label><Input name="adminPhone" /></div>
+                  <div><Label>Phone</Label><Input name="adminPhone" placeholder="Enter 10-digit phone number" className={phoneErrors.adminPhone ? "border-red-500" : ""} /></div>
                   <div className="col-span-2">
                     <Label>Super Admin Password</Label>
                     <Input name="adminPassword" type="password" minLength={8} required />
                   </div>
                 </div>
               </div>
+              {phoneErrors.phone && <p className="text-sm text-red-500">{phoneErrors.phone}</p>}
+              {phoneErrors.adminPhone && <p className="text-sm text-red-500">{phoneErrors.adminPhone}</p>}
               <Button type="submit" className="w-full" disabled={onboardMut.isPending}>
                 {onboardMut.isPending ? 'Onboarding...' : 'Onboard Organization'}
               </Button>

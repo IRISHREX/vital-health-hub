@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { phoneSchema } from "@/lib/phoneValidation";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createPatient, updatePatient } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
@@ -54,13 +55,13 @@ const patientSchema = z.object({
   lastName: z.string().min(1, "Last name is required").max(50),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.enum(["male", "female", "other"]),
-  contactNumber: z.string().min(10, "Valid phone number required").max(15),
+  contactNumber: phoneSchema,
   email: z.string().email("Valid email required").optional(),
   address: z.string().min(1, "Address is required").max(200),
   emergencyContact: z.object({
     name: z.string().min(1, "Emergency contact name required"),
     relationship: z.string().min(1, "Relationship required"),
-    phone: z.string().min(10, "Valid phone number required"),
+    phone: phoneSchema,
   }),
   bloodGroup: z.string().optional(),
   registrationType: z.enum(["opd", "ipd", "emergency"]),

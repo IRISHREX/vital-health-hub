@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Users } from 'lucide-react';
+import { isValidPhone } from '@/lib/phoneValidation';
 
 export default function Admins() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   const { data: adminsRes } = useQuery({ queryKey: ['gm-admins'], queryFn: listAdmins });
   const admins = adminsRes?.data || [];
@@ -40,6 +42,15 @@ export default function Admins() {
   const handleCreate = (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const phone = fd.get('phone');
+    
+    // Validate phone number
+    if (phone && !isValidPhone(phone)) {
+      setPhoneError('Phone number must contain exactly 10 digits');
+      return;
+    }
+    
+    setPhoneError('');
     createMut.mutate({
       email: fd.get('email'), password: fd.get('password'),
       firstName: fd.get('firstName'), lastName: fd.get('lastName'),
@@ -65,7 +76,7 @@ export default function Admins() {
               </div>
               <div><Label>Email</Label><Input name="email" type="email" required /></div>
               <div><Label>Password</Label><Input name="password" type="password" required minLength={8} /></div>
-              <div><Label>Phone</Label><Input name="phone" /></div>
+              <div><Label>Phone</Label><Input name="phone" placeholder="Enter 10-digit phone number" className={phoneError ? "border-red-500" : ""} /></div>
               <div><Label>Role</Label>
                 <Select name="role" defaultValue="platform_admin">
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -75,6 +86,7 @@ export default function Admins() {
                   </SelectContent>
                 </Select>
               </div>
+              {phoneError && <p className="text-sm text-red-500">{phoneError}</p>}
               <Button type="submit" className="w-full" disabled={createMut.isPending}>Create Admin</Button>
             </form>
           </DialogContent>

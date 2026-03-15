@@ -5,6 +5,15 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { body } = require('express-validator');
 const validate = require('../middleware/validate');
 
+// Custom phone validation function
+const validatePhone = (value) => {
+  const digitsOnly = value.replace(/\D/g, '');
+  if (digitsOnly.length !== 10) {
+    throw new Error('Phone number must contain exactly 10 digits');
+  }
+  return true;
+};
+
 router.post('/', [
   authenticate,
   authorize('receptionist', 'hospital_admin', 'super_admin'),
@@ -12,7 +21,7 @@ router.post('/', [
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('dateOfBirth').isISO8601().withMessage('Valid date of birth is required'),
   body('gender').isIn(['male', 'female', 'other']).withMessage('Gender must be male, female, or other'),
-  body('phone').trim().notEmpty().withMessage('Phone number is required'),
+  body('phone').trim().notEmpty().withMessage('Phone number is required').custom(validatePhone),
   validate
 ], patientController.createPatient);
 

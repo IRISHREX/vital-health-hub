@@ -20,6 +20,7 @@ import {
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser } from "@/lib/users";
+import { isValidPhone, extractDigits } from "@/lib/phoneValidation";
 
 const departments = [
   "Cardiac Care",
@@ -43,6 +44,7 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
     department: "",
     role: "nurse",
   });
+  const [phoneError, setPhoneError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -73,6 +75,17 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Validate phone number
+    if (name === "phone") {
+      if (value.trim() === "") {
+        setPhoneError("");
+      } else if (!isValidPhone(value)) {
+        setPhoneError("Phone number must contain exactly 10 digits");
+      } else {
+        setPhoneError("");
+      }
+    }
   };
 
   const handleSelectChange = (name, value) => {
@@ -81,6 +94,13 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate phone if provided
+    if (formData.phone && !isValidPhone(formData.phone)) {
+      setPhoneError("Phone number must contain exactly 10 digits");
+      return;
+    }
+    
     setLoading(true);
     try {
       if (isEdit) {
@@ -187,8 +207,10 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="mt-2"
+                placeholder="Enter 10-digit phone number"
+                className={`mt-2 ${phoneError ? "border-red-500" : ""}`}
               />
+              {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
             </div>
             <div>
               <Label htmlFor="department" className="text-sm font-medium">

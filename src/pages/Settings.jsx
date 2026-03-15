@@ -61,6 +61,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { isValidPhone } from "@/lib/phoneValidation";
 import {
   getAllSettings,
   updateHospitalSettings,
@@ -228,6 +229,7 @@ export default function Settings() {
     avatar: "",
   });
   const [avatarPreview, setAvatarPreview] = useState("");
+  const [profilePhoneError, setProfilePhoneError] = useState("");
   
   // Hospital settings state
   const [hospitalSettings, setHospitalSettings] = useState({
@@ -240,6 +242,7 @@ export default function Settings() {
     gstNumber: "",
     defaultTaxRate: 18,
   });
+  const [hospitalPhoneError, setHospitalPhoneError] = useState("");
 
   // Security settings state
   const [securitySettings, setSecuritySettings] = useState({
@@ -1214,10 +1217,21 @@ export default function Settings() {
                   <Input
                     id="profilePhone"
                     value={profile.phone}
-                    onChange={(e) =>
-                      setProfile((prev) => ({ ...prev, phone: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      setProfile((prev) => ({ ...prev, phone: e.target.value }));
+                      const value = e.target.value;
+                      if (value.trim() === "") {
+                        setProfilePhoneError("");
+                      } else if (!isValidPhone(value)) {
+                        setProfilePhoneError("Phone number must contain exactly 10 digits");
+                      } else {
+                        setProfilePhoneError("");
+                      }
+                    }}
+                    placeholder="Enter 10-digit phone number"
+                    className={profilePhoneError ? "border-red-500" : ""}
                   />
+                  {profilePhoneError && <p className="text-sm text-red-500 mt-1">{profilePhoneError}</p>}
                 </div>
               </div>
 
@@ -1359,13 +1373,24 @@ export default function Settings() {
                       <Input
                         id="phone"
                         value={hospitalSettings.phone}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setHospitalSettings((prev) => ({
                             ...prev,
                             phone: e.target.value,
-                          }))
-                        }
+                          }));
+                          const value = e.target.value;
+                          if (value.trim() === "") {
+                            setHospitalPhoneError("");
+                          } else if (!isValidPhone(value)) {
+                            setHospitalPhoneError("Phone number must contain exactly 10 digits");
+                          } else {
+                            setHospitalPhoneError("");
+                          }
+                        }}
+                        placeholder="Enter 10-digit phone number"
+                        className={hospitalPhoneError ? "border-red-500" : ""}
                       />
+                      {hospitalPhoneError && <p className="text-sm text-red-500 mt-1">{hospitalPhoneError}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
