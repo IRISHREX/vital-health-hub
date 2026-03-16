@@ -50,9 +50,18 @@ export default function ExternalPatientForm({ data, onChange }) {
         <div className="space-y-1">
           <Label className="text-xs">Age</Label>
           <Input
-            placeholder="e.g. 35 Years"
+            type="number"
+            placeholder="e.g. 35"
             value={data.age || ""}
-            onChange={(e) => update("age", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Only allow non-negative integers
+              if (value === "" || /^\d+$/.test(value)) {
+                update("age", value);
+              }
+            }}
+            min="0"
+            max="150"
           />
         </div>
         <div className="space-y-1">

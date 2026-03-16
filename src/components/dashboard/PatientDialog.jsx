@@ -50,10 +50,29 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Check, Loader2 } from "lucide-react";
 
+const getYesterdayDateString = () => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const year = yesterday.getFullYear();
+  const month = String(yesterday.getMonth() + 1).padStart(2, "0");
+  const day = String(yesterday.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const patientSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(50),
   lastName: z.string().min(1, "Last name is required").max(50),
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  dateOfBirth: z.string()
+    .min(1, "Date of birth is required")
+    .refine(
+      (date) => {
+        const selectedDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return selectedDate < today;
+      },
+      "Date of birth cannot be today or in the future"
+    ),
   gender: z.enum(["male", "female", "other"]),
   contactNumber: phoneSchema,
   email: z.string().email("Valid email required").optional(),
@@ -382,7 +401,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                   <FormItem>
                     <FormLabel>Date of Birth</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} max={getYesterdayDateString()} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

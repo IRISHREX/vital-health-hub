@@ -37,16 +37,59 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
+const getTodayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getCurrentTimeString = () => {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
 const appointmentSchema = z.object({
   patientId: z.string().min(1, "Patient is required"),
   doctorId: z.string().min(1, "Doctor is required"),
-  appointmentDate: z.string().min(1, "Date is required"),
+  appointmentDate: z.string()
+    .min(1, "Date is required")
+    .refine(
+      (date) => {
+        const selectedDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return selectedDate >= today;
+      },
+      "Appointment date cannot be in the past"
+    ),
   appointmentTime: z.string().min(1, "Time is required"),
   reason: z.string().min(1, "Reason is required").max(200),
   notes: z.string().optional(),
   type: z.enum(["opd", "follow_up", "consultation", "emergency", "telemedicine"]).optional(),
   status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
-});
+}).refine(
+  (data) => {
+    const selectedDate = new Date(data.appointmentDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // If date is today, check that time is in the future
+    if (selectedDate.getTime() === today.getTime()) {
+      const currentTime = getCurrentTimeString();
+      return data.appointmentTime > currentTime;
+    }
+    // If date is in the future, time is always acceptable
+    return true;
+  },
+  {
+    message: "Appointment time cannot be in the past",
+    path: ["appointmentTime"],
+  }
+);
 
 export default function AppointmentDialog({ isOpen, onClose, appointment, mode }) {
   const { toast } = useToast();
@@ -267,7 +310,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                   <FormItem>
                     <FormLabel>Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} min={getTodayDateString()} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -276,15 +319,18 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
               <FormField
                 control={form.control}
                 name="appointmentTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Time</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const isToday = form.watch("appointmentDate") === getTodayDateString();
+                  return (
+                    <FormItem>
+                      <FormLabel>Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} min={isToday ? getCurrentTimeString() : undefined} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
 
