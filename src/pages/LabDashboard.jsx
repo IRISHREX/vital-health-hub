@@ -427,6 +427,20 @@ export default function LabDashboard() {
                           <Button variant="ghost" size="icon" title="View Tests" onClick={() => openPatientTestsDialog(group)}>
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Delete Tests" 
+                            className="text-destructive hover:bg-destructive/10 disabled:text-muted-foreground disabled:hover:bg-transparent"
+                            disabled={!group.tests.every(t => t.billed)}
+                            onClick={() => {
+                              if (window.confirm(`Delete all tests for this patient?`)) {
+                                group.tests.forEach(test => handleDelete(test._id));
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
