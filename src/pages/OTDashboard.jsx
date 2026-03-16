@@ -10,13 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Scissors, Plus, Calendar, Activity, Clock, DollarSign,
   Search, CheckCircle2, AlertTriangle, Play, Square, Heart,
-  FileText, LayoutGrid
+  FileText, LayoutGrid, Edit2, Trash2
 } from "lucide-react";
 import {
   getSurgeries, getOTRooms, getOTStats, getOTSchedule,
   approveSurgery, patientInOT, startAnesthesia, startSurgeryAction,
   moveToRecovery, completeRecovery, completeSurgeryAction,
-  updateChecklist, generateOTInvoice
+  updateChecklist, generateOTInvoice, deleteOTRoom
 } from "@/lib/ot";
 import CreateSurgeryDialog from "@/components/ot/CreateSurgeryDialog";
 import ScheduleSurgeryDialog from "@/components/ot/ScheduleSurgeryDialog";
@@ -61,7 +61,9 @@ export default function OTDashboard() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [roomOpen, setRoomOpen] = useState(false);
+  const [roomMode, setRoomMode] = useState("create");
   const [selectedSurgery, setSelectedSurgery] = useState(null);
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: statsRes } = useQuery({ queryKey: ["ot-stats"], queryFn: getOTStats });
@@ -113,6 +115,18 @@ export default function OTDashboard() {
     onError: (err) => toast.error(err?.response?.data?.message || "Invoice generation failed")
   });
 
+  const deleteRoomMutation = useMutation({
+    mutationFn: (roomId) => deleteOTRoom(roomId),
+    onSuccess: () => {
+      toast.success("OT room deleted successfully");
+      // Clear the cache and refetch immediately from backend
+      queryClient.removeQueries({ queryKey: ["ot-rooms"] });
+      queryClient.refetchQueries({ queryKey: ["ot-rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["ot-stats"] });
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || "Failed to delete OT room")
+  });
+
   const getNextAction = (surgery) => {
     const map = {
       requested: { label: "Approve", action: "approve", icon: CheckCircle2 },
@@ -141,6 +155,32 @@ export default function OTDashboard() {
     }
   };
 
+  const handleEditRoom = (room) => {
+    setSelectedRoom(room);
+    setRoomMode("edit");
+    setRoomOpen(true);
+  };
+
+  const handleDeleteRoom = (room) => {
+    if (window.confirm(`Are you sure you want to delete ${room.roomNumber}? This action cannot be undone.`)) {
+      deleteRoomMutation.mutate(room._id);
+    }
+  };
+
+  const handleAddRoom = () => {
+    setSelectedRoom(null);
+    setRoomMode("create");
+    setRoomOpen(true);
+  };
+
+  const handleRoomDialogClose = (v) => {
+    setRoomOpen(v);
+    if (!v) {
+      setSelectedRoom(null);
+      setRoomMode("create");
+    }
+  };
+
   const kpis = [
     { label: "Total Surgeries", value: stats.total || 0, icon: Scissors, color: "text-primary" },
     { label: "Scheduled / Pending", value: stats.scheduled || 0, icon: Calendar, color: "text-[hsl(var(--status-reserved))]" },
@@ -161,7 +201,7 @@ export default function OTDashboard() {
           <p className="text-sm text-muted-foreground">Manage surgeries, OT rooms, scheduling & billing</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setRoomOpen(true)}>
+          <Button variant="outline" onClick={handleAddRoom}>
             <Plus className="h-4 w-4 mr-1" /> Add OT Room
           </Button>
           <Button onClick={() => setCreateOpen(true)}>
@@ -376,7 +416,7 @@ export default function OTDashboard() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {rooms.map((room) => (
-                <Card key={room._id}>
+                <Card key={room._id} className="flex flex-col">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base text-foreground">{room.roomNumber} - {room.name}</CardTitle>
@@ -385,13 +425,21 @@ export default function OTDashboard() {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground space-y-1">
+                  <CardContent className="text-sm text-muted-foreground space-y-1 flex-1">
                     <p>Type: <span className="text-foreground capitalize">{room.type}</span></p>
                     <p>Floor: <span className="text-foreground">{room.floor}</span></p>
                     <p>Rate: <span className="text-foreground">₹{room.pricePerHour}/hr</span></p>
                     {room.equipment?.length > 0 && (
                       <p>Equipment: <span className="text-foreground">{room.equipment.map(e => e.name).join(', ')}</span></p>
                     )}
+                    <div className="flex gap-2 mt-4 pt-3 border-t border-border">
+                      <Button size="sm" variant="outline" onClick={() => handleEditRoom(room)} className="flex-1">
+                        <Edit2 className="h-4 w-4 mr-1" /> Edit
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteRoom(room)} disabled={deleteRoomMutation.isPending} className="flex-1">
+                        <Trash2 className="h-4 w-4 mr-1" /> Delete
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -408,7 +456,7 @@ export default function OTDashboard() {
           <EndSurgeryDialog open={endOpen} onOpenChange={(v) => { setEndOpen(v); if (!v) setSelectedSurgery(null); }} surgery={selectedSurgery} />
         </>
       )}
-      <OTRoomDialog open={roomOpen} onOpenChange={setRoomOpen} />
+      <OTRoomDialog open={roomOpen} onOpenChange={handleRoomDialogClose} mode={roomMode} room={selectedRoom} />
     </div>
   );
 }

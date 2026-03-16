@@ -1,23 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createOTRoom } from "@/lib/ot";
+import { createOTRoom, updateOTRoom } from "@/lib/ot";
 import { toast } from "sonner";
 
-export default function OTRoomDialog({ open, onOpenChange }) {
+export default function OTRoomDialog({ open, onOpenChange, mode = "create", room = null }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     roomNumber: "", name: "", type: "general", floor: 0, pricePerHour: 0, notes: ""
   });
 
+  useEffect(() => {
+    if (mode === "edit" && room) {
+      setForm({
+        roomNumber: room.roomNumber || "",
+        name: room.name || "",
+        type: room.type || "general",
+        floor: room.floor || 0,
+        pricePerHour: room.pricePerHour || 0,
+        notes: room.notes || ""
+      });
+    } else {
+      setForm({ roomNumber: "", name: "", type: "general", floor: 0, pricePerHour: 0, notes: "" });
+    }
+  }, [mode, room, open]);
+
   const mutation = useMutation({
-    mutationFn: (data) => createOTRoom(data),
+    mutationFn: (data) => {
+      if (mode === "edit") {
+        return updateOTRoom(room._id, data);
+      } else {
+        return createOTRoom(data);
+      }
+    },
     onSuccess: () => {
-      toast.success("OT Room created");
+      toast.success(mode === "edit" ? "OT Room updated" : "OT Room created");
       queryClient.invalidateQueries({ queryKey: ["ot-rooms"] });
       queryClient.invalidateQueries({ queryKey: ["ot-stats"] });
       onOpenChange(false);
@@ -30,7 +51,7 @@ export default function OTRoomDialog({ open, onOpenChange }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Add OT Room</DialogTitle>
+          <DialogTitle className="text-foreground">{mode === "edit" ? "Edit OT Room" : "Add OT Room"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate({ ...form, floor: Number(form.floor), pricePerHour: Number(form.pricePerHour) }); }} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -64,7 +85,7 @@ export default function OTRoomDialog({ open, onOpenChange }) {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Creating..." : "Add Room"}</Button>
+            <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? (mode === "edit" ? "Updating..." : "Creating...") : (mode === "edit" ? "Update Room" : "Add Room")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
