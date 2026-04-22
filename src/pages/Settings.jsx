@@ -212,7 +212,7 @@ const toCsv = (headers, rows) => [
 
 export default function Settings() {
   const { user, logout } = useAuth();
-  const { canManageVisualPermissions, canCreate } = useVisualAuth();
+  const { canManageVisualPermissions, canCreate, isModuleEnabled, enabledModules } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
   const isSuperAdmin = user?.role === "super_admin";
@@ -581,9 +581,16 @@ export default function Settings() {
     [permissionOverrides, permissionEmail]
   );
 
+  // Only allow editing permissions for modules enabled by Grandmaster.
+  // This ensures super_admin cannot override GM-level module restrictions.
+  const gmAllowedRbacModules = useMemo(
+    () => rbacModules.filter((module) => isModuleEnabled(module)),
+    [isModuleEnabled, enabledModules]
+  );
+
   const selectedPermissionModules = useMemo(() => {
     const byModule = new Map((selectedPermissionOverride?.modules || []).map((item) => [item.module, item]));
-    return rbacModules.map((module) => {
+    return gmAllowedRbacModules.map((module) => {
       const entry = byModule.get(module);
       return {
         module,
@@ -594,7 +601,7 @@ export default function Settings() {
         restrictedFeatures: (entry?.restrictedFeatures || []).map((feature) => String(feature || "").toLowerCase()),
       };
     });
-  }, [selectedPermissionOverride]);
+  }, [selectedPermissionOverride, gmAllowedRbacModules]);
 
   const filteredPermissionModules = useMemo(() => {
     const query = permissionModuleSearch.trim().toLowerCase();
