@@ -17,6 +17,8 @@ import { getBeds } from '@/lib/beds';
 import { getFacilities } from '@/lib/facilities';
 import { getPatients } from '@/lib/patients';
 import { getDoctors } from '@/lib/doctors';
+import PatientAutocomplete, { patientLabel } from '@/components/shared/PatientAutocomplete';
+import DoctorAutocomplete, { doctorAutocompleteLabel } from '@/components/shared/DoctorAutocomplete';
 import { Loader2, User, Bed, Stethoscope, FileText, Building2, Hospital, Siren } from 'lucide-react';
 
 export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissionUpdated, onClose }) {
@@ -264,26 +266,19 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
                   {registrationType === 'emergency' ? 'EMERGENCY' : registrationType === 'opd' ? 'OPD OUTPATIENT' : 'IPD PATIENTS'}
                 </Badge>
               </label>
-              <Select
+              <PatientAutocomplete
                 value={formData.patientId}
-                onValueChange={(value) => handleInputChange('patientId', value)}
-                disabled={isEdit} // cannot change patient while editing
-              >
-                <SelectTrigger className="border-2">
-                  <SelectValue placeholder={isEdit ? 'Patient cannot be changed' : `Choose a ${registrationType} patient...`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {patients.length > 0 ? (
-                    patients.map((patient) => (
-                      <SelectItem key={patient._id} value={patient._id}>
-                        {patient.firstName} {patient.lastName} ({patient.patientId})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-gray-500">No {registrationType} patients found</div>
-                  )}
-                </SelectContent>
-              </Select>
+                selectedLabel={selectedPatient ? patientLabel(selectedPatient) : ''}
+                onSelect={(p) => {
+                  handleInputChange('patientId', p?._id || '');
+                  if (p && !patients.find((x) => x._id === p._id)) {
+                    setPatients((prev) => [...prev, p]);
+                  }
+                }}
+                filterFn={(p) => p?.registrationType === registrationType}
+                placeholder={isEdit ? 'Patient cannot be changed' : `Search ${registrationType} patients by name, phone, ID...`}
+                disabled={isEdit}
+              />
             </div>
 
             {selectedPatient && (
@@ -327,18 +322,17 @@ export default function AdmissionForm({ admission, onAdmissionCreated, onAdmissi
               <Badge variant="secondary" className="ml-auto">Optional</Badge>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Select value={formData.admittingDoctorId} onValueChange={(value) => handleInputChange('admittingDoctorId', value)}>
-                <SelectTrigger className="border-2">
-                  <SelectValue placeholder="Select doctor (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {doctors.map((doctor) => (
-                    <SelectItem key={doctor._id} value={doctor._id}>
-                      Dr. {doctor.user?.firstName} {doctor.user?.lastName} ({doctor.specialization})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DoctorAutocomplete
+                value={formData.admittingDoctorId}
+                selectedLabel={selectedDoctor ? doctorAutocompleteLabel(selectedDoctor) : ''}
+                onSelect={(d) => {
+                  handleInputChange('admittingDoctorId', d?._id || '');
+                  if (d && !doctors.find((x) => x._id === d._id)) {
+                    setDoctors((prev) => [...prev, d]);
+                  }
+                }}
+                placeholder="Search doctor by name or specialization (optional)"
+              />
 
               {selectedDoctor && (
                 <Card className="bg-green-50 border-green-200">
