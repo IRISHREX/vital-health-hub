@@ -11,6 +11,8 @@ import { getAdmissions } from "@/lib/admissions";
 import { getPatients } from "@/lib/patients";
 import { createSurgery } from "@/lib/ot";
 import { toast } from "sonner";
+import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
+import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
 
 export default function CreateSurgeryDialog({ open, onOpenChange }) {
   const queryClient = useQueryClient();
@@ -91,17 +93,15 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Patient *</Label>
-                <Select value={form.patient} onValueChange={(v) => setForm({ ...form, patient: v })}>
-                <SelectTrigger><SelectValue placeholder="Select admitted patient" /></SelectTrigger>
-                <SelectContent>
-                  {(Array.isArray(admittedPatients) ? admittedPatients : []).map((p) => (
-                    <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</SelectItem>
-                  ))}
-                  {(!admittedPatients || admittedPatients.length === 0) && (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No admitted patients found</div>
-                  )}
-                </SelectContent>
-              </Select>
+              <PatientAutocomplete
+                value={form.patient}
+                selectedLabel={(() => {
+                  const p = admittedPatients.find((x) => x._id === form.patient);
+                  return p ? patientLabel(p) : "";
+                })()}
+                onSelect={(p) => setForm({ ...form, patient: p?._id || "" })}
+                placeholder="Search admitted patient by name, phone, ID..."
+              />
             </div>
             <div className="space-y-2">
               <Label>Procedure Name *</Label>
@@ -109,31 +109,27 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
             </div>
             <div className="space-y-2">
               <Label>Primary Surgeon *</Label>
-              <Select value={form.primarySurgeon} onValueChange={(v) => setForm({ ...form, primarySurgeon: v })}>
-                <SelectTrigger><SelectValue placeholder="Select surgeon" /></SelectTrigger>
-                <SelectContent>
-                  {(Array.isArray(doctors) ? doctors : []).map((d) => (
-                    <SelectItem key={d._id} value={d._id}>{doctorLabel(d)}</SelectItem>
-                  ))}
-                  {(!doctors || doctors.length === 0) && (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No doctors found</div>
-                  )}
-                </SelectContent>
-              </Select>
+              <DoctorAutocomplete
+                value={form.primarySurgeon}
+                selectedLabel={(() => {
+                  const d = doctors.find((x) => x._id === form.primarySurgeon);
+                  return d ? doctorAutocompleteLabel(d) : "";
+                })()}
+                onSelect={(d) => setForm({ ...form, primarySurgeon: d?._id || "" })}
+                placeholder="Search surgeon by name or specialization..."
+              />
             </div>
             <div className="space-y-2">
               <Label>Anesthetist</Label>
-              <Select value={form.anesthetist} onValueChange={(v) => setForm({ ...form, anesthetist: v })}>
-                <SelectTrigger><SelectValue placeholder="Select anesthetist" /></SelectTrigger>
-                <SelectContent>
-                  {(Array.isArray(doctors) ? doctors : []).map((d) => (
-                    <SelectItem key={d._id} value={d._id}>{doctorLabel(d)}</SelectItem>
-                  ))}
-                  {(!doctors || doctors.length === 0) && (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No doctors found</div>
-                  )}
-                </SelectContent>
-              </Select>
+              <DoctorAutocomplete
+                value={form.anesthetist}
+                selectedLabel={(() => {
+                  const d = doctors.find((x) => x._id === form.anesthetist);
+                  return d ? doctorAutocompleteLabel(d) : "";
+                })()}
+                onSelect={(d) => setForm({ ...form, anesthetist: d?._id || "" })}
+                placeholder="Search anesthetist..."
+              />
             </div>
             <div className="space-y-2">
               <Label>Procedure Type</Label>
