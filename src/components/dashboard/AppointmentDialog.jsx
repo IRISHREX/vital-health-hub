@@ -36,6 +36,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
+import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
 
 const getTodayDateString = () => {
   const today = new Date();
@@ -255,51 +257,45 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
             <FormField
               control={form.control}
               name="patientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Patient</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+              render={({ field }) => {
+                const selected = patients.find((p) => p._id === field.value);
+                return (
+                  <FormItem>
+                    <FormLabel>Patient</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select patient" />
-                      </SelectTrigger>
+                      <PatientAutocomplete
+                        value={field.value}
+                        selectedLabel={selected ? patientLabel(selected) : ""}
+                        onSelect={(p) => field.onChange(p?._id || "")}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {patients.map((patient) => (
-                        <SelectItem key={patient._id} value={patient._id}>
-                          {patient.firstName} {patient.lastName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
               control={form.control}
               name="doctorId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Doctor</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isDoctorUser}>
+              render={({ field }) => {
+                const selected = doctors.find((d) => d._id === field.value);
+                return (
+                  <FormItem>
+                    <FormLabel>Doctor</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select doctor" />
-                      </SelectTrigger>
+                      <DoctorAutocomplete
+                        value={field.value}
+                        selectedLabel={selected ? doctorAutocompleteLabel(selected) : ""}
+                        onSelect={(d) => field.onChange(d?._id || "")}
+                        filterFn={(d) => isDoctorUser ? d._id === loggedInDoctor?._id : d.availabilityStatus === "available"}
+                        disabled={isDoctorUser}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {doctors.map((doctor) => (
-                        <SelectItem key={doctor._id} value={doctor._id}>
-                          {doctor.name || doctor.user?.firstName} {doctor.user?.lastName} - {doctor.specialization}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <div className="grid grid-cols-2 gap-4">
