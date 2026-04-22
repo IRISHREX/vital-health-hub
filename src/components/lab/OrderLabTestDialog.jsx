@@ -13,6 +13,8 @@ import { playSound } from "@/lib/sounds";
 import { Badge } from "@/components/ui/badge";
 import ModeToggle from "@/components/shared/ModeToggle";
 import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
+import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
+import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
 
 const emptyExternal = { name: "", age: "", gender: "", phone: "", address: "", referredBy: "" };
 
@@ -124,27 +126,25 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
             <>
               <div className="space-y-2">
                 <Label>Patient *</Label>
-                <Select value={formData.patient} onValueChange={(v) => setFormData((p) => ({ ...p, patient: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                  <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PatientAutocomplete
+                  value={formData.patient}
+                  selectedLabel={(() => {
+                    const p = patients.find((x) => x._id === formData.patient);
+                    return p ? patientLabel(p) : "";
+                  })()}
+                  onSelect={(p) => setFormData((prev) => ({ ...prev, patient: p?._id || "" }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Referring Doctor *</Label>
-                <Select value={formData.doctor} onValueChange={(v) => setFormData((p) => ({ ...p, doctor: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
-                  <SelectContent>
-                    {doctors.map((d) => (
-                      <SelectItem key={d._id} value={d._id}>
-                        {(d?.name || `${d?.user?.firstName || ""} ${d?.user?.lastName || ""}`.trim() || "Doctor")} - {d?.specialization || "General"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DoctorAutocomplete
+                  value={formData.doctor}
+                  selectedLabel={(() => {
+                    const d = doctors.find((x) => x._id === formData.doctor);
+                    return d ? doctorAutocompleteLabel(d) : "";
+                  })()}
+                  onSelect={(d) => setFormData((prev) => ({ ...prev, doctor: d?._id || "" }))}
+                />
               </div>
             </>
           ) : (
@@ -152,17 +152,15 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
               <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} />
               <div className="space-y-2">
                 <Label>Referring Doctor (optional)</Label>
-                <Select value={formData.doctor} onValueChange={(v) => setFormData((p) => ({ ...p, doctor: v === "none" ? "" : v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select doctor (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not specified</SelectItem>
-                    {doctors.map((d) => (
-                      <SelectItem key={d._id} value={d._id}>
-                        {(d?.name || `${d?.user?.firstName || ""} ${d?.user?.lastName || ""}`.trim() || "Doctor")} - {d?.specialization || "General"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DoctorAutocomplete
+                  value={formData.doctor}
+                  selectedLabel={(() => {
+                    const d = doctors.find((x) => x._id === formData.doctor);
+                    return d ? doctorAutocompleteLabel(d) : "";
+                  })()}
+                  onSelect={(d) => setFormData((prev) => ({ ...prev, doctor: d?._id || "" }))}
+                  placeholder="Search doctor (optional)"
+                />
               </div>
             </>
           )}

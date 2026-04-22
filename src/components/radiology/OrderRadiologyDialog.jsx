@@ -10,6 +10,8 @@ import { createRadiologyOrder } from "@/lib/radiology";
 import { Loader2 } from "lucide-react";
 import ModeToggle from "@/components/shared/ModeToggle";
 import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
+import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
+import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
 
 const studyTypes = [
   { value: "xray", label: "X-Ray" },
@@ -92,25 +94,25 @@ export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], d
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Patient *</Label>
-                <Select value={form.patient} onValueChange={(v) => update("patient", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
-                  <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PatientAutocomplete
+                  value={form.patient}
+                  selectedLabel={(() => {
+                    const p = patients.find((x) => x._id === form.patient);
+                    return p ? patientLabel(p) : "";
+                  })()}
+                  onSelect={(p) => update("patient", p?._id || "")}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Referring Doctor</Label>
-                <Select value={form.doctor} onValueChange={(v) => update("doctor", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select doctor" /></SelectTrigger>
-                  <SelectContent>
-                    {doctors.map((d) => (
-                      <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DoctorAutocomplete
+                  value={form.doctor}
+                  selectedLabel={(() => {
+                    const d = doctors.find((x) => x._id === form.doctor);
+                    return d ? doctorAutocompleteLabel(d) : "";
+                  })()}
+                  onSelect={(d) => update("doctor", d?._id || "")}
+                />
               </div>
             </div>
           ) : (
@@ -118,15 +120,15 @@ export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], d
               <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} />
               <div className="space-y-2">
                 <Label>Referring Doctor (optional)</Label>
-                <Select value={form.doctor} onValueChange={(v) => update("doctor", v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Select doctor (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not specified</SelectItem>
-                    {doctors.map((d) => (
-                      <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DoctorAutocomplete
+                  value={form.doctor}
+                  selectedLabel={(() => {
+                    const d = doctors.find((x) => x._id === form.doctor);
+                    return d ? doctorAutocompleteLabel(d) : "";
+                  })()}
+                  onSelect={(d) => update("doctor", d?._id || "")}
+                  placeholder="Search doctor (optional)"
+                />
               </div>
             </>
           )}

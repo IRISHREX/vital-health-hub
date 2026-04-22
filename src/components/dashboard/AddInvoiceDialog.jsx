@@ -42,6 +42,7 @@ import { getPatients } from "@/lib/patients";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { playSound } from "@/lib/sounds";
+import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
 
 const invoiceSchema = z.object({
   patient: z.string().min(1, "Patient is required"),
@@ -236,26 +237,23 @@ export default function AddInvoiceDialog({ isOpen, onClose, invoice, mode = "cre
             <FormField
               control={form.control}
               name="patient"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Patient</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={mode === "edit"}>
+              render={({ field }) => {
+                const selected = patients.find((p) => p._id === field.value);
+                return (
+                  <FormItem>
+                    <FormLabel>Patient</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select patient" />
-                      </SelectTrigger>
+                      <PatientAutocomplete
+                        value={field.value}
+                        selectedLabel={selected ? patientLabel(selected) : ""}
+                        onSelect={(p) => field.onChange(p?._id || "")}
+                        disabled={mode === "edit"}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {patients.map((patient) => (
-                        <SelectItem key={patient._id} value={patient._id}>
-                          {patient.firstName} {patient.lastName} (ID: {patient.patientId || patient._id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
