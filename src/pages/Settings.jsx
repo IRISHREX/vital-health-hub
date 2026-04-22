@@ -2178,15 +2178,35 @@ export default function Settings() {
                     </div>
 
                     {Array.isArray(enabledModules) && rbacModules.some((m) => !isModuleEnabled(m)) && (
-                      <div className="rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5 p-3 text-xs">
-                        <p className="font-semibold text-amber-700 dark:text-amber-400">
-                          Platform-restricted modules
+                      <div className="rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5 p-3 text-xs space-y-2">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          <p className="font-semibold text-amber-700 dark:text-amber-400">
+                            Platform-restricted modules
+                          </p>
+                        </div>
+                        <p className="text-muted-foreground">
+                          The following modules are disabled by the platform administrator (Grandmaster)
+                          and cannot be granted to any user — not even Super Admin. Permission controls
+                          for these modules are intentionally hidden below.
                         </p>
-                        <p className="mt-1 text-muted-foreground">
-                          The following modules are disabled by the platform administrator and cannot be granted to any user (not even Super Admin):{" "}
+                        <ul className="flex flex-wrap gap-1.5">
+                          {rbacModules
+                            .filter((m) => !isModuleEnabled(m))
+                            .map((m) => (
+                              <li key={`restricted-${m}`}>
+                                <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                                  {moduleLabels[m] || m}
+                                </Badge>
+                              </li>
+                            ))}
+                        </ul>
+                        <p className="text-muted-foreground">
+                          Source:{" "}
                           <span className="font-medium text-foreground">
-                            {rbacModules.filter((m) => !isModuleEnabled(m)).map((m) => moduleLabels[m] || m).join(", ")}
+                            Grandmaster &rsaquo; Organizations &rsaquo; {user?.organization?.name || "Your Organization"} &rsaquo; Enabled Modules
                           </span>
+                          . Contact your platform administrator to request access to additional modules.
                         </p>
                       </div>
                     )}
