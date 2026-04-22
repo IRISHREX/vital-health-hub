@@ -2177,6 +2177,20 @@ export default function Settings() {
                       </div>
                     </div>
 
+                    {Array.isArray(enabledModules) && rbacModules.some((m) => !isModuleEnabled(m)) && (
+                      <div className="rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5 p-3 text-xs">
+                        <p className="font-semibold text-amber-700 dark:text-amber-400">
+                          Platform-restricted modules
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          The following modules are disabled by the platform administrator and cannot be granted to any user (not even Super Admin):{" "}
+                          <span className="font-medium text-foreground">
+                            {rbacModules.filter((m) => !isModuleEnabled(m)).map((m) => moduleLabels[m] || m).join(", ")}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
