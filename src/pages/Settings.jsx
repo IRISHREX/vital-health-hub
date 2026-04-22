@@ -212,7 +212,7 @@ const toCsv = (headers, rows) => [
 
 export default function Settings() {
   const { user, logout } = useAuth();
-  const { canManageVisualPermissions, canCreate } = useVisualAuth();
+  const { canManageVisualPermissions, canCreate, isModuleEnabled, enabledModules } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
   const isSuperAdmin = user?.role === "super_admin";
@@ -581,9 +581,16 @@ export default function Settings() {
     [permissionOverrides, permissionEmail]
   );
 
+  // Only allow editing permissions for modules enabled by Grandmaster.
+  // This ensures super_admin cannot override GM-level module restrictions.
+  const gmAllowedRbacModules = useMemo(
+    () => rbacModules.filter((module) => isModuleEnabled(module)),
+    [isModuleEnabled, enabledModules]
+  );
+
   const selectedPermissionModules = useMemo(() => {
     const byModule = new Map((selectedPermissionOverride?.modules || []).map((item) => [item.module, item]));
-    return rbacModules.map((module) => {
+    return gmAllowedRbacModules.map((module) => {
       const entry = byModule.get(module);
       return {
         module,
@@ -594,7 +601,7 @@ export default function Settings() {
         restrictedFeatures: (entry?.restrictedFeatures || []).map((feature) => String(feature || "").toLowerCase()),
       };
     });
-  }, [selectedPermissionOverride]);
+  }, [selectedPermissionOverride, gmAllowedRbacModules]);
 
   const filteredPermissionModules = useMemo(() => {
     const query = permissionModuleSearch.trim().toLowerCase();
@@ -2170,6 +2177,20 @@ export default function Settings() {
                       </div>
                     </div>
 
+                    {Array.isArray(enabledModules) && rbacModules.some((m) => !isModuleEnabled(m)) && (
+                      <div className="rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5 p-3 text-xs">
+                        <p className="font-semibold text-amber-700 dark:text-amber-400">
+                          Platform-restricted modules
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          The following modules are disabled by the platform administrator and cannot be granted to any user (not even Super Admin):{" "}
+                          <span className="font-medium text-foreground">
+                            {rbacModules.filter((m) => !isModuleEnabled(m)).map((m) => moduleLabels[m] || m).join(", ")}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -2187,7 +2208,7 @@ export default function Settings() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All modules</SelectItem>
-                          {rbacModules.map((module) => (
+                          {gmAllowedRbacModules.map((module) => (
                             <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
                           ))}
                         </SelectContent>
@@ -2202,7 +2223,7 @@ export default function Settings() {
                         <DropdownMenuContent align="end" className="w-64">
                           <DropdownMenuLabel>Show / Hide Permission Modules</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          {rbacModules.map((module) => (
+                          {gmAllowedRbacModules.map((module) => (
                             <DropdownMenuCheckboxItem
                               key={`permission-view-${module}`}
                               checked={permissionVisibleModules.includes(module)}
@@ -2324,7 +2345,7 @@ export default function Settings() {
                             <Select value={requestForm.module} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, module: value }))}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                {rbacModules.map((module) => (
+                                {gmAllowedRbacModules.map((module) => (
                                   <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
                                 ))}
                               </SelectContent>
