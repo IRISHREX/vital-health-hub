@@ -475,12 +475,22 @@ exports.updateVisualAccessSettings = async (req, res, next) => {
       throw new AppError('Not authorized to update visual access settings', 403);
     }
 
+    // Determine GM-enabled modules. Modules disabled by the platform admin
+    // cannot be granted to ANY user — not even via super_admin overrides.
+    const ALWAYS_ENABLED = ['dashboard', 'notifications', 'settings'];
+    const orgEnabledModules = req.tenant?.organization?.enabledModules;
+    const isModuleAllowedByGm = (moduleName) => {
+      if (ALWAYS_ENABLED.includes(moduleName)) return true;
+      if (!Array.isArray(orgEnabledModules) || orgEnabledModules.length === 0) return true;
+      return orgEnabledModules.includes(moduleName);
+    };
+
     const sanitizedOverrides = (Array.isArray(overrides) ? overrides : [])
       .filter((entry) => entry?.email)
       .map((entry) => ({
         email: String(entry.email).trim().toLowerCase(),
         modules: (Array.isArray(entry.modules) ? entry.modules : [])
-          .filter((mod) => mod?.module)
+          .filter((mod) => mod?.module && isModuleAllowedByGm(mod.module))
           .map((mod) => ({
             module: mod.module,
             canView: !!mod.canView,
