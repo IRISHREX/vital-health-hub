@@ -2194,7 +2194,7 @@ export default function Settings() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All modules</SelectItem>
-                          {rbacModules.map((module) => (
+                          {gmAllowedRbacModules.map((module) => (
                             <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
                           ))}
                         </SelectContent>
@@ -2209,7 +2209,7 @@ export default function Settings() {
                         <DropdownMenuContent align="end" className="w-64">
                           <DropdownMenuLabel>Show / Hide Permission Modules</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          {rbacModules.map((module) => (
+                          {gmAllowedRbacModules.map((module) => (
                             <DropdownMenuCheckboxItem
                               key={`permission-view-${module}`}
                               checked={permissionVisibleModules.includes(module)}
@@ -2331,7 +2331,7 @@ export default function Settings() {
                             <Select value={requestForm.module} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, module: value }))}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                {rbacModules.map((module) => (
+                                {gmAllowedRbacModules.map((module) => (
                                   <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
                                 ))}
                               </SelectContent>
