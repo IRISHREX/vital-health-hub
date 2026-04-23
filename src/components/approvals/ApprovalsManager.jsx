@@ -622,18 +622,28 @@ export default function ApprovalsManager({ isAdmin = true }) {
                     {r.formFields?.length > 0 && ` · ${r.formFields.length} form field(s)`}
                   </p>
                 </div>
-                {isAdmin && (
-                  <div className="flex items-center gap-1">
-                    <RuleDialog
-                      rule={r}
-                      onSave={(d) => updateMut.mutateAsync({ id: r._id, data: d })}
-                      trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>}
-                    />
-                    <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteMut.mutate(r._id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center gap-1">
+                  <SimulateDialog
+                    presetRule={r}
+                    trigger={
+                      <Button size="icon" variant="ghost" title="Simulate request">
+                        <PlayCircle className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                  {isAdmin && (
+                    <>
+                      <RuleDialog
+                        rule={r}
+                        onSave={(d) => updateMut.mutateAsync({ id: r._id, data: d })}
+                        trigger={<Button size="icon" variant="ghost" title="Edit"><Pencil className="h-4 w-4" /></Button>}
+                      />
+                      <Button size="icon" variant="ghost" className="text-destructive" title="Delete" onClick={() => deleteMut.mutate(r._id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
