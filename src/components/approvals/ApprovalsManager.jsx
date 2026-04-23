@@ -15,8 +15,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Check, X, Clock, ShieldAlert, Inbox } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Clock, ShieldAlert, Inbox, PlayCircle, Mail, Users, Timer, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/AuthContext";
+import {
+  listApprovalRules, createApprovalRule, updateApprovalRule, deleteApprovalRule,
+  listApprovalRequests, respondApprovalRequest, findApplicableRule,
+  APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES
+} from "@/lib/approvals";
 
 const emptyRule = {
   name: "",
