@@ -57,6 +57,7 @@ v1Router.use('/radiology', require('./radiology'));
 v1Router.use('/ot', require('./ot'));
 v1Router.use('/service-catalog', require('./serviceCatalog'));
 v1Router.use('/room-type-services', require('./roomTypeServices'));
+v1Router.use('/approvals', require('./approvals'));
 
 // Mount v1 routes under nh/api/v1
 router.use('/nh/api/v1', v1Router);
