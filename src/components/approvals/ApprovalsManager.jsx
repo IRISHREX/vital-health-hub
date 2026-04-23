@@ -1,10 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  listApprovalRules, createApprovalRule, updateApprovalRule, deleteApprovalRule,
-  listApprovalRequests, respondApprovalRequest,
-  APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES
-} from "@/lib/approvals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Check, X, Clock, ShieldAlert, Inbox } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Clock, ShieldAlert, Inbox, PlayCircle, Mail, Users, Timer, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/AuthContext";
+import {
+  listApprovalRules, createApprovalRule, updateApprovalRule, deleteApprovalRule,
+  listApprovalRequests, respondApprovalRequest, findApplicableRule,
+  APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES
+} from "@/lib/approvals";
 
 const emptyRule = {
   name: "",
@@ -303,6 +304,232 @@ function RequestRespondDialog({ request, onDone }) {
   );
 }
 
+function SimulatePreview({ rule, requesterName, requesterEmail, formData }) {
+  if (!rule) {
+    return (
+      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground text-center">
+        No enabled approval rule matches this module + action. The action would proceed immediately without approval.
+      </div>
+    );
+  }
+  const dueAt = new Date(Date.now() + (rule.slaHours || 24) * 60 * 60 * 1000);
+  const escalationTarget = rule.escalationEmail || (rule.escalationRole ? `Role: ${rule.escalationRole}` : null);
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">{rule.module} · {rule.action}</Badge>
+          <Badge variant="outline">{rule.blocking}</Badge>
+          {!rule.enabled && <Badge variant="destructive">Disabled</Badge>}
+          <span className="font-semibold text-sm">{rule.name}</span>
+        </div>
+        {rule.description && <p className="text-xs text-muted-foreground">{rule.description}</p>}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-md border p-3 space-y-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            {rule.approverType === "email" ? <Mail className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+            APPROVER
+          </div>
+          <p className="font-medium">
+            {rule.approverType === "email" ? rule.approverEmail : `Role: ${rule.approverRole}`}
+          </p>
+        </div>
+        <div className="rounded-md border p-3 space-y-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <Timer className="h-3 w-3" />SLA / DUE
+          </div>
+          <p className="font-medium">{rule.slaHours}h → {dueAt.toLocaleString()}</p>
+        </div>
+        <div className="rounded-md border p-3 space-y-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <ShieldAlert className="h-3 w-3" />ESCALATION
+          </div>
+          <p className="font-medium">{escalationTarget || <span className="text-muted-foreground">None configured</span>}</p>
+        </div>
+        <div className="rounded-md border p-3 space-y-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            REQUESTER (sample)
+          </div>
+          <p className="font-medium">{requesterName || "—"}</p>
+          <p className="text-xs text-muted-foreground">{requesterEmail || "—"}</p>
+        </div>
+      </div>
+
+      <div className="rounded-md border p-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-2">
+          <FileText className="h-3 w-3" />FORM FIELDS REQUESTER WILL SEE
+        </div>
+        {(!rule.formFields || rule.formFields.length === 0) ? (
+          <p className="text-xs text-muted-foreground">No custom fields. Requester sees only a Submit button.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {rule.formFields.map((f, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <span>
+                  <span className="font-medium">{f.label}</span>
+                  <span className="text-xs text-muted-foreground ml-1">({f.key} · {f.type})</span>
+                </span>
+                {f.required && <Badge variant="outline" className="text-xs">required</Badge>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {formData && Object.keys(formData).length > 0 && (
+        <div className="rounded-md border p-3">
+          <div className="text-xs font-semibold text-muted-foreground mb-2">SAMPLE FORM DATA</div>
+          <pre className="text-xs whitespace-pre-wrap break-all">{JSON.stringify(formData, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SimulateDialog({ trigger, presetRule = null, lookup = false }) {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [module, setModule] = useState(presetRule?.module || "patients");
+  const [action, setAction] = useState(presetRule?.action || "delete");
+  const [requesterName, setRequesterName] = useState(
+    `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Sample User"
+  );
+  const [requesterEmail, setRequesterEmail] = useState(user?.email || "sample@hospital.com");
+  const [resolvedRule, setResolvedRule] = useState(presetRule);
+  const [loading, setLoading] = useState(false);
+  const [formValues, setFormValues] = useState({});
+
+  const runLookup = async () => {
+    try {
+      setLoading(true);
+      const res = await findApplicableRule(module, action);
+      setResolvedRule(res?.data || null);
+    } catch (e) {
+      toast.error(e.message);
+      setResolvedRule(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpen = (o) => {
+    setOpen(o);
+    if (o) {
+      if (presetRule) setResolvedRule(presetRule);
+      setFormValues({});
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PlayCircle className="h-5 w-5 text-primary" />
+            Simulate Approval Request {presetRule ? `— ${presetRule.name}` : ""}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {lookup && (
+            <div className="grid grid-cols-3 gap-2 items-end">
+              <div>
+                <Label className="text-xs">Module</Label>
+                <Select value={module} onValueChange={setModule}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{APPROVAL_MODULES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Action</Label>
+                <Select value={action} onValueChange={setAction}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{APPROVAL_ACTIONS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <Button onClick={runLookup} disabled={loading}>
+                {loading ? "Looking up…" : "Find Rule"}
+              </Button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Sample requester name</Label>
+              <Input value={requesterName} onChange={(e) => setRequesterName(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Sample requester email</Label>
+              <Input type="email" value={requesterEmail} onChange={(e) => setRequesterEmail(e.target.value)} />
+            </div>
+          </div>
+
+          {resolvedRule?.formFields?.length > 0 && (
+            <div className="rounded-md border p-3 space-y-2 bg-muted/20">
+              <Label className="text-xs font-semibold">Try the form (optional)</Label>
+              {resolvedRule.formFields.map((f, i) => (
+                <div key={i}>
+                  <Label className="text-xs">
+                    {f.label}{f.required && <span className="text-destructive"> *</span>}
+                  </Label>
+                  {f.type === "textarea" ? (
+                    <Textarea
+                      rows={2}
+                      placeholder={f.placeholder}
+                      value={formValues[f.key] || ""}
+                      onChange={(e) => setFormValues({ ...formValues, [f.key]: e.target.value })}
+                    />
+                  ) : f.type === "select" ? (
+                    <Select value={formValues[f.key] || ""} onValueChange={(v) => setFormValues({ ...formValues, [f.key]: v })}>
+                      <SelectTrigger><SelectValue placeholder={f.placeholder || "Select..."} /></SelectTrigger>
+                      <SelectContent>
+                        {(f.options || []).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : f.type === "checkbox" ? (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Switch
+                        checked={!!formValues[f.key]}
+                        onCheckedChange={(v) => setFormValues({ ...formValues, [f.key]: v })}
+                      />
+                      <span className="text-xs">{f.placeholder || "Toggle"}</span>
+                    </div>
+                  ) : (
+                    <Input
+                      type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
+                      placeholder={f.placeholder}
+                      value={formValues[f.key] || ""}
+                      onChange={(e) => setFormValues({ ...formValues, [f.key]: e.target.value })}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <SimulatePreview
+            rule={resolvedRule}
+            requesterName={requesterName}
+            requesterEmail={requesterEmail}
+            formData={formValues}
+          />
+
+          <p className="text-xs text-muted-foreground italic">
+            This is a preview only — no request is created and no notifications are sent.
+          </p>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ApprovalsManager({ isAdmin = true }) {
   const qc = useQueryClient();
   const { data: rulesRes } = useQuery({ queryKey: ["approval-rules"], queryFn: () => listApprovalRules() });
@@ -360,14 +587,22 @@ export default function ApprovalsManager({ isAdmin = true }) {
         </TabsList>
 
         <TabsContent value="rules" className="space-y-3">
-          {isAdmin && (
-            <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <SimulateDialog
+              lookup
+              trigger={
+                <Button variant="outline">
+                  <PlayCircle className="mr-1 h-4 w-4" />Simulate Request
+                </Button>
+              }
+            />
+            {isAdmin && (
               <RuleDialog
                 onSave={(d) => createMut.mutateAsync(d)}
                 trigger={<Button><Plus className="mr-1 h-4 w-4" />New Rule</Button>}
               />
-            </div>
-          )}
+            )}
+          </div>
           {rules.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">No approval rules configured.</CardContent></Card>
           ) : rules.map((r) => (
@@ -387,18 +622,28 @@ export default function ApprovalsManager({ isAdmin = true }) {
                     {r.formFields?.length > 0 && ` · ${r.formFields.length} form field(s)`}
                   </p>
                 </div>
-                {isAdmin && (
-                  <div className="flex items-center gap-1">
-                    <RuleDialog
-                      rule={r}
-                      onSave={(d) => updateMut.mutateAsync({ id: r._id, data: d })}
-                      trigger={<Button size="icon" variant="ghost"><Pencil className="h-4 w-4" /></Button>}
-                    />
-                    <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteMut.mutate(r._id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center gap-1">
+                  <SimulateDialog
+                    presetRule={r}
+                    trigger={
+                      <Button size="icon" variant="ghost" title="Simulate request">
+                        <PlayCircle className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                  {isAdmin && (
+                    <>
+                      <RuleDialog
+                        rule={r}
+                        onSave={(d) => updateMut.mutateAsync({ id: r._id, data: d })}
+                        trigger={<Button size="icon" variant="ghost" title="Edit"><Pencil className="h-4 w-4" /></Button>}
+                      />
+                      <Button size="icon" variant="ghost" className="text-destructive" title="Delete" onClick={() => deleteMut.mutate(r._id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
