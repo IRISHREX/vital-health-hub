@@ -61,6 +61,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
+import ApprovalsManager from "@/components/approvals/ApprovalsManager";
 import { isValidPhone } from "@/lib/phoneValidation";
 import {
   getAllSettings,
@@ -1131,6 +1132,12 @@ export default function Settings() {
             <TabsTrigger value="permissions" className="gap-2">
               <Shield className="h-4 w-4" />
               Permissions
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="approvals" className="gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              Approvals
             </TabsTrigger>
           )}
           <TabsTrigger value="sounds" className="gap-2">
@@ -2457,6 +2464,25 @@ export default function Settings() {
         <TabsContent value="sounds">
           <SoundSettings />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="approvals">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5" />
+                  Approval Workflows
+                </CardTitle>
+                <CardDescription>
+                  Define dynamic approval gates between any two processes. Configure approvers, custom forms, and SLA escalation.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ApprovalsManager isAdmin={isAdmin} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
