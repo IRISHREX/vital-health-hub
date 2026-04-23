@@ -587,14 +587,22 @@ export default function ApprovalsManager({ isAdmin = true }) {
         </TabsList>
 
         <TabsContent value="rules" className="space-y-3">
-          {isAdmin && (
-            <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <SimulateDialog
+              lookup
+              trigger={
+                <Button variant="outline">
+                  <PlayCircle className="mr-1 h-4 w-4" />Simulate Request
+                </Button>
+              }
+            />
+            {isAdmin && (
               <RuleDialog
                 onSave={(d) => createMut.mutateAsync(d)}
                 trigger={<Button><Plus className="mr-1 h-4 w-4" />New Rule</Button>}
               />
-            </div>
-          )}
+            )}
+          </div>
           {rules.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-muted-foreground">No approval rules configured.</CardContent></Card>
           ) : rules.map((r) => (
