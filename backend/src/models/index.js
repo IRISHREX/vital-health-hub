@@ -32,6 +32,8 @@ const OTRoom = require('./NH_OTRoom');
 const Surgery = require('./NH_Surgery');
 const ServiceCatalog = require('./NH_ServiceCatalog');
 const RoomTypeService = require('./NH_RoomTypeService');
+const ApprovalRule = require('./NH_ApprovalRule');
+const ApprovalRequest = require('./NH_ApprovalRequest');
 
 module.exports = {
   User,
@@ -65,5 +67,7 @@ module.exports = {
   OTRoom,
   Surgery,
   ServiceCatalog,
-  RoomTypeService
+  RoomTypeService,
+  ApprovalRule,
+  ApprovalRequest
 };
