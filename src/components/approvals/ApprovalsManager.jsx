@@ -1,10 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  listApprovalRules, createApprovalRule, updateApprovalRule, deleteApprovalRule,
-  listApprovalRequests, respondApprovalRequest,
-  APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES
-} from "@/lib/approvals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
