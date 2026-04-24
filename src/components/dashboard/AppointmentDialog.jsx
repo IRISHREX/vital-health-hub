@@ -252,7 +252,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
             {mode === "create" ? "Schedule a new appointment." : "Update appointment details."}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form} validationId="appointment_dialog">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}

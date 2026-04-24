@@ -123,7 +123,7 @@ export default function UserDialog({ isOpen, onClose, mode = "create", user }) {
             {mode === "create" ? "Enter user details." : "Update user information."}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form} validationId="user_dialog">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField

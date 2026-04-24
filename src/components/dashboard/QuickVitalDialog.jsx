@@ -121,7 +121,7 @@ export default function QuickVitalDialog({ isOpen, onClose, patients = [], defau
           <DialogTitle>Quick Record Vital</DialogTitle>
           <DialogDescription>Record vitals quickly for a patient</DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form} validationId="quick_vital_dialog">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}

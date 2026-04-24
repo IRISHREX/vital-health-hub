@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,13 @@ import { createSurgery } from "@/lib/ot";
 import { toast } from "sonner";
 import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
 import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
+import { getValidationInputClass } from "@/lib/validationPreferences";
 
 export default function CreateSurgeryDialog({ open, onOpenChange }) {
+  const { shouldShowValidation } = useValidationPreferences();
   const queryClient = useQueryClient();
+  const formId = "surgery_dialog";
   const [form, setForm] = useState({
     patient: "", primarySurgeon: "", anesthetist: "",
     procedureName: "", procedureType: "major", urgency: "elective",
@@ -24,6 +28,13 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
     surgeonFee: "", anesthetistFee: "", otRoomCharges: "",
     notes: ""
   });
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (!open) {
+      setErrors({});
+    }
+  }, [open]);
 
   const { data: admissionsRes } = useQuery({
     queryKey: ["admissions", "admitted", "ot-request"],
@@ -63,6 +74,7 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
       queryClient.invalidateQueries({ queryKey: ["surgeries"] });
       queryClient.invalidateQueries({ queryKey: ["ot-stats"] });
       onOpenChange(false);
+      setErrors({});
       setForm({ patient: "", primarySurgeon: "", anesthetist: "", procedureName: "", procedureType: "major", urgency: "elective", diagnosis: "", bodyPart: "", laterality: "na", estimatedDuration: 60, anesthesiaType: "general", surgeonFee: "", anesthetistFee: "", otRoomCharges: "", notes: "" });
     },
     onError: (err) => toast.error(err?.response?.data?.message || "Failed to create surgery")
@@ -70,8 +82,13 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.patient || !form.procedureName || !form.primarySurgeon) {
-      toast.error("Patient, procedure name, and surgeon are required");
+    const nextErrors = {};
+    if (!form.patient) nextErrors.patient = "Patient is required";
+    if (!form.procedureName) nextErrors.procedureName = "Procedure name is required";
+    if (!form.primarySurgeon) nextErrors.primarySurgeon = "Primary surgeon is required";
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      toast.error(Object.values(nextErrors).find(Boolean));
       return;
     }
     mutation.mutate({
@@ -99,13 +116,31 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
                   const p = admittedPatients.find((x) => x._id === form.patient);
                   return p ? patientLabel(p) : "";
                 })()}
-                onSelect={(p) => setForm({ ...form, patient: p?._id || "" })}
+                onSelect={(p) => {
+                  setForm({ ...form, patient: p?._id || "" });
+                  setErrors((prev) => ({ ...prev, patient: "" }));
+                }}
                 placeholder="Search admitted patient by name, phone, ID..."
+                inputClassName={getValidationInputClass(shouldShowValidation(formId, "patient"), errors.patient)}
               />
+              {shouldShowValidation(formId, "patient") && errors.patient && (
+                <p className="text-sm text-destructive">{errors.patient}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Procedure Name *</Label>
-              <Input value={form.procedureName} onChange={(e) => setForm({ ...form, procedureName: e.target.value })} placeholder="e.g. Appendectomy" />
+              <Input
+                value={form.procedureName}
+                onChange={(e) => {
+                  setForm({ ...form, procedureName: e.target.value });
+                  setErrors((prev) => ({ ...prev, procedureName: "" }));
+                }}
+                placeholder="e.g. Appendectomy"
+                className={getValidationInputClass(shouldShowValidation(formId, "procedureName"), errors.procedureName)}
+              />
+              {shouldShowValidation(formId, "procedureName") && errors.procedureName && (
+                <p className="text-sm text-destructive">{errors.procedureName}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Primary Surgeon *</Label>
@@ -115,9 +150,16 @@ export default function CreateSurgeryDialog({ open, onOpenChange }) {
                   const d = doctors.find((x) => x._id === form.primarySurgeon);
                   return d ? doctorAutocompleteLabel(d) : "";
                 })()}
-                onSelect={(d) => setForm({ ...form, primarySurgeon: d?._id || "" })}
+                onSelect={(d) => {
+                  setForm({ ...form, primarySurgeon: d?._id || "" });
+                  setErrors((prev) => ({ ...prev, primarySurgeon: "" }));
+                }}
                 placeholder="Search surgeon by name or specialization..."
+                inputClassName={getValidationInputClass(shouldShowValidation(formId, "primarySurgeon"), errors.primarySurgeon)}
               />
+              {shouldShowValidation(formId, "primarySurgeon") && errors.primarySurgeon && (
+                <p className="text-sm text-destructive">{errors.primarySurgeon}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Anesthetist</Label>

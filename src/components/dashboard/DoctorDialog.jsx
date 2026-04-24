@@ -147,7 +147,7 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
             {mode === "create" ? "Enter doctor details." : "Update doctor information."}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form} validationId="doctor_dialog">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}

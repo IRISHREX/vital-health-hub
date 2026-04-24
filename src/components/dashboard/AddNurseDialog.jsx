@@ -20,7 +20,9 @@ import {
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser } from "@/lib/users";
-import { isValidPhone, extractDigits } from "@/lib/phoneValidation";
+import { isValidPhone } from "@/lib/phoneValidation";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
+import { getValidationInputClass } from "@/lib/validationPreferences";
 
 const departments = [
   "Cardiac Care",
@@ -34,7 +36,9 @@ const departments = [
 
 export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = null, mode = "create" }) {
   const { toast } = useToast();
+  const { shouldShowValidation } = useValidationPreferences();
   const isEdit = mode === "edit" && !!nurse?._id;
+  const formId = "nurse_dialog";
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -44,7 +48,7 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
     department: "",
     role: "nurse",
   });
-  const [phoneError, setPhoneError] = useState("");
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -70,34 +74,48 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
       department: "",
       role: "nurse",
     });
+    setErrors({});
   }, [isOpen, isEdit, nurse]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
-    // Validate phone number
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+
     if (name === "phone") {
-      if (value.trim() === "") {
-        setPhoneError("");
-      } else if (!isValidPhone(value)) {
-        setPhoneError("Phone number must contain exactly 10 digits");
-      } else {
-        setPhoneError("");
-      }
+      setErrors((prev) => ({
+        ...prev,
+        phone: value.trim() && !isValidPhone(value) ? "Phone number must contain exactly 10 digits" : "",
+      }));
     }
   };
 
   const handleSelectChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+
+    if (!formData.firstName.trim()) nextErrors.firstName = "First name is required";
+    if (!formData.lastName.trim()) nextErrors.lastName = "Last name is required";
+    if (!formData.email.trim()) nextErrors.email = "Email is required";
+    else if (!/^\S+@\S+\.\S+$/.test(formData.email)) nextErrors.email = "Valid email required";
+    if (!isEdit && !formData.password.trim()) nextErrors.password = "Password is required";
+    if (formData.phone && !isValidPhone(formData.phone)) {
+      nextErrors.phone = "Phone number must contain exactly 10 digits";
+    }
+
+    return nextErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate phone if provided
-    if (formData.phone && !isValidPhone(formData.phone)) {
-      setPhoneError("Phone number must contain exactly 10 digits");
+
+    const nextErrors = validate();
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
       return;
     }
     
@@ -150,9 +168,9 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className="mt-2"
-                required
+                className={`mt-2 ${getValidationInputClass(shouldShowValidation(formId, "firstName"), errors.firstName)}`}
               />
+              {shouldShowValidation(formId, "firstName") && errors.firstName && <p className="mt-1 text-sm text-destructive">{errors.firstName}</p>}
             </div>
             <div>
               <Label htmlFor="lastName" className="text-sm font-medium">
@@ -163,9 +181,9 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className="mt-2"
-                required
+                className={`mt-2 ${getValidationInputClass(shouldShowValidation(formId, "lastName"), errors.lastName)}`}
               />
+              {shouldShowValidation(formId, "lastName") && errors.lastName && <p className="mt-1 text-sm text-destructive">{errors.lastName}</p>}
             </div>
             <div>
               <Label htmlFor="email" className="text-sm font-medium">
@@ -177,10 +195,10 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="mt-2"
-                required
+                className={`mt-2 ${getValidationInputClass(shouldShowValidation(formId, "email"), errors.email)}`}
                 disabled={isEdit}
               />
+              {shouldShowValidation(formId, "email") && errors.email && <p className="mt-1 text-sm text-destructive">{errors.email}</p>}
             </div>
             {!isEdit && (
               <div>
@@ -193,9 +211,9 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="mt-2"
-                  required
+                  className={`mt-2 ${getValidationInputClass(shouldShowValidation(formId, "password"), errors.password)}`}
                 />
+                {shouldShowValidation(formId, "password") && errors.password && <p className="mt-1 text-sm text-destructive">{errors.password}</p>}
               </div>
             )}
             <div>
@@ -208,9 +226,9 @@ export default function AddNurseDialog({ isOpen, onClose, onSuccess, nurse = nul
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="Enter 10-digit phone number"
-                className={`mt-2 ${phoneError ? "border-red-500" : ""}`}
+                className={`mt-2 ${getValidationInputClass(shouldShowValidation(formId, "phone"), errors.phone)}`}
               />
-              {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
+              {shouldShowValidation(formId, "phone") && errors.phone && <p className="mt-1 text-sm text-destructive">{errors.phone}</p>}
             </div>
             <div>
               <Label htmlFor="department" className="text-sm font-medium">

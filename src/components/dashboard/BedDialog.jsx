@@ -366,7 +366,7 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
           </div>
         ) : (
           <>
-            <Form {...form}>
+        <Form {...form} validationId="bed_dialog">
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 {canEditBedDetails && (
                   <>

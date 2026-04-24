@@ -362,7 +362,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
             {mode === "create" ? "Enter patient details to register." : "Update patient information."}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form} validationId="patient_dialog">
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField

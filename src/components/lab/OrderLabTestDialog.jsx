@@ -15,10 +15,14 @@ import ModeToggle from "@/components/shared/ModeToggle";
 import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
 import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
 import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
+import { getValidationInputClass } from "@/lib/validationPreferences";
 
 const emptyExternal = { name: "", age: "", gender: "", phone: "", address: "", referredBy: "" };
 
 export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors }) {
+  const { shouldShowValidation } = useValidationPreferences();
+  const formId = "lab_order_dialog";
   const [catalog, setCatalog] = useState([]);
   const [selectedCatalogTests, setSelectedCatalogTests] = useState([]);
   const [mode, setMode] = useState("internal");
@@ -32,6 +36,7 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
   });
   const [submitting, setSubmitting] = useState(false);
   const [searchCatalog, setSearchCatalog] = useState("");
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (isOpen) {
@@ -46,6 +51,7 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
       setSearchCatalog("");
       setMode("internal");
       setExternalPatient({ ...emptyExternal });
+      setErrors({});
     }
   }, [isOpen]);
 
@@ -59,21 +65,26 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
     setSelectedCatalogTests((prev) =>
       prev.includes(testId) ? prev.filter((id) => id !== testId) : [...prev, testId]
     );
+    setErrors((prev) => ({ ...prev, tests: "" }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const nextErrors = {};
 
-    if (mode === "internal" && (!formData.patient || !formData.doctor)) {
-      toast.error("Patient and doctor are required for internal mode");
-      return;
+    if (mode === "internal") {
+      if (!formData.patient) nextErrors.patient = "Patient is required for internal mode";
+      if (!formData.doctor) nextErrors.doctor = "Doctor is required for internal mode";
     }
     if (mode === "external" && !externalPatient.name?.trim()) {
-      toast.error("Patient name is required for external mode");
-      return;
+      nextErrors["externalPatient.name"] = "Patient name is required for external mode";
     }
     if (selectedCatalogTests.length === 0) {
-      toast.error("Please select at least one test");
+      nextErrors.tests = "Please select at least one test";
+    }
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      toast.error(Object.values(nextErrors).find(Boolean));
       return;
     }
 
@@ -99,6 +110,7 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
       setFormData({ patient: "", doctor: "", priority: "routine", notes: "", discount: 0 });
       setSelectedCatalogTests([]);
       setExternalPatient({ ...emptyExternal });
+      setErrors({});
       setMode("internal");
       onClose();
     } catch (err) {
@@ -132,8 +144,15 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
                     const p = patients.find((x) => x._id === formData.patient);
                     return p ? patientLabel(p) : "";
                   })()}
-                  onSelect={(p) => setFormData((prev) => ({ ...prev, patient: p?._id || "" }))}
+                  onSelect={(p) => {
+                    setFormData((prev) => ({ ...prev, patient: p?._id || "" }));
+                    setErrors((prev) => ({ ...prev, patient: "" }));
+                  }}
+                  inputClassName={getValidationInputClass(shouldShowValidation(formId, "patient"), errors.patient)}
                 />
+                {shouldShowValidation(formId, "patient") && errors.patient && (
+                  <p className="text-sm text-destructive">{errors.patient}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Referring Doctor *</Label>
@@ -143,13 +162,20 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
                     const d = doctors.find((x) => x._id === formData.doctor);
                     return d ? doctorAutocompleteLabel(d) : "";
                   })()}
-                  onSelect={(d) => setFormData((prev) => ({ ...prev, doctor: d?._id || "" }))}
+                  onSelect={(d) => {
+                    setFormData((prev) => ({ ...prev, doctor: d?._id || "" }));
+                    setErrors((prev) => ({ ...prev, doctor: "" }));
+                  }}
+                  inputClassName={getValidationInputClass(shouldShowValidation(formId, "doctor"), errors.doctor)}
                 />
+                {shouldShowValidation(formId, "doctor") && errors.doctor && (
+                  <p className="text-sm text-destructive">{errors.doctor}</p>
+                )}
               </div>
             </>
           ) : (
             <>
-              <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} />
+              <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} errors={errors} formId={formId} />
               <div className="space-y-2">
                 <Label>Referring Doctor (optional)</Label>
                 <DoctorAutocomplete
@@ -158,7 +184,10 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
                     const d = doctors.find((x) => x._id === formData.doctor);
                     return d ? doctorAutocompleteLabel(d) : "";
                   })()}
-                  onSelect={(d) => setFormData((prev) => ({ ...prev, doctor: d?._id || "" }))}
+                  onSelect={(d) => {
+                    setFormData((prev) => ({ ...prev, doctor: d?._id || "" }));
+                    setErrors((prev) => ({ ...prev, doctor: "" }));
+                  }}
                   placeholder="Search doctor (optional)"
                 />
               </div>
@@ -173,7 +202,7 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
               onChange={(e) => setSearchCatalog(e.target.value)}
               className="mb-2"
             />
-            <div className="max-h-48 overflow-y-auto border rounded-md divide-y">
+            <div className={`max-h-48 overflow-y-auto rounded-md border divide-y ${shouldShowValidation(formId, "tests") && errors.tests ? "border-destructive" : ""}`}>
               {filteredCatalog.map((c) => (
                 <div
                   key={c._id}
@@ -199,6 +228,9 @@ export default function OrderLabTestDialog({ isOpen, onClose, patients, doctors 
             <p className="text-xs text-muted-foreground">
               Selected: {selectedCatalogTests.length} test{selectedCatalogTests.length === 1 ? "" : "s"}
             </p>
+            {shouldShowValidation(formId, "tests") && errors.tests && (
+              <p className="text-sm text-destructive">{errors.tests}</p>
+            )}
           </div>
 
           {selectedTests.length > 0 && (

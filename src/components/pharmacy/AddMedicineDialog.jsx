@@ -7,14 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQueryClient } from "@tanstack/react-query";
 import { createMedicine, updateMedicine } from "@/lib/pharmacy";
 import { toast } from "sonner";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
+import { getValidationInputClass } from "@/lib/validationPreferences";
 
 const categories = ['tablet', 'capsule', 'syrup', 'injection', 'ointment', 'drops', 'inhaler', 'powder', 'other'];
 const NONE_SCHEDULE = "__none__";
 
 export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
+  const { shouldShowValidation } = useValidationPreferences();
   const qc = useQueryClient();
   const isEdit = !!medicine;
+  const formId = "medicine_dialog";
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
     name: '', genericName: '', composition: '', category: 'tablet',
     manufacturer: '', batchNumber: '', expiryDate: '',
@@ -39,13 +44,22 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
     } else {
       setForm({ name: '', genericName: '', composition: '', category: 'tablet', manufacturer: '', batchNumber: '', expiryDate: '', mrp: '', sellingPrice: '', purchasePrice: '', stock: '', reorderLevel: '10', unit: 'pcs', rackLocation: '', hsnCode: '', gstPercent: '12', schedule: NONE_SCHEDULE });
     }
+    setErrors({});
   }, [medicine, open]);
 
-  const set = (k) => (e) => setForm(p => ({ ...p, [k]: typeof e === 'string' ? e : e.target.value }));
+  const set = (k) => (e) => {
+    setForm((p) => ({ ...p, [k]: typeof e === 'string' ? e : e.target.value }));
+    setErrors((prev) => ({ ...prev, [k]: "" }));
+  };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.mrp || !form.sellingPrice) {
-      toast.error("Name, MRP, and Selling Price are required");
+    const nextErrors = {};
+    if (!form.name) nextErrors.name = "Name is required";
+    if (!form.mrp) nextErrors.mrp = "MRP is required";
+    if (!form.sellingPrice) nextErrors.sellingPrice = "Selling price is required";
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      toast.error(Object.values(nextErrors).find(Boolean));
       return;
     }
     setLoading(true);
@@ -60,6 +74,7 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
       if (isEdit) await updateMedicine(medicine._id, payload);
       else await createMedicine(payload);
       toast.success(isEdit ? "Medicine updated" : "Medicine added");
+      setErrors({});
       qc.invalidateQueries({ queryKey: ['medicines'] });
       qc.invalidateQueries({ queryKey: ['pharmacy-stats'] });
       onOpenChange(false);
@@ -72,7 +87,11 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{isEdit ? "Edit Medicine" : "Add Medicine"}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2"><Label>Name *</Label><Input value={form.name} onChange={set('name')} /></div>
+          <div className="col-span-2">
+            <Label>Name *</Label>
+            <Input value={form.name} onChange={set('name')} className={getValidationInputClass(shouldShowValidation(formId, "name"), errors.name)} />
+            {shouldShowValidation(formId, "name") && errors.name && <p className="mt-1 text-sm text-destructive">{errors.name}</p>}
+          </div>
           <div><Label>Generic Name</Label><Input value={form.genericName} onChange={set('genericName')} /></div>
           <div><Label>Composition</Label><Input value={form.composition} onChange={set('composition')} /></div>
           <div>
@@ -85,8 +104,16 @@ export default function AddMedicineDialog({ open, onOpenChange, medicine }) {
           <div><Label>Manufacturer</Label><Input value={form.manufacturer} onChange={set('manufacturer')} /></div>
           <div><Label>Batch Number</Label><Input value={form.batchNumber} onChange={set('batchNumber')} /></div>
           <div><Label>Expiry Date</Label><Input type="date" value={form.expiryDate} onChange={set('expiryDate')} /></div>
-          <div><Label>MRP (₹) *</Label><Input type="number" value={form.mrp} onChange={set('mrp')} /></div>
-          <div><Label>Selling Price (₹) *</Label><Input type="number" value={form.sellingPrice} onChange={set('sellingPrice')} /></div>
+          <div>
+            <Label>MRP (₹) *</Label>
+            <Input type="number" value={form.mrp} onChange={set('mrp')} className={getValidationInputClass(shouldShowValidation(formId, "mrp"), errors.mrp)} />
+            {shouldShowValidation(formId, "mrp") && errors.mrp && <p className="mt-1 text-sm text-destructive">{errors.mrp}</p>}
+          </div>
+          <div>
+            <Label>Selling Price (₹) *</Label>
+            <Input type="number" value={form.sellingPrice} onChange={set('sellingPrice')} className={getValidationInputClass(shouldShowValidation(formId, "sellingPrice"), errors.sellingPrice)} />
+            {shouldShowValidation(formId, "sellingPrice") && errors.sellingPrice && <p className="mt-1 text-sm text-destructive">{errors.sellingPrice}</p>}
+          </div>
           <div><Label>Purchase Price (₹)</Label><Input type="number" value={form.purchasePrice} onChange={set('purchasePrice')} /></div>
           <div><Label>Stock</Label><Input type="number" value={form.stock} onChange={set('stock')} /></div>
           <div><Label>Reorder Level</Label><Input type="number" value={form.reorderLevel} onChange={set('reorderLevel')} /></div>

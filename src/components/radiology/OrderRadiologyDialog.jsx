@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import ModeToggle from "@/components/shared/ModeToggle";
 import ExternalPatientForm from "@/components/shared/ExternalPatientForm";
 import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
 import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
+import { getValidationInputClass } from "@/lib/validationPreferences";
 
 const studyTypes = [
   { value: "xray", label: "X-Ray" },
@@ -29,6 +31,8 @@ const studyTypes = [
 const emptyExternal = { name: "", age: "", gender: "", phone: "", address: "", referredBy: "" };
 
 export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], doctors = [] }) {
+  const { shouldShowValidation } = useValidationPreferences();
+  const formId = "radiology_order_dialog";
   const [mode, setMode] = useState("internal");
   const [externalPatient, setExternalPatient] = useState({ ...emptyExternal });
   const [form, setForm] = useState({
@@ -36,20 +40,31 @@ export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], d
     priority: "routine", clinicalHistory: "", indication: "", price: "", discount: "", contrastUsed: false, notes: ""
   });
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (!isOpen) {
+      setErrors({});
+    }
+  }, [isOpen]);
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleSubmit = async () => {
+    const nextErrors = {};
     if (mode === "internal" && !form.patient) {
-      toast.error("Patient is required for internal mode");
-      return;
+      nextErrors.patient = "Patient is required for internal mode";
     }
     if (mode === "external" && !externalPatient.name?.trim()) {
-      toast.error("Patient name is required for external mode");
-      return;
+      nextErrors["externalPatient.name"] = "Patient name is required for external mode";
     }
     if (!form.studyName || !form.bodyPart) {
-      toast.error("Study name and body part are required");
+      if (!form.studyName) nextErrors.studyName = "Study name is required";
+      if (!form.bodyPart) nextErrors.bodyPart = "Body part is required";
+    }
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      toast.error(Object.values(nextErrors).find(Boolean));
       return;
     }
     try {
@@ -70,6 +85,7 @@ export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], d
       toast.success("Radiology order created");
       setForm({ patient: "", doctor: "", studyType: "xray", bodyPart: "", studyName: "", priority: "routine", clinicalHistory: "", indication: "", price: "", discount: "", contrastUsed: false, notes: "" });
       setExternalPatient({ ...emptyExternal });
+      setErrors({});
       setMode("internal");
       onClose();
     } catch (err) {
@@ -100,8 +116,15 @@ export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], d
                     const p = patients.find((x) => x._id === form.patient);
                     return p ? patientLabel(p) : "";
                   })()}
-                  onSelect={(p) => update("patient", p?._id || "")}
+                  onSelect={(p) => {
+                    update("patient", p?._id || "");
+                    setErrors((prev) => ({ ...prev, patient: "" }));
+                  }}
+                  inputClassName={getValidationInputClass(shouldShowValidation(formId, "patient"), errors.patient)}
                 />
+                {shouldShowValidation(formId, "patient") && errors.patient && (
+                  <p className="text-sm text-destructive">{errors.patient}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Referring Doctor</Label>
@@ -117,7 +140,7 @@ export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], d
             </div>
           ) : (
             <>
-              <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} />
+              <ExternalPatientForm data={externalPatient} onChange={setExternalPatient} errors={errors} formId={formId} />
               <div className="space-y-2">
                 <Label>Referring Doctor (optional)</Label>
                 <DoctorAutocomplete
@@ -161,11 +184,33 @@ export default function OrderRadiologyDialog({ isOpen, onClose, patients = [], d
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Study Name *</Label>
-              <Input placeholder="e.g. Chest PA View" value={form.studyName} onChange={(e) => update("studyName", e.target.value)} />
+              <Input
+                placeholder="e.g. Chest PA View"
+                value={form.studyName}
+                onChange={(e) => {
+                  update("studyName", e.target.value);
+                  setErrors((prev) => ({ ...prev, studyName: "" }));
+                }}
+                className={getValidationInputClass(shouldShowValidation(formId, "studyName"), errors.studyName)}
+              />
+              {shouldShowValidation(formId, "studyName") && errors.studyName && (
+                <p className="text-sm text-destructive">{errors.studyName}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Body Part *</Label>
-              <Input placeholder="e.g. Chest, Abdomen" value={form.bodyPart} onChange={(e) => update("bodyPart", e.target.value)} />
+              <Input
+                placeholder="e.g. Chest, Abdomen"
+                value={form.bodyPart}
+                onChange={(e) => {
+                  update("bodyPart", e.target.value);
+                  setErrors((prev) => ({ ...prev, bodyPart: "" }));
+                }}
+                className={getValidationInputClass(shouldShowValidation(formId, "bodyPart"), errors.bodyPart)}
+              />
+              {shouldShowValidation(formId, "bodyPart") && errors.bodyPart && (
+                <p className="text-sm text-destructive">{errors.bodyPart}</p>
+              )}
             </div>
           </div>
 
