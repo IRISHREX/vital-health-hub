@@ -24,6 +24,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { useAuth } from "@/lib/AuthContext";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import RowActions from "@/components/shared/RowActions";
 import { toast as sonnerToast } from "sonner";
 
 const departments = [
@@ -337,13 +338,17 @@ export default function Doctors() {
                   {doctor.experience > 0 && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Award className="h-3.5 w-3.5" />{doctor.experience} years exp</div>}
                 </div>
 
-                <div className="mt-4 flex items-center gap-1.5">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="View Profile" onClick={() => openProfile(doctor)}><Eye className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => openEditDialog(doctor)}><Pencil className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive" title="Delete" onClick={() => handleDeleteDoctor(doctor)}><Trash2 className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="outline" className="flex-1 ml-1 text-xs" onClick={() => openProfile(doctor)}>
+                <div className="mt-4 flex items-center gap-2">
+                  <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => openProfile(doctor)}>
                     <Activity className="mr-1 h-3 w-3" />Profile & Stats
                   </Button>
+                  <RowActions
+                    actions={[
+                      { icon: Eye, label: "View Profile", onClick: () => openProfile(doctor), variant: "info" },
+                      { icon: Pencil, label: "Edit", onClick: () => openEditDialog(doctor), variant: "primary" },
+                      { icon: Trash2, label: "Delete", onClick: () => handleDeleteDoctor(doctor), variant: "destructive" },
+                    ]}
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -28,6 +28,7 @@ import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "luci
 import PatientDialog from "@/components/dashboard/PatientDialog";
 import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import RowActions from "@/components/shared/RowActions";
 import { Pagination } from "@/components/ui/pagination";
 import { PageSkeleton } from "@/components/ui/table-skeleton";
 import { useSound } from "@/hooks/useSound";
