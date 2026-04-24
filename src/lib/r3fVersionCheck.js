@@ -11,7 +11,7 @@ import React from 'react';
 import reactPkg from 'react/package.json';
 import fiberPkg from '@react-three/fiber/package.json';
 import dreiPkg from '@react-three/drei/package.json';
-import threePkg from 'three/package.json';
+import { REVISION as THREE_REVISION } from 'three';
 
 const major = (v) => parseInt(String(v).replace(/^[^\d]*/, '').split('.')[0], 10);
 
@@ -20,7 +20,7 @@ export const r3fVersions = {
   reactRuntime: React.version,
   fiber: fiberPkg.version,
   drei: dreiPkg.version,
-  three: threePkg.version,
+  three: `0.${THREE_REVISION}.0`,
 };
 
 export function checkR3FCompatibility() {
