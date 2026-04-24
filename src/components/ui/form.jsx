@@ -5,8 +5,17 @@ import { Controller, FormProvider, useFormContext } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
 
-const Form = FormProvider;
+const ValidationFormContext = React.createContext({});
+
+const Form = ({ children, validationId, ...props }) => {
+  return (
+    <ValidationFormContext.Provider value={{ validationId }}>
+      <FormProvider {...props}>{children}</FormProvider>
+    </ValidationFormContext.Provider>
+  );
+};
 
 const FormFieldContext = React.createContext({});
 
@@ -21,7 +30,9 @@ const FormField = ({ ...props }) => {
 const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext);
   const itemContext = React.useContext(FormItemContext);
+  const validationContext = React.useContext(ValidationFormContext);
   const { getFieldState, formState } = useFormContext();
+  const { shouldShowValidation } = useValidationPreferences();
 
   const fieldState = getFieldState(fieldContext.name, formState);
 
@@ -37,6 +48,7 @@ const useFormField = () => {
     formItemId: `${id}-form-item`,
     formDescriptionId: `${id}-form-item-description`,
     formMessageId: `${id}-form-item-message`,
+    validationVisible: shouldShowValidation(validationContext?.validationId, fieldContext.name),
     ...fieldState,
   };
 };
@@ -55,21 +67,21 @@ const FormItem = React.forwardRef(({ className, ...props }, ref) => {
 FormItem.displayName = "FormItem";
 
 const FormLabel = React.forwardRef(({ className, ...props }, ref) => {
-  const { error, formItemId } = useFormField();
+  const { error, formItemId, validationVisible } = useFormField();
 
-  return <Label ref={ref} className={cn(error && "text-destructive", className)} htmlFor={formItemId} {...props} />;
+  return <Label ref={ref} className={cn(error && validationVisible && "text-destructive", className)} htmlFor={formItemId} {...props} />;
 });
 FormLabel.displayName = "FormLabel";
 
 const FormControl = React.forwardRef(({ ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+  const { error, formItemId, formDescriptionId, formMessageId, validationVisible } = useFormField();
 
   return (
     <Slot
       ref={ref}
       id={formItemId}
       aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
-      aria-invalid={!!error}
+      aria-invalid={validationVisible && !!error ? true : undefined}
       {...props}
     />
   );
@@ -84,10 +96,10 @@ const FormDescription = React.forwardRef(({ className, ...props }, ref) => {
 FormDescription.displayName = "FormDescription";
 
 const FormMessage = React.forwardRef(({ className, children, ...props }, ref) => {
-  const { error, formMessageId } = useFormField();
+  const { error, formMessageId, validationVisible } = useFormField();
   const body = error ? String(error?.message) : children;
 
-  if (!body) {
+  if (!body || !validationVisible) {
     return null;
   }
 

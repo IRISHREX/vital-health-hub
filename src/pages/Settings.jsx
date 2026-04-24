@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -88,6 +89,7 @@ import { getNotifications } from "@/lib/notifications";
 import { updateProfile } from "@/lib/auth";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
 import { setUser as setStoredUser } from "@/lib/api-client";
 import UserDialog from "@/components/dashboard/UserDialog";
 import { getUsers } from "@/lib/users";
@@ -95,6 +97,7 @@ import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
 import SoundSettings from "@/components/settings/SoundSettings";
+import { normalizeValidationPreferences, validationFormRegistry } from "@/lib/validationPreferences";
 
 const assignmentRoleOptions = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"];
 const assignmentTypeLabels = {
@@ -216,6 +219,11 @@ export default function Settings() {
   const { user, logout } = useAuth();
   const { canManageVisualPermissions, canCreate, isModuleEnabled, enabledModules } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const {
+    preferences: validationPreferences,
+    savePreferences: saveValidationPreferences,
+    isLoading: validationPreferencesLoading,
+  } = useValidationPreferences();
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
   const isSuperAdmin = user?.role === "super_admin";
   const [loading, setLoading] = useState(true);
@@ -232,6 +240,8 @@ export default function Settings() {
   });
   const [avatarPreview, setAvatarPreview] = useState("");
   const [profilePhoneError, setProfilePhoneError] = useState("");
+  const [validationPreferencesDraft, setValidationPreferencesDraft] = useState(() => normalizeValidationPreferences());
+  const [savingValidationPreferences, setSavingValidationPreferences] = useState(false);
   
   // Hospital settings state
   const [hospitalSettings, setHospitalSettings] = useState({
@@ -499,6 +509,10 @@ export default function Settings() {
     loadSettings();
   }, [user, isAdmin, isSuperAdmin, canManageVisualPermissions]);
 
+  useEffect(() => {
+    setValidationPreferencesDraft(normalizeValidationPreferences(validationPreferences));
+  }, [validationPreferences]);
+
   // Handle avatar file selection
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -575,6 +589,43 @@ export default function Settings() {
       toast.error(error.message || "Failed to save notification settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const updateValidationFormState = (formId, enabled) => {
+    setValidationPreferencesDraft((prev) => {
+      const next = normalizeValidationPreferences(prev);
+      next.forms[formId] = {
+        ...next.forms[formId],
+        enabled,
+      };
+      return next;
+    });
+  };
+
+  const updateValidationFieldState = (formId, fieldKey, enabled) => {
+    setValidationPreferencesDraft((prev) => {
+      const next = normalizeValidationPreferences(prev);
+      next.forms[formId] = {
+        ...next.forms[formId],
+        fields: {
+          ...(next.forms[formId]?.fields || {}),
+          [fieldKey]: enabled,
+        },
+      };
+      return next;
+    });
+  };
+
+  const handleSaveValidationPreferences = async () => {
+    try {
+      setSavingValidationPreferences(true);
+      await saveValidationPreferences(validationPreferencesDraft);
+      toast.success("Validation preferences saved successfully");
+    } catch (error) {
+      toast.error(error.message || "Failed to save validation preferences");
+    } finally {
+      setSavingValidationPreferences(false);
     }
   };
 
@@ -1147,7 +1198,7 @@ export default function Settings() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile">
+        <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>My Profile</CardTitle>
@@ -1323,6 +1374,117 @@ export default function Settings() {
                   )}
                   Save Profile
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Validation UI</CardTitle>
+              <CardDescription>
+                Control inline validation feedback globally, per form, and per field. Validation rules still run even when the UI is hidden.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-1">
+                  <p className="font-medium">Enable validation UI everywhere</p>
+                  <p className="text-sm text-muted-foreground">
+                    Turn all inline validation feedback on or off at once.
+                  </p>
+                </div>
+                <Switch
+                  checked={validationPreferencesDraft.enabled}
+                  onCheckedChange={(enabled) =>
+                    setValidationPreferencesDraft((prev) => ({
+                      ...normalizeValidationPreferences(prev),
+                      enabled,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-base font-medium">Per form and per field</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Disable validation UI form-by-form, then drill down to individual fields if needed.
+                  </p>
+                </div>
+                <Accordion type="multiple" className="w-full rounded-lg border px-4">
+                  {validationFormRegistry.map((formConfig) => {
+                    const formState = validationPreferencesDraft.forms?.[formConfig.id];
+                    return (
+                      <AccordionItem key={formConfig.id} value={formConfig.id}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="text-left">
+                            <p className="font-medium">{formConfig.label}</p>
+                            <p className="text-xs text-muted-foreground">{formConfig.description}</p>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-4">
+                          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+                            <div>
+                              <p className="text-sm font-medium">Show validation for this form</p>
+                              <p className="text-xs text-muted-foreground">
+                                This is the one-by-one switch for the whole form.
+                              </p>
+                            </div>
+                            <Switch
+                              checked={formState?.enabled ?? true}
+                              onCheckedChange={(enabled) => updateValidationFormState(formConfig.id, enabled)}
+                              disabled={!validationPreferencesDraft.enabled}
+                            />
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {formConfig.fields.map((field) => (
+                              <div key={`${formConfig.id}-${field.key}`} className="flex items-center justify-between rounded-md border px-3 py-2">
+                                <div className="pr-3">
+                                  <p className="text-sm font-medium">{field.label}</p>
+                                  <p className="text-xs text-muted-foreground font-mono">{field.key}</p>
+                                </div>
+                                <Switch
+                                  checked={formState?.fields?.[field.key] ?? true}
+                                  onCheckedChange={(enabled) => updateValidationFieldState(formConfig.id, field.key, enabled)}
+                                  disabled={!validationPreferencesDraft.enabled || formState?.enabled === false}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {validationPreferencesLoading ? "Loading current validation preferences..." : "Preferences are saved per user profile."}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setValidationPreferencesDraft(normalizeValidationPreferences())}
+                    disabled={savingValidationPreferences}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSaveValidationPreferences}
+                    disabled={savingValidationPreferences || validationPreferencesLoading}
+                  >
+                    {savingValidationPreferences ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Save Validation UI
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

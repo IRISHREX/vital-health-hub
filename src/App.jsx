@@ -8,6 +8,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { AuthProvider } from "./lib/AuthContext";
 import { ThemeProvider } from "./lib/ThemeContext";
 import { LayoutModeProvider } from "./lib/LayoutModeContext";
+import { ValidationPreferencesProvider } from "./lib/ValidationPreferencesContext";
 import AuthorizedRoute from "./components/AuthorizedRoute";
 import Dashboard from "./pages/Dashboard";
 import Beds from "./pages/Beds";
@@ -66,6 +67,7 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <ThemeProvider>
+        <ValidationPreferencesProvider>
         <LayoutModeProvider>
           <Toaster />
           <Sonner />
@@ -206,6 +208,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </LayoutModeProvider>
+        </ValidationPreferencesProvider>
         </ThemeProvider>
       </AuthProvider>
     </TooltipProvider>

@@ -339,33 +339,33 @@ exports.getUserPreferences = async (req, res, next) => {
 exports.updateUserPreferences = async (req, res, next) => {
   try {
     const { UserPreferences } = getTenantModels(req);
-    const {
-      theme,
-      language,
-      dateFormat,
-      timeFormat,
-      emailNotifications,
-      desktopNotifications
-    } = req.body;
+    const allowedKeys = [
+      'theme',
+      'language',
+      'dateFormat',
+      'timeFormat',
+      'emailNotifications',
+      'desktopNotifications',
+      'validationPreferences',
+    ];
+    const updates = allowedKeys.reduce((acc, key) => {
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) {
+        acc[key] = req.body[key];
+      }
+      return acc;
+    }, {});
 
     let preferences = await UserPreferences.findOne({ userId: req.user._id });
     
     if (!preferences) {
       preferences = await UserPreferences.create({
         userId: req.user._id,
-        ...req.body
+        ...updates
       });
     } else {
       preferences = await UserPreferences.findOneAndUpdate(
         { userId: req.user._id },
-        {
-          theme,
-          language,
-          dateFormat,
-          timeFormat,
-          emailNotifications,
-          desktopNotifications
-        },
+        updates,
         { new: true, runValidators: true }
       );
     }

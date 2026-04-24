@@ -160,6 +160,13 @@ const userPreferencesSchema = new mongoose.Schema({
   desktopNotifications: {
     type: Boolean,
     default: true
+  },
+  validationPreferences: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {
+      enabled: true,
+      forms: {}
+    }
   }
 }, {
   timestamps: true

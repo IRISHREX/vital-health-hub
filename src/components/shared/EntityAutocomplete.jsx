@@ -35,7 +35,9 @@ export default function EntityAutocomplete({
   minChars = 1,
   debounceMs = 300,
   className,
+  inputClassName,
   emptyMessage = "No matches. Keep typing to use as-is.",
+  ...inputProps
 }) {
   const [text, setText] = useState(selectedLabel || "");
   const [results, setResults] = useState([]);
@@ -151,8 +153,9 @@ export default function EntityAutocomplete({
             if (text.length >= minChars && results.length === 0) runSearch(text);
           }}
           onKeyDown={handleKeyDown}
-          className="pl-9 pr-9"
+          className={cn("pl-9 pr-9", inputClassName)}
           autoComplete="off"
+          {...inputProps}
         />
         {text && !disabled && (
           <button

@@ -3,11 +3,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { isValidPhone } from "@/lib/phoneValidation";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
+import { getValidationInputClass } from "@/lib/validationPreferences";
 
-export default function ExternalPatientForm({ data, onChange }) {
+export default function ExternalPatientForm({ data, onChange, errors = {}, formId }) {
   const [phoneError, setPhoneError] = useState("");
+  const { shouldShowValidation } = useValidationPreferences();
   
   const update = (field, value) => onChange({ ...data, [field]: value });
+  const showNameValidation = shouldShowValidation(formId, "externalPatient.name");
+  const showPhoneValidation = shouldShowValidation(formId, "externalPatient.phone");
+  const resolvedPhoneError = phoneError || errors["externalPatient.phone"];
   
   const handlePhoneChange = (e) => {
     const value = e.target.value;
@@ -33,7 +39,11 @@ export default function ExternalPatientForm({ data, onChange }) {
             placeholder="Full name"
             value={data.name || ""}
             onChange={(e) => update("name", e.target.value)}
+            className={getValidationInputClass(showNameValidation, errors["externalPatient.name"])}
           />
+          {showNameValidation && errors["externalPatient.name"] && (
+            <p className="text-xs text-destructive mt-0.5">{errors["externalPatient.name"]}</p>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Phone</Label>
@@ -41,9 +51,11 @@ export default function ExternalPatientForm({ data, onChange }) {
             placeholder="Enter 10-digit phone number"
             value={data.phone || ""}
             onChange={handlePhoneChange}
-            className={phoneError ? "border-red-500" : ""}
+            className={getValidationInputClass(showPhoneValidation, resolvedPhoneError)}
           />
-          {phoneError && <p className="text-xs text-red-500 mt-0.5">{phoneError}</p>}
+          {showPhoneValidation && resolvedPhoneError && (
+            <p className="text-xs text-destructive mt-0.5">{resolvedPhoneError}</p>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">

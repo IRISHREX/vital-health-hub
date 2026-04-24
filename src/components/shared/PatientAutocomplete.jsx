@@ -37,6 +37,7 @@ export default function PatientAutocomplete({
   placeholder = "Search patient by name, phone, or ID...",
   disabled = false,
   allowFreeText = false,
+  ...props
 }) {
   const fetcher = async (query) => {
     const list = await fetchPatients(query);
@@ -54,6 +55,7 @@ export default function PatientAutocomplete({
       disabled={disabled}
       allowFreeText={allowFreeText}
       emptyMessage="No matching patient found."
+      {...props}
     />
   );
 }

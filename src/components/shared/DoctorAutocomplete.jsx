@@ -34,6 +34,7 @@ export default function DoctorAutocomplete({
   placeholder = "Search doctor by name or specialization...",
   disabled = false,
   allowFreeText = false,
+  ...props
 }) {
   const [cache, setCache] = useState(null);
 
@@ -76,6 +77,7 @@ export default function DoctorAutocomplete({
       disabled={disabled}
       allowFreeText={allowFreeText}
       emptyMessage="No matching doctor found."
+      {...props}
     />
   );
 }
