@@ -15,9 +15,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import {
   listApprovalRules, createApprovalRule, updateApprovalRule, deleteApprovalRule,
-  listApprovalRequests, respondApprovalRequest, findApplicableRule,
+  listApprovalRequests, respondApprovalRequest, reassignApprovalRequest, findApplicableRule,
   APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES
 } from "@/lib/approvals";
+import { UserCog } from "lucide-react";
 
 const emptyRule = {
   name: "",
@@ -298,6 +299,122 @@ function RequestRespondDialog({ request, onDone }) {
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={submit} disabled={loading}>Submit</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReassignDialog({ request, onDone }) {
+  const [open, setOpen] = useState(false);
+  const [approverType, setApproverType] = useState(request.approverType || "role");
+  const [approverEmail, setApproverEmail] = useState("");
+  const [approverRole, setApproverRole] = useState("hospital_admin");
+  const [slaHours, setSlaHours] = useState("");
+  const [comment, setComment] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleOpen = (o) => {
+    setOpen(o);
+    if (o) {
+      setApproverType(request.approverType || "role");
+      setApproverEmail("");
+      setApproverRole(request.approverType === "role" ? request.approverRole || "hospital_admin" : "hospital_admin");
+      setSlaHours("");
+      setComment("");
+    }
+  };
+
+  const submit = async () => {
+    if (approverType === "email" && !approverEmail.trim()) return toast.error("Approver email required");
+    if (approverType === "role" && !approverRole) return toast.error("Approver role required");
+    try {
+      setLoading(true);
+      const payload = { approverType, comment };
+      if (approverType === "email") payload.approverEmail = approverEmail.trim();
+      else payload.approverRole = approverRole;
+      const hrs = parseInt(slaHours, 10);
+      if (Number.isFinite(hrs) && hrs > 0) payload.slaHours = hrs;
+      await reassignApprovalRequest(request._id, payload);
+      toast.success("Request reassigned · SLA recalculated");
+      setOpen(false);
+      onDone?.();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentApprover = request.approverType === "email"
+    ? request.approverEmail
+    : `Role: ${request.approverRole}`;
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" title="Reassign approver">
+          <UserCog className="mr-1 h-4 w-4" />Reassign
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reassign Approval Request</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+            <p><strong>{request.ruleName}</strong></p>
+            <p className="text-xs text-muted-foreground">
+              Currently with: {currentApprover} · Due {new Date(request.dueAt).toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <Label className="text-xs">New approver type</Label>
+            <Select value={approverType} onValueChange={setApproverType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="email">Specific Email</SelectItem>
+                <SelectItem value="role">By Role</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {approverType === "email" ? (
+            <div>
+              <Label className="text-xs">Approver email</Label>
+              <Input type="email" value={approverEmail} onChange={(e) => setApproverEmail(e.target.value)} placeholder="approver@hospital.com" />
+            </div>
+          ) : (
+            <div>
+              <Label className="text-xs">Approver role</Label>
+              <Select value={approverRole} onValueChange={setApproverRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{APPROVAL_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
+          <div>
+            <Label className="text-xs">New SLA window (hours)</Label>
+            <Input
+              type="number"
+              min="1"
+              placeholder="Leave blank to use the rule's default SLA"
+              value={slaHours}
+              onChange={(e) => setSlaHours(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Due date will be recalculated from now + this many hours.
+            </p>
+          </div>
+          <div>
+            <Label className="text-xs">Note to new approver (optional)</Label>
+            <Textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={loading}>
+            {loading ? "Reassigning…" : "Reassign & Reset SLA"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -665,7 +782,10 @@ export default function ApprovalsManager({ isAdmin = true }) {
                     From {r.requesterName || r.requesterEmail} · Due {new Date(r.dueAt).toLocaleString()}
                   </p>
                 </div>
-                <RequestRespondDialog request={r} onDone={refresh} />
+                <div className="flex items-center gap-2">
+                  <ReassignDialog request={r} onDone={refresh} />
+                  <RequestRespondDialog request={r} onDone={refresh} />
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -21,6 +21,8 @@ export const listApprovalRequests = (params = {}) => {
 export const createApprovalRequest = (data) => apiClient.post('/approvals/requests', data);
 export const respondApprovalRequest = (id, data) =>
   apiClient.patch(`/approvals/requests/${id}/respond`, data);
+export const reassignApprovalRequest = (id, data) =>
+  apiClient.patch(`/approvals/requests/${id}/reassign`, data);
 
 export const escalateOverdueApprovals = () => apiClient.post('/approvals/escalate', {});
 

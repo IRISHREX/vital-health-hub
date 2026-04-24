@@ -245,6 +245,117 @@ exports.respondToRequest = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// Reassign an open approval request to a different approver and reset SLA
+exports.reassignRequest = async (req, res, next) => {
+  try {
+    const { ApprovalRequest, ApprovalRule, User, Notification } = getModels(req);
+    const { approverType, approverEmail = '', approverRole = '', slaHours, comment = '' } = req.body;
+
+    if (!['email', 'role'].includes(approverType)) {
+      return res.status(400).json({ success: false, message: 'approverType must be "email" or "role"' });
+    }
+    if (approverType === 'email' && !approverEmail) {
+      return res.status(400).json({ success: false, message: 'approverEmail required' });
+    }
+    if (approverType === 'role' && !approverRole) {
+      return res.status(400).json({ success: false, message: 'approverRole required' });
+    }
+
+    const reqDoc = await ApprovalRequest.findById(req.params.id);
+    if (!reqDoc) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!['pending', 'escalated'].includes(reqDoc.status)) {
+      return res.status(400).json({ success: false, message: 'Only open requests can be reassigned' });
+    }
+
+    // Authorization: admin, current approver, or original requester
+    const userEmail = String(req.user.email || '').toLowerCase();
+    const allowed =
+      isAdmin(req.user.role) ||
+      (reqDoc.approverType === 'email' && reqDoc.approverEmail === userEmail) ||
+      (reqDoc.approverType === 'role' && reqDoc.approverRole === req.user.role) ||
+      String(reqDoc.requester) === String(req.user._id);
+    if (!allowed) {
+      return res.status(403).json({ success: false, message: 'Not authorized to reassign' });
+    }
+
+    const previous = {
+      approverType: reqDoc.approverType,
+      approverEmail: reqDoc.approverEmail,
+      approverRole: reqDoc.approverRole,
+    };
+
+    // Recalculate SLA: prefer explicit slaHours, otherwise fall back to rule's slaHours, otherwise 24h
+    let hours = Number(slaHours);
+    if (!Number.isFinite(hours) || hours <= 0) {
+      const rule = await ApprovalRule.findById(reqDoc.rule);
+      hours = (rule && rule.slaHours) || 24;
+    }
+    const newDueAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+
+    reqDoc.approverType = approverType;
+    reqDoc.approverEmail = approverType === 'email' ? approverEmail.toLowerCase().trim() : '';
+    reqDoc.approverRole = approverType === 'role' ? approverRole : '';
+    reqDoc.dueAt = newDueAt;
+    // Reset escalation state so the new approver gets a fresh SLA window
+    reqDoc.status = 'pending';
+    reqDoc.escalated = false;
+    reqDoc.escalatedAt = undefined;
+    reqDoc.escalationTo = '';
+    await reqDoc.save();
+
+    // Notify new approver(s)
+    let approverUsers = [];
+    if (approverType === 'email') {
+      const u = await User.findOne({ email: reqDoc.approverEmail });
+      if (u) approverUsers.push(u);
+    } else {
+      approverUsers = await User.find({ role: approverRole, isActive: true });
+    }
+
+    const subjectLine = `Approval reassigned: ${reqDoc.ruleName}`;
+    const bodyHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px;">
+        <h2 style="color:#0ea5e9;">Approval Request Reassigned to You</h2>
+        <p><strong>${reqDoc.requesterName || reqDoc.requesterEmail}</strong> has a pending approval for <strong>${reqDoc.ruleName}</strong>.</p>
+        <p><strong>Module:</strong> ${reqDoc.module} &middot; <strong>Action:</strong> ${reqDoc.action}</p>
+        <p><strong>New due by:</strong> ${newDueAt.toLocaleString()}</p>
+        ${comment ? `<p><strong>Reassignment note:</strong> ${comment}</p>` : ''}
+        <p>Open the system and visit Settings &rarr; Approvals to respond.</p>
+      </div>`;
+
+    for (const u of approverUsers) {
+      try {
+        await Notification.create({
+          recipient: u._id,
+          type: 'approval_request',
+          priority: 'high',
+          title: subjectLine,
+          message: `${reqDoc.requesterName || reqDoc.requesterEmail} requests ${reqDoc.ruleName}`,
+          link: '/settings?tab=approvals'
+        });
+      } catch {}
+      if (u.email) sendCustomEmail(u.email, subjectLine, bodyHtml).catch(() => {});
+    }
+    if (approverType === 'email' && approverUsers.length === 0) {
+      sendCustomEmail(reqDoc.approverEmail, subjectLine, bodyHtml).catch(() => {});
+    }
+
+    // Notify requester of the change
+    try {
+      await Notification.create({
+        recipient: reqDoc.requester,
+        type: 'approval_request',
+        priority: 'medium',
+        title: `Your approval request was reassigned`,
+        message: `"${reqDoc.ruleName}" is now with ${approverType === 'email' ? approverEmail : `role: ${approverRole}`}. New due ${newDueAt.toLocaleString()}.`,
+        link: '/settings?tab=approvals'
+      });
+    } catch {}
+
+    res.json({ success: true, data: reqDoc, previous });
+  } catch (err) { next(err); }
+};
+
 // Cron-style endpoint: escalate overdue requests
 exports.escalateOverdue = async (req, res, next) => {
   try {
