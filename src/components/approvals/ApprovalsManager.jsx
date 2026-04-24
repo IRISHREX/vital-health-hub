@@ -15,9 +15,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import {
   listApprovalRules, createApprovalRule, updateApprovalRule, deleteApprovalRule,
-  listApprovalRequests, respondApprovalRequest, findApplicableRule,
+  listApprovalRequests, respondApprovalRequest, reassignApprovalRequest, findApplicableRule,
   APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES
 } from "@/lib/approvals";
+import { UserCog } from "lucide-react";
 
 const emptyRule = {
   name: "",
