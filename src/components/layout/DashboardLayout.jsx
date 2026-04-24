@@ -7,6 +7,7 @@ import { checkHealth } from "@/lib/health";
 import { useLayoutMode } from "@/lib/LayoutModeContext";
 import { WidgetHome } from "@/components/dashboard/WidgetHome";
 import { AnimatePresence, motion } from "framer-motion";
+import { FloatingNavigatorButton } from "./FloatingNavigatorButton";
 
 export function DashboardLayout() {
   const { mode, widgetOverlayOpen, setWidgetOverlayOpen } = useLayoutMode();
@@ -58,6 +59,10 @@ export function DashboardLayout() {
           <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
             {showWidgetHome ? <WidgetHome /> : <Outlet />}
           </main>
+          <FloatingNavigatorButton
+            open={widgetOverlayOpen}
+            onToggle={() => setWidgetOverlayOpen((prev) => !prev)}
+          />
 
           {/* Widget overlay – opens on any page when triggered */}
           <AnimatePresence>

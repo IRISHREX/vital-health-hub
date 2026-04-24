@@ -24,8 +24,8 @@ export function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { canView } = useVisualAuth();
-  const { theme, toggleTheme, resolvedTheme } = useTheme();
-  const { mode, setMode, widgetOverlayOpen, setWidgetOverlayOpen } = useLayoutMode();
+  const { toggleTheme, resolvedTheme } = useTheme();
+  const { mode, setMode } = useLayoutMode();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const canViewNotifications = canView("notifications");
@@ -117,16 +117,6 @@ export function Header() {
             <span className="hidden sm:inline">Widgets</span>
           </Button>
         </div>
-        {/* Widget nav overlay toggle (works on any page) */}
-        <Button
-          variant={widgetOverlayOpen ? "secondary" : "ghost"}
-          size="icon"
-          className="h-8 w-8"
-          title="Open module navigator"
-          onClick={() => setWidgetOverlayOpen((prev) => !prev)}
-        >
-          <LayoutGrid className="h-4 w-4" />
-        </Button>
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
