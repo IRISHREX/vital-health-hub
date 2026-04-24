@@ -29,6 +29,7 @@ import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import RowActions from "@/components/shared/RowActions";
 import {
   Plus,
   Search,
@@ -591,52 +592,16 @@ function AdmissionCard({
             </p>
           </div>
           <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={handleViewHistory}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-              title="View History"
-            >
-              <History className="h-4 w-4 text-blue-600" />
-            </button>
-            <button
-              onClick={handleViewDetails}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-              title="View Details"
-            >
-              <Eye className="h-4 w-4 text-green-600" />
-            </button>
-            <button
-              onClick={handleEdit}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-              title="Edit Admission"
-            >
-              <Pencil className="h-4 w-4 text-indigo-600" />
-            </button>
-            {admission.status === 'ADMITTED' && (
-              <>
-                <button
-                  onClick={handlePrescription}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition"
-                  title="Create Prescription"
-                >
-                  <ClipboardPlus className="h-4 w-4 text-blue-600" />
-                </button>
-                <button
-                  onClick={handleTransfer}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition"
-                  title="Transfer Bed"
-                >
-                  <ArrowRight className="h-4 w-4 text-orange-600" />
-                </button>
-                <button
-                  onClick={handleDischarge}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition"
-                  title="Discharge"
-                >
-                  <LogOut className="h-4 w-4 text-red-600" />
-                </button>
-              </>
-            )}
+            <RowActions
+              actions={[
+                { icon: History, label: "View History", onClick: handleViewHistory, variant: "info" },
+                { icon: Eye, label: "View Details", onClick: handleViewDetails, variant: "success" },
+                { icon: Pencil, label: "Edit Admission", onClick: handleEdit, variant: "primary" },
+                { icon: ClipboardPlus, label: "Create Prescription", onClick: handlePrescription, variant: "info", hidden: admission.status !== 'ADMITTED' },
+                { icon: ArrowRight, label: "Transfer Bed", onClick: handleTransfer, variant: "warning", hidden: admission.status !== 'ADMITTED' },
+                { icon: LogOut, label: "Discharge", onClick: handleDischarge, variant: "destructive", hidden: admission.status !== 'ADMITTED' },
+              ]}
+            />
           </div>
         </div>
       </CardContent>
