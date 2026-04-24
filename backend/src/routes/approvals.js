@@ -18,6 +18,7 @@ router.get('/applicable', c.findApplicableRule);
 router.get('/requests', c.listRequests);
 router.post('/requests', c.createRequest);
 router.patch('/requests/:id/respond', c.respondToRequest);
+router.patch('/requests/:id/reassign', c.reassignRequest);
 
 // Escalation cron (can be called by scheduler / admins)
 router.post('/escalate', c.escalateOverdue);
