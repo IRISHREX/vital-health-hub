@@ -298,27 +298,13 @@ export default function Patients() {
                       <span className="text-sm font-medium">{getBedNumber(patient.assignedBed)}</span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="View Details" onClick={() => openViewDialog(patient)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Edit" onClick={() => openEditDialog(patient)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {permissions.canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Delete"
-                            className="text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDelete(patient)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                      <RowActions
+                        actions={[
+                          { icon: Eye, label: "View Details", onClick: () => openViewDialog(patient), variant: "info" },
+                          { icon: Pencil, label: "Edit", onClick: () => openEditDialog(patient), variant: "primary", hidden: !permissions.canEdit },
+                          { icon: Trash2, label: "Delete", onClick: () => handleDelete(patient), variant: "destructive", hidden: !permissions.canDelete },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
