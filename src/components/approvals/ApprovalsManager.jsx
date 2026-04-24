@@ -421,7 +421,7 @@ function ReassignDialog({ request, onDone }) {
   );
 }
 
-
+function SimulatePreview({ rule, requesterName, requesterEmail, formData }) {
   if (!rule) {
     return (
       <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground text-center">
