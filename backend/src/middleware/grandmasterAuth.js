@@ -10,7 +10,6 @@ const authenticateGrandmaster = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.warn('❌ Missing or invalid Authorization header');
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
@@ -18,17 +17,14 @@ const authenticateGrandmaster = async (req, res, next) => {
     const decoded = jwt.verify(token, config.jwt.secret);
 
     if (!decoded.isGrandmaster) {
-      console.warn('❌ Not a grandmaster token:', decoded);
       return res.status(403).json({ success: false, message: 'Grandmaster access required' });
     }
 
     const user = await GrandmasterUser.findById(decoded.id);
     if (!user || !user.isActive) {
-      console.warn('❌ Invalid or deactivated user:', decoded.id);
       return res.status(401).json({ success: false, message: 'Invalid or deactivated account' });
     }
 
-    console.log(`✅ Authenticated grandmaster: ${user.email}`);
     req.user = user;
     next();
   } catch (error) {

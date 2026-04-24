@@ -119,7 +119,6 @@ export default function BedActionModal({ bed, isOpen, onClose }) {
       const res = await getDoctors();
       const list = res?.data?.doctors || [];
       setDoctors(list);
-      // console.log("Loaded doctors for discharge form:", list);
     } catch (error) {
       toast({
         title: "Error",
