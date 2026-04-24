@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import ApprovalsManager from "@/components/approvals/ApprovalsManager";
+import ApprovalsDiagnostics from "@/components/approvals/ApprovalsDiagnostics";
 import { isValidPhone } from "@/lib/phoneValidation";
 import {
   getAllSettings,
@@ -2478,7 +2479,18 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ApprovalsManager isAdmin={isAdmin} />
+                <Tabs defaultValue="rules" className="space-y-4">
+                  <TabsList>
+                    <TabsTrigger value="rules">Rules & Inbox</TabsTrigger>
+                    <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="rules">
+                    <ApprovalsManager isAdmin={isAdmin} />
+                  </TabsContent>
+                  <TabsContent value="diagnostics">
+                    <ApprovalsDiagnostics />
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>
