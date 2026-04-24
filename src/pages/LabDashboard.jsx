@@ -28,6 +28,7 @@ import LabReportDialog from "@/components/lab/LabReportDialog";
 import LabCatalogManager from "@/components/lab/LabCatalogManager";
 import SampleCollectionQueue from "@/components/lab/SampleCollectionQueue";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import RowActions from "@/components/shared/RowActions";
 
 const statusColors = {
   ordered: "bg-muted text-muted-foreground",
@@ -423,25 +424,22 @@ export default function LabDashboard() {
                         {group.latestOrderAt ? new Date(group.latestOrderAt).toLocaleDateString() : "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" title="View Tests" onClick={() => openPatientTestsDialog(group)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Delete Tests" 
-                            className="text-destructive hover:bg-destructive/10 disabled:text-muted-foreground disabled:hover:bg-transparent"
-                            disabled={!group.tests.every(t => t.billed)}
-                            onClick={() => {
-                              if (window.confirm(`Delete all tests for this patient?`)) {
-                                group.tests.forEach(test => handleDelete(test._id));
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <RowActions
+                          actions={[
+                            { icon: Eye, label: "View Tests", onClick: () => openPatientTestsDialog(group), variant: "info" },
+                            {
+                              icon: Trash2,
+                              label: "Delete Tests",
+                              onClick: () => {
+                                if (window.confirm("Delete all tests for this patient?")) {
+                                  group.tests.forEach((test) => handleDelete(test._id));
+                                }
+                              },
+                              variant: "destructive",
+                              disabled: !group.tests.every((t) => t.billed),
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   )) : (
@@ -587,61 +585,58 @@ export default function LabDashboard() {
                     {new Date(test.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" title="View Details" onClick={() => { setSelectedTest(test); setDetailsDialogOpen(true); }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {test.status === "ordered" && permissions.canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Collect Sample"
-                          onClick={() => handleCollectSample(test._id)}
-                          disabled={collectingTestIds.has(test._id)}
-                        >
-                          <TestTubes className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {(test.sampleStatus === "collected" || test.sampleStatus === "received") && test.status !== "processing" && permissions.canEdit && (
-                        <Button variant="ghost" size="icon" title="Start Processing" onClick={() => handleStartProcessing(test._id)}>
-                          <Play className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {(test.status === "completed" || test.status === "verified" || test.status === "delivered") && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="View Report"
-                            onClick={() => {
-                              setSelectedTest(test);
-                              setSelectedReportTests([test]);
-                              setReportDialogOpen(true);
-                            }}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Preview & Edit Report"
-                            onClick={() => navigate(`/lab/${test._id}/preview`)}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                      {!test.billed && test.status !== "cancelled" && permissions.canCreate && (
-                        <Button variant="ghost" size="icon" title="Generate Invoice" onClick={() => handleGenerateInvoice([test._id])}>
-                          <Receipt className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {test.status === "ordered" && permissions.canDelete && (
-                        <Button variant="ghost" size="icon" title="Cancel" className="text-destructive hover:bg-destructive" onClick={() => handleDelete(test._id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <RowActions
+                      actions={[
+                        { icon: Eye, label: "View Details", onClick: () => { setSelectedTest(test); setDetailsDialogOpen(true); }, variant: "info" },
+                        {
+                          icon: TestTubes,
+                          label: "Collect Sample",
+                          onClick: () => handleCollectSample(test._id),
+                          variant: "primary",
+                          hidden: test.status !== "ordered" || !permissions.canEdit,
+                          disabled: collectingTestIds.has(test._id),
+                        },
+                        {
+                          icon: Play,
+                          label: "Start Processing",
+                          onClick: () => handleStartProcessing(test._id),
+                          variant: "warning",
+                          hidden: !["collected", "received"].includes(test.sampleStatus) || test.status === "processing" || !permissions.canEdit,
+                        },
+                        {
+                          icon: FileText,
+                          label: "View Report",
+                          onClick: () => {
+                            setSelectedTest(test);
+                            setSelectedReportTests([test]);
+                            setReportDialogOpen(true);
+                          },
+                          variant: "success",
+                          hidden: !["completed", "verified", "delivered"].includes(test.status),
+                        },
+                        {
+                          icon: ExternalLink,
+                          label: "Preview Report",
+                          onClick: () => navigate(`/lab/${test._id}/preview`),
+                          variant: "info",
+                          hidden: !["completed", "verified", "delivered"].includes(test.status),
+                        },
+                        {
+                          icon: Receipt,
+                          label: "Generate Invoice",
+                          onClick: () => handleGenerateInvoice([test._id]),
+                          variant: "warning",
+                          hidden: test.billed || test.status === "cancelled" || !permissions.canCreate,
+                        },
+                        {
+                          icon: Trash2,
+                          label: "Cancel",
+                          onClick: () => handleDelete(test._id),
+                          variant: "destructive",
+                          hidden: test.status !== "ordered" || !permissions.canDelete,
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

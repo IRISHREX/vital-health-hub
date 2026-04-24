@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import OrderRadiologyDialog from "@/components/radiology/OrderRadiologyDialog";
 import RadiologyReportDialog from "@/components/radiology/RadiologyReportDialog";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import RowActions from "@/components/shared/RowActions";
 
 const statusColors = {
   ordered: "bg-muted text-muted-foreground",
@@ -226,48 +227,66 @@ export default function RadiologyDashboard() {
                     <TableCell><span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[o.status] || ""}`}>{o.status?.replace(/_/g, " ")}</span></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        {o.status === "ordered" && permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Schedule" onClick={() => handleAction(scheduleOrder, o._id, "Scheduled")}>
-                            <Calendar className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {["ordered", "scheduled"].includes(o.status) && permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Start Study" onClick={() => handleAction(startStudy, o._id, "Study started")}>
-                            <Play className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {o.status === "in_progress" && permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Complete" onClick={() => handleAction(completeStudy, o._id, "Study completed")}>
-                            <CheckCircle2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {["completed", "reported", "verified", "delivered"].includes(o.status) && (
-                          <>
-                            <Button variant="ghost" size="icon" title="Report" onClick={() => { setSelectedOrder(o); setReportDialogOpen(true); }}>
-                              <FileText className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="Preview & Edit Report" onClick={() => navigate(`/radiology/${o._id}/preview`)}>
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        {["verified", "delivered"].includes(o.status) && !o.billed && permissions.canCreate && (
-                          <Button variant="ghost" size="icon" title="Generate Invoice" onClick={() => handleGenerateInvoice([o._id])}>
-                            <Receipt className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {["reported", "verified"].includes(o.status) && permissions.canEdit && (
-                          <Button variant="ghost" size="icon" title="Deliver" onClick={() => handleAction(deliverRadiologyReport, o._id, "Report delivered")}>
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {o.status === "ordered" && permissions.canDelete && (
-                          <Button variant="ghost" size="icon" title="Cancel" className="text-destructive hover:bg-destructive" onClick={() => handleDelete(o._id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                      <RowActions
+                        actions={[
+                          {
+                            icon: Calendar,
+                            label: "Schedule",
+                            onClick: () => handleAction(scheduleOrder, o._id, "Scheduled"),
+                            variant: "primary",
+                            hidden: o.status !== "ordered" || !permissions.canEdit,
+                          },
+                          {
+                            icon: Play,
+                            label: "Start Study",
+                            onClick: () => handleAction(startStudy, o._id, "Study started"),
+                            variant: "warning",
+                            hidden: !["ordered", "scheduled"].includes(o.status) || !permissions.canEdit,
+                          },
+                          {
+                            icon: CheckCircle2,
+                            label: "Complete",
+                            onClick: () => handleAction(completeStudy, o._id, "Study completed"),
+                            variant: "success",
+                            hidden: o.status !== "in_progress" || !permissions.canEdit,
+                          },
+                          {
+                            icon: FileText,
+                            label: "Report",
+                            onClick: () => { setSelectedOrder(o); setReportDialogOpen(true); },
+                            variant: "info",
+                            hidden: !["completed", "reported", "verified", "delivered"].includes(o.status),
+                          },
+                          {
+                            icon: ExternalLink,
+                            label: "Preview Report",
+                            onClick: () => navigate(`/radiology/${o._id}/preview`),
+                            variant: "info",
+                            hidden: !["completed", "reported", "verified", "delivered"].includes(o.status),
+                          },
+                          {
+                            icon: Receipt,
+                            label: "Generate Invoice",
+                            onClick: () => handleGenerateInvoice([o._id]),
+                            variant: "warning",
+                            hidden: !["verified", "delivered"].includes(o.status) || o.billed || !permissions.canCreate,
+                          },
+                          {
+                            icon: Send,
+                            label: "Deliver",
+                            onClick: () => handleAction(deliverRadiologyReport, o._id, "Report delivered"),
+                            variant: "success",
+                            hidden: !["reported", "verified"].includes(o.status) || !permissions.canEdit,
+                          },
+                          {
+                            icon: Trash2,
+                            label: "Cancel",
+                            onClick: () => handleDelete(o._id),
+                            variant: "destructive",
+                            hidden: o.status !== "ordered" || !permissions.canDelete,
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 )) : (

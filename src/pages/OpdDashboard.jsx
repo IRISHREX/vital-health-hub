@@ -28,6 +28,7 @@ import {
 import RestrictedAction from "@/components/permissions/RestrictedAction";
 import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
+import RowActions from "@/components/shared/RowActions";
 import {
   Calendar,
   Users,
@@ -282,27 +283,13 @@ export default function OpdDashboard() {
                         <Badge variant="outline">{statusLabel(apt?.status)}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" title="View Details" onClick={() => navigate("/appointments")}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {permissions.canEdit && (
-                            <Button variant="ghost" size="icon" title="Edit" onClick={() => navigate("/appointments")}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {permissions.canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Prescription"
-                              className="text-primary hover:bg-primary"
-                              onClick={() => openPrescriptionDialog(apt)}
-                            >
-                              <ClipboardPlus className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                        <RowActions
+                          actions={[
+                            { icon: Eye, label: "View Details", onClick: () => navigate("/appointments"), variant: "info" },
+                            { icon: Pencil, label: "Edit", onClick: () => navigate("/appointments"), variant: "primary", hidden: !permissions.canEdit },
+                            { icon: ClipboardPlus, label: "Prescription", onClick: () => openPrescriptionDialog(apt), variant: "info", hidden: !permissions.canEdit },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   );

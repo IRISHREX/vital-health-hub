@@ -14,6 +14,7 @@ import RestrictedAction from "@/components/permissions/RestrictedAction";
 import { useNavigate } from "react-router-dom";
 import { deleteUser } from "@/lib/users";
 import { toast } from "sonner";
+import RowActions from "@/components/shared/RowActions";
 
 export default function Nurses() {
   const { canCreate, canEdit, canDelete } = useVisualAuth();
@@ -159,10 +160,14 @@ export default function Nurses() {
                     )}
                   </div>
                 </div>
-                <div className="mt-3 flex items-center gap-1.5 pt-2 border-t">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="View Nurse" aria-label="View nurse details" onClick={() => navigate('/nurse', { state: { selectedNurseId: nurse._id } })}><Eye className="h-4 w-4" /></Button>
-                  {canEdit("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit Nurse" aria-label="Edit nurse" onClick={() => openEditDialog(nurse)}><Pencil className="h-4 w-4" /></Button>}
-                  {canDelete("nurses") && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive" title="Delete Nurse" aria-label="Delete nurse" onClick={() => handleDeleteNurse(nurse)}><Trash2 className="h-4 w-4" /></Button>}
+                <div className="mt-3 flex items-center justify-end pt-2 border-t">
+                  <RowActions
+                    actions={[
+                      { icon: Eye, label: "View Nurse", onClick: () => navigate('/nurse', { state: { selectedNurseId: nurse._id } }), variant: "info" },
+                      { icon: Pencil, label: "Edit Nurse", onClick: () => openEditDialog(nurse), variant: "primary", hidden: !canEdit("nurses") },
+                      { icon: Trash2, label: "Delete Nurse", onClick: () => handleDeleteNurse(nurse), variant: "destructive", hidden: !canDelete("nurses") },
+                    ]}
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -30,6 +30,7 @@ import {
 } from "@/lib/roomTypeServices";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import RowActions from "@/components/shared/RowActions";
 
 const categories = [
   { value: "room_utility", label: "Room Utility" },
@@ -241,16 +242,19 @@ function ServiceCatalogTab() {
                     <Badge variant={svc.isActive ? "default" : "secondary"}>{svc.isActive ? "Active" : "Inactive"}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(svc)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => {
-                        if (window.confirm(`Delete "${svc.name}"?`)) deleteMut.mutate(svc._id);
-                      }}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <RowActions
+                      actions={[
+                        { icon: Pencil, label: "Edit Service", onClick: () => handleEdit(svc), variant: "primary" },
+                        {
+                          icon: Trash2,
+                          label: "Delete Service",
+                          onClick: () => {
+                            if (window.confirm(`Delete "${svc.name}"?`)) deleteMut.mutate(svc._id);
+                          },
+                          variant: "destructive",
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

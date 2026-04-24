@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { getBeds } from "@/lib/beds";
+import { deleteBed, getBeds } from "@/lib/beds";
 import { PageSkeleton } from "@/components/ui/table-skeleton";
-import { useSound } from "@/hooks/useSound";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,8 @@ import RoomAssignDialog from "@/components/dashboard/RoomAssignDialog";
 import { useAuth } from "@/lib/AuthContext";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import RowActions from "@/components/shared/RowActions";
+import { useToast } from "@/hooks/use-toast";
 
 const bedTypes = [
   "icu",
@@ -70,6 +71,7 @@ const getRooms = (beds) => {
 export default function Beds() {
   const { user } = useAuth();
   const { canCreate } = useVisualAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -111,6 +113,26 @@ export default function Beds() {
     setDialogOpen(false);
     setSelectedBed(null);
     fetchData();
+  };
+
+  const handleDeleteBed = async (bed) => {
+    const ok = window.confirm(`Delete bed ${bed.bedNumber}?`);
+    if (!ok) return;
+
+    try {
+      await deleteBed(bed._id);
+      toast({
+        title: "Success",
+        description: "Bed deleted successfully",
+      });
+      fetchData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete bed",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchData = async () => {
@@ -446,32 +468,13 @@ export default function Beds() {
                               {bed.nurseInCharge ? `${bed.nurseInCharge.firstName} ${bed.nurseInCharge.lastName}` : "-"}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="View Details"
-                                  onClick={() => openAssignDialog(bed)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="Edit"
-                                  onClick={() => openEditDialog(bed)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="Delete"
-                                  className="text-destructive hover:bg-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              <RowActions
+                                actions={[
+                                  { icon: Eye, label: "View Details", onClick: () => openAssignDialog(bed), variant: "info" },
+                                  { icon: Pencil, label: "Edit", onClick: () => openEditDialog(bed), variant: "primary" },
+                                  { icon: Trash2, label: "Delete", onClick: () => handleDeleteBed(bed), variant: "destructive" },
+                                ]}
+                              />
                             </TableCell>
                           </TableRow>
                         ))

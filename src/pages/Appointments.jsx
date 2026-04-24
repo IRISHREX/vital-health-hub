@@ -25,6 +25,7 @@ import RestrictedAction from "@/components/permissions/RestrictedAction";
 import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
 import ViewAppointmentDialog from "@/components/dashboard/ViewAppointmentDialog";
+import RowActions from "@/components/shared/RowActions";
 
 const statusConfig = {
   scheduled: { label: "Pending", variant: "info" },
@@ -411,65 +412,16 @@ export default function Appointments() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="View Details"
-                          onClick={() => openViewDialog(apt)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Edit"
-                          onClick={() => openEditDialog(apt)}
-                          disabled={apt.status === "completed"}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Prescription"
-                          className="text-primary hover:bg-primary"
-                          onClick={() => openPrescriptionDialog(apt)}
-                        >
-                          <ClipboardPlus className="h-4 w-4" />
-                        </Button>
-                        {apt.status === "scheduled" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Complete"
-                              className="text-status-available hover:bg-status-available"
-                              onClick={() => handleStatusUpdate(apt._id, "completed")}
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Cancel"
-                              className="text-status-occupied hover:bg-status-occupied"
-                              onClick={() => handleStatusUpdate(apt._id, "cancelled")}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Delete"
-                          className="text-destructive hover:bg-destructive"
-                          onClick={() => handleDelete(apt._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <RowActions
+                        actions={[
+                          { icon: Eye, label: "View Details", onClick: () => openViewDialog(apt), variant: "info" },
+                          { icon: Pencil, label: "Edit", onClick: () => openEditDialog(apt), variant: "primary", disabled: apt.status === "completed" },
+                          { icon: ClipboardPlus, label: "Prescription", onClick: () => openPrescriptionDialog(apt), variant: "info" },
+                          { icon: CheckCircle2, label: "Complete", onClick: () => handleStatusUpdate(apt._id, "completed"), variant: "success", hidden: apt.status !== "scheduled" },
+                          { icon: XCircle, label: "Cancel", onClick: () => handleStatusUpdate(apt._id, "cancelled"), variant: "warning", hidden: apt.status !== "scheduled" },
+                          { icon: Trash2, label: "Delete", onClick: () => handleDelete(apt._id), variant: "destructive" },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
