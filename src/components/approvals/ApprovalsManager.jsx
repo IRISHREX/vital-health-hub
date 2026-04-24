@@ -782,7 +782,10 @@ export default function ApprovalsManager({ isAdmin = true }) {
                     From {r.requesterName || r.requesterEmail} · Due {new Date(r.dueAt).toLocaleString()}
                   </p>
                 </div>
-                <RequestRespondDialog request={r} onDone={refresh} />
+                <div className="flex items-center gap-2">
+                  <ReassignDialog request={r} onDone={refresh} />
+                  <RequestRespondDialog request={r} onDone={refresh} />
+                </div>
               </CardContent>
             </Card>
           ))}
