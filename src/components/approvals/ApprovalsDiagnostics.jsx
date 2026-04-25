@@ -31,8 +31,6 @@ function ConsoleCapture({ logs }) {
   );
 }
 
-class SceneErrorBoundary extends Error {}
-
 function SafeScene({ onError }) {
   const [errored, setErrored] = useState(false);
   useEffect(() => {
