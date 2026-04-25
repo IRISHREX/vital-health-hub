@@ -409,7 +409,7 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
                     </Button>
                   </div>
                 </TableCell>
-                <TableCell>{new Date(row.lastDate).toLocaleDateString()}</TableCell>
+                <TableCell>{formatDate(row.lastDate)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="sm" onClick={() => onOpenPatient(row)}>
