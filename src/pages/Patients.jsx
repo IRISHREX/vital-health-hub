@@ -28,6 +28,7 @@ import { Search, Plus, Users, UserCheck, UserX, Eye, Pencil, Trash2 } from "luci
 import PatientDialog from "@/components/dashboard/PatientDialog";
 import ViewPatientDialog from "@/components/dashboard/ViewPatientDialog";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
+import Can from "@/components/permissions/Can";
 import RowActions from "@/components/shared/RowActions";
 import { Pagination } from "@/components/ui/pagination";
 import { PageSkeleton } from "@/components/ui/table-skeleton";
@@ -165,14 +166,14 @@ export default function Patients() {
             Manage patient registrations and admissions
           </p>
         </div>
-        {permissions.canCreate && (
+        <Can module="patients" action="create">
           <RestrictedAction module="patients" feature="create">
             <Button onClick={openCreateDialog}>
               <Plus className="mr-2 h-4 w-4" />
               Register Patient
             </Button>
           </RestrictedAction>
-        )}
+        </Can>
       </div>
 
       <PatientDialog
