@@ -1,0 +1,11 @@
+import { useEffect, useState } from 'react';
+
+/** Returns `value` debounced by `delay` ms. Use for search inputs, filters. */
+export function useDebouncedValue(value, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
