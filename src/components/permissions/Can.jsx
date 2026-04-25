@@ -1,4 +1,5 @@
 import { useVisualAuth } from "@/hooks/useVisualAuth";
+import { useAuth } from "@/lib/AuthContext";
 
 /**
  * Contextual permission gate. Renders children only if the current user
@@ -14,15 +15,27 @@ import { useVisualAuth } from "@/hooks/useVisualAuth";
  *     <Button variant="destructive">Delete Invoice</Button>
  *   </Can>
  *
+ *   <Can roles={["super_admin", "hospital_admin"]}>
+ *     <AdminPanel />
+ *   </Can>
+ *
  * Props:
- *   module   - RBAC module key (e.g. "patients", "billing")
+ *   module   - RBAC module key (e.g. "patients", "billing"). Optional when
+ *              only `roles` is used.
  *   action   - "view" | "create" | "edit" | "delete" (default "view")
  *   feature  - optional feature name; when supplied, also checks the
- *              per-user restricted-features list from useVisualAuth.
- *   roles    - optional array of role keys; if provided, current user role
- *              must be included (in addition to the RBAC check).
+ *              per-user restricted-features list.
+ *   roles    - optional array of role keys; current user role must be
+ *              included (combined with the RBAC check via AND).
  *   fallback - rendered when not allowed (default: null).
  */
+const ACTION_MAP = {
+  view: "canView",
+  create: "canCreate",
+  edit: "canEdit",
+  delete: "canDelete",
+};
+
 export default function Can({
   module,
   action = "view",
@@ -32,28 +45,17 @@ export default function Can({
   children,
 }) {
   const { can, canUseFeature } = useVisualAuth();
+  const { user } = useAuth();
 
-  if (Array.isArray(roles) && roles.length > 0) {
-    // Lazy import to avoid extra hook surface
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { useAuth } = require("@/lib/AuthContext");
-    const { user } = useAuth();
-    if (!roles.includes(user?.role)) return fallback;
+  if (Array.isArray(roles) && roles.length > 0 && !roles.includes(user?.role)) {
+    return fallback;
   }
+
+  if (!module) return children;
 
   const allowed = feature
     ? canUseFeature(module, feature)
-    : can(module, mapAction(action));
+    : can(module, ACTION_MAP[String(action).toLowerCase()] || "canView");
 
   return allowed ? children : fallback;
-}
-
-function mapAction(action) {
-  const map = {
-    view: "canView",
-    create: "canCreate",
-    edit: "canEdit",
-    delete: "canDelete",
-  };
-  return map[String(action || "").toLowerCase()] || "canView";
 }
