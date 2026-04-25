@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -10,57 +11,78 @@ import { ThemeProvider } from "./lib/ThemeContext";
 import { LayoutModeProvider } from "./lib/LayoutModeContext";
 import { ValidationPreferencesProvider } from "./lib/ValidationPreferencesContext";
 import AuthorizedRoute from "./components/AuthorizedRoute";
-import Dashboard from "./pages/Dashboard";
-import Beds from "./pages/Beds";
-import Patients from "./pages/Patients";
-import PatientDetails from "./pages/PatientDetails";
-import Admissions from "./pages/Admissions";
-import Doctors from "./pages/Doctors";
-import Nurses from "./pages/Nurses";
-import Appointments from "./pages/Appointments";
-import Facilities from "./pages/Facilities";
-import Billing from "./pages/Billing";
-import Reports from "./pages/Reports";
-import Notifications from "./pages/Notifications";
-import Settings from "./pages/Settings";
-import NurseDashboard from "./pages/NurseDashboard";
-import Tasks from "./pages/Tasks";
-import NursePatients from "./pages/NursePatients";
-import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
-import OpdDashboard from './pages/OpdDashboard';
-import LabDashboard from './pages/LabDashboard';
-import RadiologyDashboard from './pages/RadiologyDashboard';
-import PharmacyDashboard from './pages/PharmacyDashboard';
-import OTDashboard from './pages/OTDashboard';
-import ServiceCatalogPage from './pages/ServiceCatalogPage';
-import PrescriptionPreview from "./pages/PrescriptionPreview";
-import LabReportPreview from "./pages/LabReportPreview";
-import RadiologyReportPreview from "./pages/RadiologyReportPreview";
-
-// Standalone Portals
-import PortalLogin from "./components/portal/PortalLogin";
-import PortalLayout from "./components/portal/PortalLayout";
-import LabPortalDashboard from "./pages/portal/LabPortalDashboard";
-import PharmacyPortalDashboard from "./pages/portal/PharmacyPortalDashboard";
-import RadiologyPortalDashboard from "./pages/portal/RadiologyPortalDashboard";
+import { LoadingState } from "@/components/shared/PageState";
 import { portalDefinitions } from "./lib/portal-config";
-
-// Grandmaster Module
-import GrandmasterLogin from "./pages/grandmaster/GrandmasterLogin";
-import GrandmasterLayout from "./pages/grandmaster/GrandmasterLayout";
-import GrandmasterDashboard from "./pages/grandmaster/GrandmasterDashboard";
-import Organizations from "./pages/grandmaster/Organizations";
-import OrgControlPanel from "./pages/grandmaster/OrgControlPanel";
-import Subscriptions from "./pages/grandmaster/Subscriptions";
-import Monitoring from "./pages/grandmaster/Monitoring";
-import Admins from "./pages/grandmaster/Admins";
-import Notices from "./pages/grandmaster/Notices";
-import PlatformSettings from "./pages/grandmaster/PlatformSettings";
-import AuditLogs from "./pages/grandmaster/AuditLogs";
 import ImpersonationBanner from "./components/grandmaster/ImpersonationBanner";
 
-const queryClient = new QueryClient();
+// ---- Lazy-loaded pages (code-split each route into its own chunk) ----
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Beds = lazy(() => import("./pages/Beds"));
+const Patients = lazy(() => import("./pages/Patients"));
+const PatientDetails = lazy(() => import("./pages/PatientDetails"));
+const Admissions = lazy(() => import("./pages/Admissions"));
+const Doctors = lazy(() => import("./pages/Doctors"));
+const Nurses = lazy(() => import("./pages/Nurses"));
+const Appointments = lazy(() => import("./pages/Appointments"));
+const Facilities = lazy(() => import("./pages/Facilities"));
+const Billing = lazy(() => import("./pages/Billing"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NurseDashboard = lazy(() => import("./pages/NurseDashboard"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const NursePatients = lazy(() => import("./pages/NursePatients"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Login = lazy(() => import("./pages/Login"));
+const OpdDashboard = lazy(() => import("./pages/OpdDashboard"));
+const LabDashboard = lazy(() => import("./pages/LabDashboard"));
+const RadiologyDashboard = lazy(() => import("./pages/RadiologyDashboard"));
+const PharmacyDashboard = lazy(() => import("./pages/PharmacyDashboard"));
+const OTDashboard = lazy(() => import("./pages/OTDashboard"));
+const ServiceCatalogPage = lazy(() => import("./pages/ServiceCatalogPage"));
+const PrescriptionPreview = lazy(() => import("./pages/PrescriptionPreview"));
+const LabReportPreview = lazy(() => import("./pages/LabReportPreview"));
+const RadiologyReportPreview = lazy(() => import("./pages/RadiologyReportPreview"));
+
+// Standalone Portals
+const PortalLogin = lazy(() => import("./components/portal/PortalLogin"));
+const PortalLayout = lazy(() => import("./components/portal/PortalLayout"));
+const LabPortalDashboard = lazy(() => import("./pages/portal/LabPortalDashboard"));
+const PharmacyPortalDashboard = lazy(() => import("./pages/portal/PharmacyPortalDashboard"));
+const RadiologyPortalDashboard = lazy(() => import("./pages/portal/RadiologyPortalDashboard"));
+
+// Grandmaster Module
+const GrandmasterLogin = lazy(() => import("./pages/grandmaster/GrandmasterLogin"));
+const GrandmasterLayout = lazy(() => import("./pages/grandmaster/GrandmasterLayout"));
+const GrandmasterDashboard = lazy(() => import("./pages/grandmaster/GrandmasterDashboard"));
+const Organizations = lazy(() => import("./pages/grandmaster/Organizations"));
+const OrgControlPanel = lazy(() => import("./pages/grandmaster/OrgControlPanel"));
+const Subscriptions = lazy(() => import("./pages/grandmaster/Subscriptions"));
+const Monitoring = lazy(() => import("./pages/grandmaster/Monitoring"));
+const Admins = lazy(() => import("./pages/grandmaster/Admins"));
+const Notices = lazy(() => import("./pages/grandmaster/Notices"));
+const PlatformSettings = lazy(() => import("./pages/grandmaster/PlatformSettings"));
+const AuditLogs = lazy(() => import("./pages/grandmaster/AuditLogs"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+// Wrap a lazy page in Suspense + ErrorBoundary in one place.
+const Page = ({ children, fallbackMessage }) => (
+  <ErrorBoundary fallbackMessage={fallbackMessage}>
+    <Suspense fallback={<LoadingState />}>
+      {children}
+    </Suspense>
+  </ErrorBoundary>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -75,136 +97,137 @@ const App = () => (
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               {/* Hospital Login */}
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<Page><Login /></Page>} />
 
               {/* Grandmaster Portal */}
-              <Route path="/grandmaster/login" element={<GrandmasterLogin />} />
-              <Route path="/grandmaster" element={<GrandmasterLayout />}>
-                <Route index element={<GrandmasterDashboard />} />
-                <Route path="organizations" element={<Organizations />} />
-                <Route path="organizations/:id" element={<OrgControlPanel />} />
-                <Route path="subscriptions" element={<Subscriptions />} />
-                <Route path="monitoring" element={<Monitoring />} />
-                <Route path="admins" element={<Admins />} />
-                <Route path="notices" element={<Notices />} />
-                <Route path="audit-logs" element={<AuditLogs />} />
-                <Route path="settings" element={<PlatformSettings />} />
+              <Route path="/grandmaster/login" element={<Page><GrandmasterLogin /></Page>} />
+              <Route path="/grandmaster" element={<Page><GrandmasterLayout /></Page>}>
+                <Route index element={<Page><GrandmasterDashboard /></Page>} />
+                <Route path="organizations" element={<Page><Organizations /></Page>} />
+                <Route path="organizations/:id" element={<Page><OrgControlPanel /></Page>} />
+                <Route path="subscriptions" element={<Page><Subscriptions /></Page>} />
+                <Route path="monitoring" element={<Page><Monitoring /></Page>} />
+                <Route path="admins" element={<Page><Admins /></Page>} />
+                <Route path="notices" element={<Page><Notices /></Page>} />
+                <Route path="audit-logs" element={<Page><AuditLogs /></Page>} />
+                <Route path="settings" element={<Page><PlatformSettings /></Page>} />
               </Route>
 
               {/* Hospital Dashboard */}
               <Route element={<DashboardLayout />}>
                 <Route element={<AuthorizedRoute module="dashboard" />}>
-                  <Route path="/" element={<ErrorBoundary fallbackMessage="Dashboard failed to load."><Dashboard /></ErrorBoundary>} />
+                  <Route path="/" element={<Page fallbackMessage="Dashboard failed to load."><Dashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="beds" />}>
-                  <Route path="/beds" element={<ErrorBoundary><Beds /></ErrorBoundary>} />
+                  <Route path="/beds" element={<Page><Beds /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="admissions" />}>
-                  <Route path="/admissions" element={<ErrorBoundary><Admissions /></ErrorBoundary>} />
+                  <Route path="/admissions" element={<Page><Admissions /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
-                  <Route path="/patients" element={<ErrorBoundary><Patients /></ErrorBoundary>} />
-                  <Route path="/patients/:id" element={<ErrorBoundary><PatientDetails /></ErrorBoundary>} />
+                  <Route path="/patients" element={<Page><Patients /></Page>} />
+                  <Route path="/patients/:id" element={<Page><PatientDetails /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="doctors" />}>
-                  <Route path="/doctors" element={<ErrorBoundary><Doctors /></ErrorBoundary>} />
+                  <Route path="/doctors" element={<Page><Doctors /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="nurses" />}>
-                  <Route path="/nurses" element={<ErrorBoundary><Nurses /></ErrorBoundary>} />
+                  <Route path="/nurses" element={<Page><Nurses /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="appointments" />}>
-                  <Route path="/appointments" element={<ErrorBoundary><Appointments /></ErrorBoundary>} />
+                  <Route path="/appointments" element={<Page><Appointments /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="tasks" />}>
-                  <Route path="/tasks" element={<ErrorBoundary><Tasks /></ErrorBoundary>} />
+                  <Route path="/tasks" element={<Page><Tasks /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="facilities" />}>
-                  <Route path="/facilities" element={<ErrorBoundary><Facilities /></ErrorBoundary>} />
+                  <Route path="/facilities" element={<Page><Facilities /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="billing" />}>
-                  <Route path="/billing" element={<ErrorBoundary><Billing /></ErrorBoundary>} />
+                  <Route path="/billing" element={<Page><Billing /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="reports" />}>
-                  <Route path="/reports" element={<ErrorBoundary><Reports /></ErrorBoundary>} />
+                  <Route path="/reports" element={<Page><Reports /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="notifications" />}>
-                  <Route path="/notifications" element={<ErrorBoundary><Notifications /></ErrorBoundary>} />
+                  <Route path="/notifications" element={<Page><Notifications /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="nurses" />}>
-                  <Route path="/nurse" element={<ErrorBoundary><NurseDashboard /></ErrorBoundary>} />
+                  <Route path="/nurse" element={<Page><NurseDashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
-                  <Route path="/nurse/patients" element={<ErrorBoundary><NursePatients /></ErrorBoundary>} />
+                  <Route path="/nurse/patients" element={<Page><NursePatients /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="patients" />}>
-                  <Route path="/opd" element={<ErrorBoundary><OpdDashboard /></ErrorBoundary>} />
+                  <Route path="/opd" element={<Page><OpdDashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="lab" />}>
-                  <Route path="/lab" element={<ErrorBoundary><LabDashboard /></ErrorBoundary>} />
+                  <Route path="/lab" element={<Page><LabDashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="radiology" />}>
-                  <Route path="/radiology" element={<ErrorBoundary><RadiologyDashboard /></ErrorBoundary>} />
+                  <Route path="/radiology" element={<Page><RadiologyDashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
-                  <Route path="/pharmacy" element={<ErrorBoundary><PharmacyDashboard /></ErrorBoundary>} />
+                  <Route path="/pharmacy" element={<Page><PharmacyDashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="ot" />}>
-                  <Route path="/ot" element={<ErrorBoundary><OTDashboard /></ErrorBoundary>} />
+                  <Route path="/ot" element={<Page><OTDashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="billing" />}>
-                  <Route path="/service-catalog" element={<ErrorBoundary><ServiceCatalogPage /></ErrorBoundary>} />
+                  <Route path="/service-catalog" element={<Page><ServiceCatalogPage /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>
-                  <Route path="/prescriptions/:id/preview" element={<ErrorBoundary><PrescriptionPreview /></ErrorBoundary>} />
+                  <Route path="/prescriptions/:id/preview" element={<Page><PrescriptionPreview /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="lab" />}>
-                  <Route path="/lab/:id/preview" element={<ErrorBoundary><LabReportPreview /></ErrorBoundary>} />
+                  <Route path="/lab/:id/preview" element={<Page><LabReportPreview /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="radiology" />}>
-                  <Route path="/radiology/:id/preview" element={<ErrorBoundary><RadiologyReportPreview /></ErrorBoundary>} />
+                  <Route path="/radiology/:id/preview" element={<Page><RadiologyReportPreview /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="settings" />}>
-                  <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+                  <Route path="/settings" element={<Page><Settings /></Page>} />
                 </Route>
               </Route>
-              {/* ===== Standalone Portal: Lab ===== */}
-              <Route path="/lab-portal/login" element={<PortalLogin portal={portalDefinitions.lab} />} />
-              <Route path="/lab-portal" element={<PortalLayout portal={portalDefinitions.lab} />}>
-                <Route index element={<LabPortalDashboard />} />
-                <Route path="tests" element={<LabDashboard />} />
-                <Route path="patients" element={<Patients />} />
-                <Route path="billing" element={<Billing />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="settings" element={<Settings />} />
+
+              {/* Standalone Portal: Lab */}
+              <Route path="/lab-portal/login" element={<Page><PortalLogin portal={portalDefinitions.lab} /></Page>} />
+              <Route path="/lab-portal" element={<Page><PortalLayout portal={portalDefinitions.lab} /></Page>}>
+                <Route index element={<Page><LabPortalDashboard /></Page>} />
+                <Route path="tests" element={<Page><LabDashboard /></Page>} />
+                <Route path="patients" element={<Page><Patients /></Page>} />
+                <Route path="billing" element={<Page><Billing /></Page>} />
+                <Route path="reports" element={<Page><Reports /></Page>} />
+                <Route path="notifications" element={<Page><Notifications /></Page>} />
+                <Route path="settings" element={<Page><Settings /></Page>} />
               </Route>
 
-              {/* ===== Standalone Portal: Pharmacy ===== */}
-              <Route path="/pharmacy-portal/login" element={<PortalLogin portal={portalDefinitions.pharmacy} />} />
-              <Route path="/pharmacy-portal" element={<PortalLayout portal={portalDefinitions.pharmacy} />}>
-                <Route index element={<PharmacyPortalDashboard />} />
-                <Route path="medicines" element={<PharmacyDashboard />} />
-                <Route path="prescriptions" element={<PharmacyDashboard />} />
-                <Route path="patients" element={<Patients />} />
-                <Route path="billing" element={<Billing />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="settings" element={<Settings />} />
+              {/* Standalone Portal: Pharmacy */}
+              <Route path="/pharmacy-portal/login" element={<Page><PortalLogin portal={portalDefinitions.pharmacy} /></Page>} />
+              <Route path="/pharmacy-portal" element={<Page><PortalLayout portal={portalDefinitions.pharmacy} /></Page>}>
+                <Route index element={<Page><PharmacyPortalDashboard /></Page>} />
+                <Route path="medicines" element={<Page><PharmacyDashboard /></Page>} />
+                <Route path="prescriptions" element={<Page><PharmacyDashboard /></Page>} />
+                <Route path="patients" element={<Page><Patients /></Page>} />
+                <Route path="billing" element={<Page><Billing /></Page>} />
+                <Route path="reports" element={<Page><Reports /></Page>} />
+                <Route path="notifications" element={<Page><Notifications /></Page>} />
+                <Route path="settings" element={<Page><Settings /></Page>} />
               </Route>
 
-              {/* ===== Standalone Portal: Radiology ===== */}
-              <Route path="/radiology-portal/login" element={<PortalLogin portal={portalDefinitions.radiology} />} />
-              <Route path="/radiology-portal" element={<PortalLayout portal={portalDefinitions.radiology} />}>
-                <Route index element={<RadiologyPortalDashboard />} />
-                <Route path="orders" element={<RadiologyDashboard />} />
-                <Route path="patients" element={<Patients />} />
-                <Route path="billing" element={<Billing />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="settings" element={<Settings />} />
+              {/* Standalone Portal: Radiology */}
+              <Route path="/radiology-portal/login" element={<Page><PortalLogin portal={portalDefinitions.radiology} /></Page>} />
+              <Route path="/radiology-portal" element={<Page><PortalLayout portal={portalDefinitions.radiology} /></Page>}>
+                <Route index element={<Page><RadiologyPortalDashboard /></Page>} />
+                <Route path="orders" element={<Page><RadiologyDashboard /></Page>} />
+                <Route path="patients" element={<Page><Patients /></Page>} />
+                <Route path="billing" element={<Page><Billing /></Page>} />
+                <Route path="reports" element={<Page><Reports /></Page>} />
+                <Route path="notifications" element={<Page><Notifications /></Page>} />
+                <Route path="settings" element={<Page><Settings /></Page>} />
               </Route>
 
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<Page><NotFound /></Page>} />
             </Routes>
           </BrowserRouter>
         </LayoutModeProvider>

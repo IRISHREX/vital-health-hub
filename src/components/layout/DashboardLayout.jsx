@@ -35,15 +35,9 @@ export function DashboardLayout() {
   }, [widgetOverlayOpen, setWidgetOverlayOpen]);
 
   useEffect(() => {
-    const performHealthCheck = async () => {
-      try {
-        const healthStatus = await checkHealth();
-        console.log("API Health Status:", healthStatus);
-      } catch (error) {
-        console.error("API is not available or there was an error during health check:", error);
-      }
-    };
-    performHealthCheck();
+    checkHealth().catch((error) => {
+      console.error("API health check failed:", error);
+    });
   }, []);
 
   const showWidgetHome = mode === "widget" && isHome;
