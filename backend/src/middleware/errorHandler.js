@@ -65,4 +65,15 @@ class AppError extends Error {
   }
 }
 
-module.exports = { errorHandler, AppError };
+/**
+ * asyncHandler — wraps async controller fns so thrown errors flow into the
+ * global errorHandler instead of being silently swallowed. Removes the need
+ * for boilerplate try/catch + next(err) in every controller.
+ *
+ *   exports.list = asyncHandler(async (req, res) => { ... });
+ */
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
+module.exports = { errorHandler, AppError, asyncHandler };
+
