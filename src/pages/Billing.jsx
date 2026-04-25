@@ -6,6 +6,7 @@ import { getHospitalSettings, getPaymentConfig } from "@/lib/settings";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { PageSkeleton } from "@/components/ui/table-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1095,11 +1096,11 @@ export default function Billing() {
                             </Badge>
                           </TableCell>
                           <TableCell>{getSourceModuleLabel(inv)}</TableCell>
-                          <TableCell>Rs {Number(inv.totalAmount || 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-status-available">Rs {Number(inv.paidAmount || 0).toLocaleString()}</TableCell>
-                          <TableCell className={Number(inv.dueAmount || 0) > 0 ? "text-status-occupied" : ""}>Rs {Number(inv.dueAmount || 0).toLocaleString()}</TableCell>
+                          <TableCell>{formatCurrency(inv.totalAmount)}</TableCell>
+                          <TableCell className="text-status-available">{formatCurrency(inv.paidAmount)}</TableCell>
+                          <TableCell className={Number(inv.dueAmount || 0) > 0 ? "text-status-occupied" : ""}>{formatCurrency(inv.dueAmount)}</TableCell>
                           <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
-                          <TableCell>{new Date(inv.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>{formatDate(inv.createdAt)}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">
                               <Button variant="ghost" size="sm" onClick={() => downloadSingleInvoice(inv)}><Download className="mr-1 h-3 w-3" />CSV</Button>
