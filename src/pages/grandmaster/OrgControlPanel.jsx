@@ -85,6 +85,22 @@ export default function OrgControlPanel() {
   });
   const org = orgRes?.data || {};
 
+  // ─── GM Permission Gating ───
+  // Only top-level "grandmaster" role can perform destructive / hard-edit actions.
+  // "platform_admin" gets read-only + impersonation.
+  const gmUser = getGmUser();
+  const isGrandmaster = gmUser?.role === 'grandmaster';
+  const canHardEdit = isGrandmaster;
+  const canDelete = isGrandmaster;
+  const canChangeSettings = isGrandmaster;
+  const permissionDenied = (action) => {
+    toast({
+      title: 'Permission denied',
+      description: `Your role (${gmUser?.role || 'unknown'}) is not allowed to ${action}.`,
+      variant: 'destructive',
+    });
+  };
+
   const { data: settingsRes } = useQuery({
     queryKey: ['gm-org-settings', id],
     queryFn: () => getOrgSettingsConfig(id),
