@@ -401,18 +401,30 @@ export default function OrgControlPanel() {
                             ID: {record._id}
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive shrink-0"
-                          onClick={() => {
-                            if (confirm(`Delete this ${activeResource} record?`)) {
-                              deleteMut.mutate(record._id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEdit(record)}
+                            title="Edit record"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => {
+                              if (confirm(`Delete this ${activeResource} record?`)) {
+                                deleteMut.mutate(record._id);
+                              }
+                            }}
+                            title="Delete record"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
