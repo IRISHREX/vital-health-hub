@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getOrganization, getOrgSettingsConfig, updateOrgSettingsTabs,
   updateOrgPaymentConfig, updateOrgBulkPaymentConfig, impersonateOrg,
-  proxyList, proxyDelete,
+  proxyList, proxyDelete, proxyUpdate,
 } from '@/lib/grandmaster-api';
 import { setAuthToken, setOrgSlug, setUser } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,9 +18,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Eye, Settings2, CreditCard, Database, Shield,
-  Loader2, Search, Trash2, RefreshCw, ExternalLink
+  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil
 } from 'lucide-react';
 
 const ALL_SETTINGS_TABS = [
@@ -147,6 +149,36 @@ export default function OrgControlPanel() {
     },
     onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
+
+  // ─── Inline Edit (JSON) ───
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editError, setEditError] = useState('');
+
+  const openEdit = (record) => {
+    setEditingRecord(record);
+    setEditError('');
+    // Strip server-managed fields for cleaner editing
+    const { _id, __v, createdAt, updatedAt, ...editable } = record || {};
+    setEditDraft(JSON.stringify(editable, null, 2));
+  };
+
+  const updateMut = useMutation({
+    mutationFn: ({ recordId, body }) => proxyUpdate(id, activeResource, recordId, body),
+    onSuccess: () => {
+      refetchProxy();
+      setEditingRecord(null);
+      toast({ title: 'Record updated' });
+    },
+    onError: (err) => toast({ title: 'Update failed', description: err.message, variant: 'destructive' }),
+  });
+
+  const submitEdit = () => {
+    let parsed;
+    try { parsed = JSON.parse(editDraft); }
+    catch (e) { setEditError(`Invalid JSON: ${e.message}`); return; }
+    updateMut.mutate({ recordId: editingRecord._id, body: parsed });
+  };
 
   // ─── Payment Config Helpers ───
   const togglePaymentMethod = (module, method) => {
@@ -369,18 +401,30 @@ export default function OrgControlPanel() {
                             ID: {record._id}
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive shrink-0"
-                          onClick={() => {
-                            if (confirm(`Delete this ${activeResource} record?`)) {
-                              deleteMut.mutate(record._id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEdit(record)}
+                            title="Edit record"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => {
+                              if (confirm(`Delete this ${activeResource} record?`)) {
+                                deleteMut.mutate(record._id);
+                              }
+                            }}
+                            title="Delete record"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -429,6 +473,34 @@ export default function OrgControlPanel() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Inline Edit Dialog */}
+      <Dialog open={!!editingRecord} onOpenChange={(open) => !open && setEditingRecord(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit {activeResource} record</DialogTitle>
+            <DialogDescription>
+              Direct database edit. Changes are written immediately to <span className="font-mono">{org.dbName}</span>.
+              Edit the JSON below and save. <span className="text-destructive">Use with care.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editDraft}
+            onChange={(e) => { setEditDraft(e.target.value); setEditError(''); }}
+            rows={18}
+            className="font-mono text-xs"
+            spellCheck={false}
+          />
+          {editError && <p className="text-xs text-destructive">{editError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingRecord(null)}>Cancel</Button>
+            <Button onClick={submitEdit} disabled={updateMut.isPending}>
+              {updateMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

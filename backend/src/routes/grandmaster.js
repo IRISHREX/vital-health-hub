@@ -69,6 +69,7 @@ router.post('/subscriptions/check-expired', subCtrl.checkExpiredSubscriptions);
 
 // Monitoring
 router.get('/monitoring/stats', monCtrl.platformStats);
+router.get('/monitoring/organizations', monCtrl.allOrgStats);
 router.get('/monitoring/organizations/:id', monCtrl.orgStats);
 router.get('/monitoring/recent', monCtrl.recentOnboarded);
 

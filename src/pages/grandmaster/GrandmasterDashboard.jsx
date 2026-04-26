@@ -1,18 +1,30 @@
 import { useQuery } from '@tanstack/react-query';
-import { getPlatformStats, getRecentOnboarded } from '@/lib/grandmaster-api';
+import { useNavigate } from 'react-router-dom';
+import { getPlatformStats, getRecentOnboarded, getAllOrgStats } from '@/lib/grandmaster-api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, CreditCard, Users, Activity, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Building2, CreditCard, TrendingUp, AlertTriangle,
+  Users, Bed, Hospital, Settings2, ArrowRight
+} from 'lucide-react';
 
 export default function GrandmasterDashboard() {
+  const navigate = useNavigate();
   const { data: statsRes } = useQuery({ queryKey: ['gm-stats'], queryFn: getPlatformStats });
   const { data: recentRes } = useQuery({ queryKey: ['gm-recent'], queryFn: getRecentOnboarded });
+  const { data: orgStatsRes, isLoading: orgsLoading } = useQuery({
+    queryKey: ['gm-all-org-stats'],
+    queryFn: getAllOrgStats,
+    staleTime: 30 * 1000,
+  });
 
   const stats = statsRes?.data || {};
   const orgs = stats.organizations || {};
   const subs = stats.subscriptions || {};
   const revenue = stats.revenue || {};
   const recent = recentRes?.data || [];
+  const orgList = orgStatsRes?.data || [];
 
   const kpis = [
     { label: 'Total Organizations', value: orgs.total || 0, icon: Building2, color: 'text-primary' },
@@ -87,7 +99,75 @@ export default function GrandmasterDashboard() {
         </Card>
       </div>
 
-      {/* Recent Onboarded */}
+      {/* Per-Hospital Dashboards */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Hospital Dashboards</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Live snapshot for every organization. Click an org to manage or impersonate.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/grandmaster/organizations')}>
+            All Organizations <ArrowRight className="ml-2 h-3.5 w-3.5" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {orgsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading hospital data…</p>
+          ) : orgList.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No organizations onboarded yet</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {orgList.map((org) => {
+                const s = org.stats || {};
+                const occupancy = s.beds ? Math.round((s.occupiedBeds / s.beds) * 100) : 0;
+                return (
+                  <div
+                    key={org._id}
+                    className="group rounded-lg border border-border bg-card p-4 hover:border-primary/50 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                          <Hospital className="h-3.5 w-3.5 text-primary shrink-0" />
+                          {org.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {org.slug} · {org.type?.replace('_', ' ')}
+                        </p>
+                      </div>
+                      <Badge variant={statusColor[org.status] || 'secondary'} className="text-[10px]">
+                        {org.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <Stat icon={Users} label="Patients" value={s.patients} />
+                      <Stat icon={Users} label="Staff" value={s.users} />
+                      <Stat icon={Hospital} label="Admitted" value={s.activeAdmissions} />
+                      <Stat icon={Bed} label="Bed Occ." value={`${occupancy}%`} sub={`${s.occupiedBeds || 0}/${s.beds || 0}`} />
+                    </div>
+
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-8 text-xs"
+                        onClick={() => navigate(`/grandmaster/organizations/${org._id}`)}
+                      >
+                        <Settings2 className="mr-1.5 h-3 w-3" /> Manage
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
       <Card>
         <CardHeader><CardTitle className="text-base">Recently Onboarded</CardTitle></CardHeader>
         <CardContent>
@@ -111,6 +191,19 @@ export default function GrandmasterDashboard() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, label, value, sub }) {
+  return (
+    <div className="rounded-md bg-accent/40 px-2 py-1.5">
+      <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+        <Icon className="h-3 w-3" /> {label}
+      </div>
+      <div className="font-semibold text-foreground leading-tight">
+        {value ?? 0}{sub && <span className="ml-1 text-[10px] font-normal text-muted-foreground">{sub}</span>}
+      </div>
     </div>
   );
 }
