@@ -7,6 +7,7 @@ import {
   proxyList, proxyDelete, proxyUpdate,
 } from '@/lib/grandmaster-api';
 import { setAuthToken, setOrgSlug, setUser } from '@/lib/api-client';
+import { getGmUser } from '@/lib/grandmaster-api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,10 +21,20 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   ArrowLeft, Eye, Settings2, CreditCard, Database, Shield,
-  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil
+  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil, ShieldAlert
 } from 'lucide-react';
+
+// Server-managed fields that must never be edited via the JSON editor.
+const PROTECTED_FIELDS = [
+  '_id', '__v', 'id',
+  'createdAt', 'updatedAt', 'deletedAt',
+  'status', 'dbUri', 'dbName', 'enabledModules',
+  'organizationId', 'orgId', 'tenantId',
+  'password', 'passwordHash', 'passwordResetToken', 'passwordResetExpires',
+];
 
 const ALL_SETTINGS_TABS = [
   { value: 'general', label: 'General' },
