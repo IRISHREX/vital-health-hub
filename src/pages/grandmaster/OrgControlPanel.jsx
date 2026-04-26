@@ -150,6 +150,36 @@ export default function OrgControlPanel() {
     onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
 
+  // ─── Inline Edit (JSON) ───
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editError, setEditError] = useState('');
+
+  const openEdit = (record) => {
+    setEditingRecord(record);
+    setEditError('');
+    // Strip server-managed fields for cleaner editing
+    const { _id, __v, createdAt, updatedAt, ...editable } = record || {};
+    setEditDraft(JSON.stringify(editable, null, 2));
+  };
+
+  const updateMut = useMutation({
+    mutationFn: ({ recordId, body }) => proxyUpdate(id, activeResource, recordId, body),
+    onSuccess: () => {
+      refetchProxy();
+      setEditingRecord(null);
+      toast({ title: 'Record updated' });
+    },
+    onError: (err) => toast({ title: 'Update failed', description: err.message, variant: 'destructive' }),
+  });
+
+  const submitEdit = () => {
+    let parsed;
+    try { parsed = JSON.parse(editDraft); }
+    catch (e) { setEditError(`Invalid JSON: ${e.message}`); return; }
+    updateMut.mutate({ recordId: editingRecord._id, body: parsed });
+  };
+
   // ─── Payment Config Helpers ───
   const togglePaymentMethod = (module, method) => {
     const updated = { ...currentPaymentConfig };
