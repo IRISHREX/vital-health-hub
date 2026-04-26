@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getOrganization, getOrgSettingsConfig, updateOrgSettingsTabs,
   updateOrgPaymentConfig, updateOrgBulkPaymentConfig, impersonateOrg,
-  proxyList, proxyDelete,
+  proxyList, proxyDelete, proxyUpdate,
 } from '@/lib/grandmaster-api';
 import { setAuthToken, setOrgSlug, setUser } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,9 +18,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Eye, Settings2, CreditCard, Database, Shield,
-  Loader2, Search, Trash2, RefreshCw, ExternalLink
+  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil
 } from 'lucide-react';
 
 const ALL_SETTINGS_TABS = [
