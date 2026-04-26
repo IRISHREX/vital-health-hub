@@ -7,6 +7,7 @@ import {
   proxyList, proxyDelete, proxyUpdate,
 } from '@/lib/grandmaster-api';
 import { setAuthToken, setOrgSlug, setUser } from '@/lib/api-client';
+import { getGmUser } from '@/lib/grandmaster-api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,10 +21,20 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   ArrowLeft, Eye, Settings2, CreditCard, Database, Shield,
-  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil
+  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil, ShieldAlert
 } from 'lucide-react';
+
+// Server-managed fields that must never be edited via the JSON editor.
+const PROTECTED_FIELDS = [
+  '_id', '__v', 'id',
+  'createdAt', 'updatedAt', 'deletedAt',
+  'status', 'dbUri', 'dbName', 'enabledModules',
+  'organizationId', 'orgId', 'tenantId',
+  'password', 'passwordHash', 'passwordResetToken', 'passwordResetExpires',
+];
 
 const ALL_SETTINGS_TABS = [
   { value: 'general', label: 'General' },
@@ -73,6 +84,22 @@ export default function OrgControlPanel() {
     queryFn: () => getOrganization(id),
   });
   const org = orgRes?.data || {};
+
+  // ─── GM Permission Gating ───
+  // Only top-level "grandmaster" role can perform destructive / hard-edit actions.
+  // "platform_admin" gets read-only + impersonation.
+  const gmUser = getGmUser();
+  const isGrandmaster = gmUser?.role === 'grandmaster';
+  const canHardEdit = isGrandmaster;
+  const canDelete = isGrandmaster;
+  const canChangeSettings = isGrandmaster;
+  const permissionDenied = (action) => {
+    toast({
+      title: 'Permission denied',
+      description: `Your role (${gmUser?.role || 'unknown'}) is not allowed to ${action}.`,
+      variant: 'destructive',
+    });
+  };
 
   const { data: settingsRes } = useQuery({
     queryKey: ['gm-org-settings', id],
@@ -155,11 +182,24 @@ export default function OrgControlPanel() {
   const [editDraft, setEditDraft] = useState('');
   const [editError, setEditError] = useState('');
 
+  const stripProtected = (record) => {
+    const out = {};
+    const removed = {};
+    Object.entries(record || {}).forEach(([key, value]) => {
+      if (PROTECTED_FIELDS.includes(key)) removed[key] = value;
+      else out[key] = value;
+    });
+    return { editable: out, removed };
+  };
+
   const openEdit = (record) => {
-    setEditingRecord(record);
+    if (!canHardEdit) {
+      permissionDenied('edit hospital records directly');
+      return;
+    }
     setEditError('');
-    // Strip server-managed fields for cleaner editing
-    const { _id, __v, createdAt, updatedAt, ...editable } = record || {};
+    const { editable, removed } = stripProtected(record);
+    setEditingRecord({ ...record, __removed: removed });
     setEditDraft(JSON.stringify(editable, null, 2));
   };
 
@@ -174,11 +214,32 @@ export default function OrgControlPanel() {
   });
 
   const submitEdit = () => {
+    if (!canHardEdit) {
+      permissionDenied('edit hospital records directly');
+      return;
+    }
     let parsed;
     try { parsed = JSON.parse(editDraft); }
     catch (e) { setEditError(`Invalid JSON: ${e.message}`); return; }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      setEditError('Edited value must be a JSON object.');
+      return;
+    }
+
+    // Block any attempt to introduce server-managed fields back into the body.
+    const violations = Object.keys(parsed).filter((k) => PROTECTED_FIELDS.includes(k));
+    if (violations.length > 0) {
+      setEditError(
+        `These fields are server-managed and cannot be modified here: ${violations.join(', ')}. ` +
+        `Remove them from the JSON and try again.`
+      );
+      return;
+    }
+
     updateMut.mutate({ recordId: editingRecord._id, body: parsed });
   };
+
 
   // ─── Payment Config Helpers ───
   const togglePaymentMethod = (module, method) => {
@@ -229,6 +290,18 @@ export default function OrgControlPanel() {
         </Button>
       </div>
 
+      {!isGrandmaster && (
+        <Alert variant="destructive" className="border-destructive/40 bg-destructive/5">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Limited access — read-only mode</AlertTitle>
+          <AlertDescription>
+            Your role <span className="font-mono">{gmUser?.role || 'unknown'}</span> can view this
+            organization and impersonate it, but cannot change settings, edit records, or delete data.
+            Destructive controls are disabled. Contact a Grandmaster to perform these actions.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="settings" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="settings" className="gap-2"><Settings2 className="h-4 w-4" />Settings Control</TabsTrigger>
@@ -263,7 +336,8 @@ export default function OrgControlPanel() {
               </div>
               <Button
                 onClick={() => settingsTabsMut.mutate(allowedTabs || currentTabs)}
-                disabled={settingsTabsMut.isPending}
+                disabled={settingsTabsMut.isPending || !canChangeSettings}
+                title={!canChangeSettings ? 'Requires Grandmaster role' : undefined}
               >
                 {settingsTabsMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Settings Access
@@ -331,7 +405,8 @@ export default function OrgControlPanel() {
               <Button
                 className="mt-4"
                 onClick={() => paymentMut.mutate(currentPaymentConfig)}
-                disabled={paymentMut.isPending}
+                disabled={paymentMut.isPending || !canChangeSettings}
+                title={!canChangeSettings ? 'Requires Grandmaster role' : undefined}
               >
                 {paymentMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Payment Config
@@ -407,7 +482,8 @@ export default function OrgControlPanel() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => openEdit(record)}
-                            title="Edit record"
+                            disabled={!canHardEdit}
+                            title={canHardEdit ? 'Edit record' : 'Requires Grandmaster role'}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -415,12 +491,14 @@ export default function OrgControlPanel() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive"
+                            disabled={!canDelete}
                             onClick={() => {
+                              if (!canDelete) { permissionDenied('delete records'); return; }
                               if (confirm(`Delete this ${activeResource} record?`)) {
                                 deleteMut.mutate(record._id);
                               }
                             }}
-                            title="Delete record"
+                            title={canDelete ? 'Delete record' : 'Requires Grandmaster role'}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -484,6 +562,21 @@ export default function OrgControlPanel() {
               Edit the JSON below and save. <span className="text-destructive">Use with care.</span>
             </DialogDescription>
           </DialogHeader>
+
+          {editingRecord?.__removed && Object.keys(editingRecord.__removed).length > 0 && (
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <p className="text-xs font-medium text-foreground mb-2 flex items-center gap-1">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                Server-managed fields (read-only, hidden from editor)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.keys(editingRecord.__removed).map((k) => (
+                  <Badge key={k} variant="secondary" className="font-mono text-[10px]">{k}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Textarea
             value={editDraft}
             onChange={(e) => { setEditDraft(e.target.value); setEditError(''); }}
@@ -491,10 +584,10 @@ export default function OrgControlPanel() {
             className="font-mono text-xs"
             spellCheck={false}
           />
-          {editError && <p className="text-xs text-destructive">{editError}</p>}
+          {editError && <p className="text-xs text-destructive whitespace-pre-wrap">{editError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingRecord(null)}>Cancel</Button>
-            <Button onClick={submitEdit} disabled={updateMut.isPending}>
+            <Button onClick={submitEdit} disabled={updateMut.isPending || !canHardEdit}>
               {updateMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
