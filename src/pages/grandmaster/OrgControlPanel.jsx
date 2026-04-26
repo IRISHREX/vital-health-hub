@@ -473,6 +473,34 @@ export default function OrgControlPanel() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Inline Edit Dialog */}
+      <Dialog open={!!editingRecord} onOpenChange={(open) => !open && setEditingRecord(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit {activeResource} record</DialogTitle>
+            <DialogDescription>
+              Direct database edit. Changes are written immediately to <span className="font-mono">{org.dbName}</span>.
+              Edit the JSON below and save. <span className="text-destructive">Use with care.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editDraft}
+            onChange={(e) => { setEditDraft(e.target.value); setEditError(''); }}
+            rows={18}
+            className="font-mono text-xs"
+            spellCheck={false}
+          />
+          {editError && <p className="text-xs text-destructive">{editError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingRecord(null)}>Cancel</Button>
+            <Button onClick={submitEdit} disabled={updateMut.isPending}>
+              {updateMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
