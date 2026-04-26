@@ -182,11 +182,24 @@ export default function OrgControlPanel() {
   const [editDraft, setEditDraft] = useState('');
   const [editError, setEditError] = useState('');
 
+  const stripProtected = (record) => {
+    const out = {};
+    const removed = {};
+    Object.entries(record || {}).forEach(([key, value]) => {
+      if (PROTECTED_FIELDS.includes(key)) removed[key] = value;
+      else out[key] = value;
+    });
+    return { editable: out, removed };
+  };
+
   const openEdit = (record) => {
-    setEditingRecord(record);
+    if (!canHardEdit) {
+      permissionDenied('edit hospital records directly');
+      return;
+    }
     setEditError('');
-    // Strip server-managed fields for cleaner editing
-    const { _id, __v, createdAt, updatedAt, ...editable } = record || {};
+    const { editable, removed } = stripProtected(record);
+    setEditingRecord({ ...record, __removed: removed });
     setEditDraft(JSON.stringify(editable, null, 2));
   };
 
@@ -201,11 +214,32 @@ export default function OrgControlPanel() {
   });
 
   const submitEdit = () => {
+    if (!canHardEdit) {
+      permissionDenied('edit hospital records directly');
+      return;
+    }
     let parsed;
     try { parsed = JSON.parse(editDraft); }
     catch (e) { setEditError(`Invalid JSON: ${e.message}`); return; }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      setEditError('Edited value must be a JSON object.');
+      return;
+    }
+
+    // Block any attempt to introduce server-managed fields back into the body.
+    const violations = Object.keys(parsed).filter((k) => PROTECTED_FIELDS.includes(k));
+    if (violations.length > 0) {
+      setEditError(
+        `These fields are server-managed and cannot be modified here: ${violations.join(', ')}. ` +
+        `Remove them from the JSON and try again.`
+      );
+      return;
+    }
+
     updateMut.mutate({ recordId: editingRecord._id, body: parsed });
   };
+
 
   // ─── Payment Config Helpers ───
   const togglePaymentMethod = (module, method) => {
