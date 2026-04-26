@@ -8,6 +8,7 @@ import { useLayoutMode } from "@/lib/LayoutModeContext";
 import { WidgetHome } from "@/components/dashboard/WidgetHome";
 import { AnimatePresence, motion } from "framer-motion";
 import { FloatingNavigatorButton } from "./FloatingNavigatorButton";
+import PlatformAlertBanner from "@/components/shared/PlatformAlertBanner";
 
 export function DashboardLayout() {
   const { mode, widgetOverlayOpen, setWidgetOverlayOpen } = useLayoutMode();
