@@ -482,7 +482,8 @@ export default function OrgControlPanel() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => openEdit(record)}
-                            title="Edit record"
+                            disabled={!canHardEdit}
+                            title={canHardEdit ? 'Edit record' : 'Requires Grandmaster role'}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -490,12 +491,14 @@ export default function OrgControlPanel() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive"
+                            disabled={!canDelete}
                             onClick={() => {
+                              if (!canDelete) { permissionDenied('delete records'); return; }
                               if (confirm(`Delete this ${activeResource} record?`)) {
                                 deleteMut.mutate(record._id);
                               }
                             }}
-                            title="Delete record"
+                            title={canDelete ? 'Delete record' : 'Requires Grandmaster role'}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
