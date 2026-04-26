@@ -562,6 +562,21 @@ export default function OrgControlPanel() {
               Edit the JSON below and save. <span className="text-destructive">Use with care.</span>
             </DialogDescription>
           </DialogHeader>
+
+          {editingRecord?.__removed && Object.keys(editingRecord.__removed).length > 0 && (
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <p className="text-xs font-medium text-foreground mb-2 flex items-center gap-1">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                Server-managed fields (read-only, hidden from editor)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.keys(editingRecord.__removed).map((k) => (
+                  <Badge key={k} variant="secondary" className="font-mono text-[10px]">{k}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Textarea
             value={editDraft}
             onChange={(e) => { setEditDraft(e.target.value); setEditError(''); }}
@@ -569,10 +584,10 @@ export default function OrgControlPanel() {
             className="font-mono text-xs"
             spellCheck={false}
           />
-          {editError && <p className="text-xs text-destructive">{editError}</p>}
+          {editError && <p className="text-xs text-destructive whitespace-pre-wrap">{editError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingRecord(null)}>Cancel</Button>
-            <Button onClick={submitEdit} disabled={updateMut.isPending}>
+            <Button onClick={submitEdit} disabled={updateMut.isPending || !canHardEdit}>
               {updateMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
