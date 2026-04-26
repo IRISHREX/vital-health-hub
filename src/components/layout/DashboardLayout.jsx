@@ -8,6 +8,7 @@ import { useLayoutMode } from "@/lib/LayoutModeContext";
 import { WidgetHome } from "@/components/dashboard/WidgetHome";
 import { AnimatePresence, motion } from "framer-motion";
 import { FloatingNavigatorButton } from "./FloatingNavigatorButton";
+import PlatformAlertBanner from "@/components/shared/PlatformAlertBanner";
 
 export function DashboardLayout() {
   const { mode, widgetOverlayOpen, setWidgetOverlayOpen } = useLayoutMode();
@@ -50,6 +51,7 @@ export function DashboardLayout() {
         {mode === "sidebar" && <AppSidebar />}
         <div className="flex min-w-0 flex-1 flex-col relative">
           <Header />
+          <PlatformAlertBanner />
           <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6">
             {showWidgetHome ? <WidgetHome /> : <Outlet />}
           </main>
