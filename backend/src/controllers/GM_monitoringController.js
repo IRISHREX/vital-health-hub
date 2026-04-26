@@ -68,29 +68,82 @@ exports.platformStats = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// Per-organization monitoring stats
+// Helper – safely register a tenant model
+const tenantModel = (conn, name, file) => {
+  if (conn.models[name]) return conn.models[name];
+  try {
+    const schema = require(`../models/${file}`).schema;
+    return conn.model(name, schema);
+  } catch (e) { return null; }
+};
+
+const safeCount = async (Model, filter = {}) => {
+  if (!Model) return 0;
+  try { return await Model.countDocuments(filter); } catch { return 0; }
+};
+
+// Per-organization monitoring stats (rich snapshot for GM dashboards)
 exports.orgStats = async (req, res, next) => {
   try {
     const org = await Organization.findById(req.params.id).select('+dbUri');
     if (!org) return res.status(404).json({ success: false, message: 'Organization not found' });
 
-    // Try to get stats from tenant DB
-    let tenantStats = { patients: 0, users: 0, beds: 0, admissions: 0, labTests: 0, invoices: 0 };
+    let tenantStats = {
+      patients: 0, users: 0, beds: 0, occupiedBeds: 0,
+      admissions: 0, activeAdmissions: 0, doctors: 0,
+      appointments: 0, labTests: 0, invoices: 0, todayRevenue: 0
+    };
+
     try {
       const conn = getTenantConnection({ dbName: org.dbName, dbUri: org.dbUri });
-      const UserSchema = require('../models/NH_User').schema;
-      const TenantUser = conn.models.User || conn.model('User', UserSchema);
+      await conn.asPromise();
 
-      const PatientSchema = require('../models/NH_Patient').schema;
-      const TenantPatient = conn.models.Patient || conn.model('Patient', PatientSchema);
+      const Models = {
+        User: tenantModel(conn, 'User', 'NH_User'),
+        Patient: tenantModel(conn, 'Patient', 'NH_Patient'),
+        Bed: tenantModel(conn, 'Bed', 'NH_Bed'),
+        Admission: tenantModel(conn, 'Admission', 'NH_Admission'),
+        Doctor: tenantModel(conn, 'Doctor', 'NH_Doctor'),
+        Appointment: tenantModel(conn, 'Appointment', 'NH_Appointment'),
+        LabTest: tenantModel(conn, 'LabTest', 'NH_LabTest'),
+        Invoice: tenantModel(conn, 'Invoice', 'NH_Invoice'),
+      };
 
-      const [userCount, patientCount] = await Promise.all([
-        TenantUser.countDocuments(),
-        TenantPatient.countDocuments()
+      const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+
+      const [
+        users, patients, beds, occupiedBeds,
+        admissions, activeAdmissions, doctors,
+        appointments, labTests, invoices
+      ] = await Promise.all([
+        safeCount(Models.User),
+        safeCount(Models.Patient),
+        safeCount(Models.Bed),
+        safeCount(Models.Bed, { status: 'occupied' }),
+        safeCount(Models.Admission),
+        safeCount(Models.Admission, { status: 'admitted' }),
+        safeCount(Models.Doctor),
+        safeCount(Models.Appointment),
+        safeCount(Models.LabTest),
+        safeCount(Models.Invoice),
       ]);
 
-      tenantStats.users = userCount;
-      tenantStats.patients = patientCount;
+      let todayRevenue = 0;
+      if (Models.Invoice) {
+        try {
+          const agg = await Models.Invoice.aggregate([
+            { $match: { createdAt: { $gte: startOfToday } } },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$totalAmount', '$amount'] } } } }
+          ]);
+          todayRevenue = agg[0]?.total || 0;
+        } catch { /* ignore */ }
+      }
+
+      tenantStats = {
+        users, patients, beds, occupiedBeds,
+        admissions, activeAdmissions, doctors,
+        appointments, labTests, invoices, todayRevenue
+      };
     } catch (err) {
       console.warn(`Could not fetch tenant stats for ${org.slug}:`, err.message);
     }
@@ -102,12 +155,46 @@ exports.orgStats = async (req, res, next) => {
 
     res.json({
       success: true,
-      data: {
-        organization: org,
-        stats: tenantStats,
-        subscription: subscription || null
-      }
+      data: { organization: org, stats: tenantStats, subscription: subscription || null }
     });
+  } catch (error) { next(error); }
+};
+
+// All organizations + lightweight per-org stats (for GM dashboard grid)
+exports.allOrgStats = async (req, res, next) => {
+  try {
+    const orgs = await Organization.find().select('+dbUri name slug type status enabledModules dbName').sort({ createdAt: -1 });
+
+    const results = await Promise.all(orgs.map(async (org) => {
+      const stats = { patients: 0, users: 0, activeAdmissions: 0, occupiedBeds: 0, beds: 0 };
+      try {
+        const conn = getTenantConnection({ dbName: org.dbName, dbUri: org.dbUri });
+        await conn.asPromise();
+        const Patient = tenantModel(conn, 'Patient', 'NH_Patient');
+        const User = tenantModel(conn, 'User', 'NH_User');
+        const Admission = tenantModel(conn, 'Admission', 'NH_Admission');
+        const Bed = tenantModel(conn, 'Bed', 'NH_Bed');
+        const [p, u, a, ob, b] = await Promise.all([
+          safeCount(Patient), safeCount(User),
+          safeCount(Admission, { status: 'admitted' }),
+          safeCount(Bed, { status: 'occupied' }), safeCount(Bed),
+        ]);
+        Object.assign(stats, { patients: p, users: u, activeAdmissions: a, occupiedBeds: ob, beds: b });
+      } catch (err) {
+        // Tenant DB unreachable – return zeros
+      }
+      return {
+        _id: org._id,
+        name: org.name,
+        slug: org.slug,
+        type: org.type,
+        status: org.status,
+        enabledModules: org.enabledModules || [],
+        stats,
+      };
+    }));
+
+    res.json({ success: true, data: results });
   } catch (error) { next(error); }
 };
 

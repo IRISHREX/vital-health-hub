@@ -108,6 +108,7 @@ export const checkExpiredSubscriptions = () => gmApi.post('/subscriptions/check-
 
 // Monitoring
 export const getPlatformStats = () => gmApi.get('/monitoring/stats');
+export const getAllOrgStats = () => gmApi.get('/monitoring/organizations');
 export const getOrgStats = (id) => gmApi.get(`/monitoring/organizations/${id}`);
 export const getRecentOnboarded = () => gmApi.get('/monitoring/recent');
 
