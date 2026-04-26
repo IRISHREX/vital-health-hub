@@ -336,7 +336,8 @@ export default function OrgControlPanel() {
               </div>
               <Button
                 onClick={() => settingsTabsMut.mutate(allowedTabs || currentTabs)}
-                disabled={settingsTabsMut.isPending}
+                disabled={settingsTabsMut.isPending || !canChangeSettings}
+                title={!canChangeSettings ? 'Requires Grandmaster role' : undefined}
               >
                 {settingsTabsMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Settings Access
