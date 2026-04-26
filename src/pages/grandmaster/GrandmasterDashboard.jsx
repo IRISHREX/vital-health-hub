@@ -1,18 +1,30 @@
 import { useQuery } from '@tanstack/react-query';
-import { getPlatformStats, getRecentOnboarded } from '@/lib/grandmaster-api';
+import { useNavigate } from 'react-router-dom';
+import { getPlatformStats, getRecentOnboarded, getAllOrgStats } from '@/lib/grandmaster-api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, CreditCard, Users, Activity, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Building2, CreditCard, TrendingUp, AlertTriangle,
+  Users, Bed, Hospital, Settings2, ArrowRight
+} from 'lucide-react';
 
 export default function GrandmasterDashboard() {
+  const navigate = useNavigate();
   const { data: statsRes } = useQuery({ queryKey: ['gm-stats'], queryFn: getPlatformStats });
   const { data: recentRes } = useQuery({ queryKey: ['gm-recent'], queryFn: getRecentOnboarded });
+  const { data: orgStatsRes, isLoading: orgsLoading } = useQuery({
+    queryKey: ['gm-all-org-stats'],
+    queryFn: getAllOrgStats,
+    staleTime: 30 * 1000,
+  });
 
   const stats = statsRes?.data || {};
   const orgs = stats.organizations || {};
   const subs = stats.subscriptions || {};
   const revenue = stats.revenue || {};
   const recent = recentRes?.data || [];
+  const orgList = orgStatsRes?.data || [];
 
   const kpis = [
     { label: 'Total Organizations', value: orgs.total || 0, icon: Building2, color: 'text-primary' },
