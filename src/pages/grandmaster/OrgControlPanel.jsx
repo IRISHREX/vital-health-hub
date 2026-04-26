@@ -405,7 +405,8 @@ export default function OrgControlPanel() {
               <Button
                 className="mt-4"
                 onClick={() => paymentMut.mutate(currentPaymentConfig)}
-                disabled={paymentMut.isPending}
+                disabled={paymentMut.isPending || !canChangeSettings}
+                title={!canChangeSettings ? 'Requires Grandmaster role' : undefined}
               >
                 {paymentMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Payment Config
