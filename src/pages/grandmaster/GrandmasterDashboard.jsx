@@ -194,3 +194,16 @@ export default function GrandmasterDashboard() {
     </div>
   );
 }
+
+function Stat({ icon: Icon, label, value, sub }) {
+  return (
+    <div className="rounded-md bg-accent/40 px-2 py-1.5">
+      <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+        <Icon className="h-3 w-3" /> {label}
+      </div>
+      <div className="font-semibold text-foreground leading-tight">
+        {value ?? 0}{sub && <span className="ml-1 text-[10px] font-normal text-muted-foreground">{sub}</span>}
+      </div>
+    </div>
+  );
+}
