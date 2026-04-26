@@ -154,7 +154,7 @@ export default function GrandmasterDashboard() {
                         size="sm"
                         variant="outline"
                         className="flex-1 h-8 text-xs"
-                        onClick={() => navigate(`/grandmaster/organizations/${org._id}/control`)}
+                        onClick={() => navigate(`/grandmaster/organizations/${org._id}`)}
                       >
                         <Settings2 className="mr-1.5 h-3 w-3" /> Manage
                       </Button>
