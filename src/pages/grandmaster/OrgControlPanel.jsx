@@ -290,6 +290,18 @@ export default function OrgControlPanel() {
         </Button>
       </div>
 
+      {!isGrandmaster && (
+        <Alert variant="destructive" className="border-destructive/40 bg-destructive/5">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Limited access — read-only mode</AlertTitle>
+          <AlertDescription>
+            Your role <span className="font-mono">{gmUser?.role || 'unknown'}</span> can view this
+            organization and impersonate it, but cannot change settings, edit records, or delete data.
+            Destructive controls are disabled. Contact a Grandmaster to perform these actions.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="settings" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="settings" className="gap-2"><Settings2 className="h-4 w-4" />Settings Control</TabsTrigger>
