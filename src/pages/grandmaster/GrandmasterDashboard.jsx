@@ -99,7 +99,75 @@ export default function GrandmasterDashboard() {
         </Card>
       </div>
 
-      {/* Recent Onboarded */}
+      {/* Per-Hospital Dashboards */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Hospital Dashboards</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Live snapshot for every organization. Click an org to manage or impersonate.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/grandmaster/organizations')}>
+            All Organizations <ArrowRight className="ml-2 h-3.5 w-3.5" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {orgsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading hospital data…</p>
+          ) : orgList.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No organizations onboarded yet</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {orgList.map((org) => {
+                const s = org.stats || {};
+                const occupancy = s.beds ? Math.round((s.occupiedBeds / s.beds) * 100) : 0;
+                return (
+                  <div
+                    key={org._id}
+                    className="group rounded-lg border border-border bg-card p-4 hover:border-primary/50 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                          <Hospital className="h-3.5 w-3.5 text-primary shrink-0" />
+                          {org.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {org.slug} · {org.type?.replace('_', ' ')}
+                        </p>
+                      </div>
+                      <Badge variant={statusColor[org.status] || 'secondary'} className="text-[10px]">
+                        {org.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <Stat icon={Users} label="Patients" value={s.patients} />
+                      <Stat icon={Users} label="Staff" value={s.users} />
+                      <Stat icon={Hospital} label="Admitted" value={s.activeAdmissions} />
+                      <Stat icon={Bed} label="Bed Occ." value={`${occupancy}%`} sub={`${s.occupiedBeds || 0}/${s.beds || 0}`} />
+                    </div>
+
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-8 text-xs"
+                        onClick={() => navigate(`/grandmaster/organizations/${org._id}/control`)}
+                      >
+                        <Settings2 className="mr-1.5 h-3 w-3" /> Manage
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
       <Card>
         <CardHeader><CardTitle className="text-base">Recently Onboarded</CardTitle></CardHeader>
         <CardContent>
