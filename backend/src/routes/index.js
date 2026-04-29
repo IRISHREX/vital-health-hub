@@ -66,4 +66,7 @@ router.use('/nh/api/v1', v1Router);
 // Grandmaster routes (separate namespace)
 router.use('/gm/api/v1', require('./grandmaster'));
 
+// Public marketing routes (no auth, no tenant)
+router.use('/public/api/v1', require('./public'));
+
 module.exports = router;
