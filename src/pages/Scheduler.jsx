@@ -351,8 +351,7 @@ function EventDialog({ open, onClose, editing, onSubmit, submitting }) {
   const [form, setForm] = useState(() => defaults(editing));
 
   // Reset on open
-  const lastOpen = useMemo(() => open, [open]);
-  useMemo(() => { if (lastOpen) setForm(defaults(editing)); }, [lastOpen, editing]);
+  useEffect(() => { if (open) setForm(defaults(editing)); }, [open, editing]);
 
   const { data: usersRes } = useQuery({ queryKey: ['users-all'], queryFn: getUsers, enabled: open });
   const users = (usersRes?.data || []).filter(u => u.isActive !== false);
