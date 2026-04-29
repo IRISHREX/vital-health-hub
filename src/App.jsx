@@ -43,6 +43,7 @@ const ServiceCatalogPage = lazy(() => import("./pages/ServiceCatalogPage"));
 const PrescriptionPreview = lazy(() => import("./pages/PrescriptionPreview"));
 const LabReportPreview = lazy(() => import("./pages/LabReportPreview"));
 const RadiologyReportPreview = lazy(() => import("./pages/RadiologyReportPreview"));
+const Scheduler = lazy(() => import("./pages/Scheduler"));
 const PublicLanding = lazy(() => import("./pages/public/PublicLanding"));
 
 // Standalone Portals
