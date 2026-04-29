@@ -34,6 +34,7 @@ const ServiceCatalog = require('./NH_ServiceCatalog');
 const RoomTypeService = require('./NH_RoomTypeService');
 const ApprovalRule = require('./NH_ApprovalRule');
 const ApprovalRequest = require('./NH_ApprovalRequest');
+const ScheduleEvent = require('./NH_ScheduleEvent');
 
 module.exports = {
   User,
@@ -69,5 +70,6 @@ module.exports = {
   ServiceCatalog,
   RoomTypeService,
   ApprovalRule,
-  ApprovalRequest
+  ApprovalRequest,
+  ScheduleEvent,
 };
