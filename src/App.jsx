@@ -43,6 +43,7 @@ const ServiceCatalogPage = lazy(() => import("./pages/ServiceCatalogPage"));
 const PrescriptionPreview = lazy(() => import("./pages/PrescriptionPreview"));
 const LabReportPreview = lazy(() => import("./pages/LabReportPreview"));
 const RadiologyReportPreview = lazy(() => import("./pages/RadiologyReportPreview"));
+const PublicLanding = lazy(() => import("./pages/public/PublicLanding"));
 
 // Standalone Portals
 const PortalLogin = lazy(() => import("./components/portal/PortalLogin"));
@@ -96,6 +97,12 @@ const App = () => (
           <ImpersonationBanner />
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
+              {/* Public marketing pages */}
+              <Route path="/welcome" element={<Page><PublicLanding /></Page>} />
+              <Route path="/about" element={<Page><PublicLanding /></Page>} />
+              <Route path="/pricing" element={<Page><PublicLanding /></Page>} />
+              <Route path="/contact" element={<Page><PublicLanding /></Page>} />
+
               {/* Hospital Login */}
               <Route path="/login" element={<Page><Login /></Page>} />
 
