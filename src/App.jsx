@@ -145,6 +145,9 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="appointments" />}>
                   <Route path="/appointments" element={<Page><Appointments /></Page>} />
                 </Route>
+                <Route element={<AuthorizedRoute module="scheduler" />}>
+                  <Route path="/scheduler" element={<Page><Scheduler /></Page>} />
+                </Route>
                 <Route element={<AuthorizedRoute module="tasks" />}>
                   <Route path="/tasks" element={<Page><Tasks /></Page>} />
                 </Route>
