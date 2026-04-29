@@ -59,6 +59,7 @@ v1Router.use('/service-catalog', require('./serviceCatalog'));
 v1Router.use('/room-type-services', require('./roomTypeServices'));
 v1Router.use('/approvals', require('./approvals'));
 v1Router.use('/platform-notices', require('./platformNotices'));
+v1Router.use('/scheduler', require('./scheduler'));
 
 // Mount v1 routes under nh/api/v1
 router.use('/nh/api/v1', v1Router);
