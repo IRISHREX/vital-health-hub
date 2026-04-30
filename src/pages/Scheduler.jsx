@@ -515,6 +515,21 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
   const slots = slotsQuery.data?.data?.slots || [];
   const reason404 = slotsQuery.data?.data?.reason;
 
+  const [bookError, setBookError] = useState(null);
+
+  // Clear stale error when key inputs change
+  useEffect(() => { setBookError(null); }, [doctorId, date, duration, picked]);
+
+  // If picked slot becomes unavailable after a refetch, clear it
+  useEffect(() => {
+    if (!picked) return;
+    const match = slots.find(s => s.startLabel === picked);
+    if (match && !match.available) {
+      setPicked(null);
+      setBookError(`That slot is no longer available (${match.reasonLabel || 'busy'}). Please pick another.`);
+    }
+  }, [slots, picked]);
+
   const bookMut = useMutation({
     mutationFn: () => bookAppointment({
       doctorId, patientId, date, startTime: picked, duration, reason,
@@ -523,7 +538,14 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
       toast({ title: 'Appointment booked' });
       onBooked?.(); onClose(); reset();
     },
-    onError: (err) => toast({ title: 'Booking failed', description: err.message, variant: 'destructive' }),
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err.message || 'Booking failed';
+      setBookError(msg);
+      toast({ title: 'Booking failed', description: msg, variant: 'destructive' });
+      // Refresh slots so the UI reflects the new conflict
+      slotsQuery.refetch();
+      setPicked(null);
+    },
   });
 
   const blockMut = useMutation({
