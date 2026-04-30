@@ -13,6 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -512,6 +515,21 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
   const slots = slotsQuery.data?.data?.slots || [];
   const reason404 = slotsQuery.data?.data?.reason;
 
+  const [bookError, setBookError] = useState(null);
+
+  // Clear stale error when key inputs change
+  useEffect(() => { setBookError(null); }, [doctorId, date, duration, picked]);
+
+  // If picked slot becomes unavailable after a refetch, clear it
+  useEffect(() => {
+    if (!picked) return;
+    const match = slots.find(s => s.startLabel === picked);
+    if (match && !match.available) {
+      setPicked(null);
+      setBookError(`That slot is no longer available (${match.reasonLabel || 'busy'}). Please pick another.`);
+    }
+  }, [slots, picked]);
+
   const bookMut = useMutation({
     mutationFn: () => bookAppointment({
       doctorId, patientId, date, startTime: picked, duration, reason,
@@ -520,7 +538,14 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
       toast({ title: 'Appointment booked' });
       onBooked?.(); onClose(); reset();
     },
-    onError: (err) => toast({ title: 'Booking failed', description: err.message, variant: 'destructive' }),
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err.message || 'Booking failed';
+      setBookError(msg);
+      toast({ title: 'Booking failed', description: msg, variant: 'destructive' });
+      // Refresh slots so the UI reflects the new conflict
+      slotsQuery.refetch();
+      setPicked(null);
+    },
   });
 
   const blockMut = useMutation({
@@ -586,10 +611,27 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
             Default durations are 10 / 20 / 30 min. For longer, use the manual block below.
           </p>
 
+          {/* Booking error banner */}
+          {bookError && (
+            <Alert variant="destructive" className="py-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="text-sm">Cannot book this slot</AlertTitle>
+              <AlertDescription className="text-xs">{bookError}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Slots */}
           {doctorId && (
             <div>
-              <Label>Available slots</Label>
+              <div className="flex items-center justify-between">
+                <Label>Available slots</Label>
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm border border-border bg-background" /> Free</span>
+                  <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-destructive/40" /> Booked</span>
+                  <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-amber-500/40" /> Blocked</span>
+                  <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-muted" /> Past</span>
+                </div>
+              </div>
               {slotsQuery.isFetching ? (
                 <div className="text-xs text-muted-foreground py-2">Loading slots…</div>
               ) : reason404 ? (
@@ -597,17 +639,40 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
               ) : slots.length === 0 ? (
                 <div className="text-xs text-muted-foreground py-2">No slots configured for this day.</div>
               ) : (
-                <div className="grid max-h-44 grid-cols-4 gap-1.5 overflow-auto rounded border border-border p-2">
-                  {slots.map((s) => (
-                    <button key={s.startLabel} disabled={!s.available}
-                      onClick={() => setPicked(s.startLabel)}
-                      className={`rounded border px-2 py-1 text-xs transition-colors
-                        ${picked === s.startLabel ? 'border-primary bg-primary text-primary-foreground' :
-                          s.available ? 'border-border hover:bg-muted' : 'border-border bg-muted/40 text-muted-foreground line-through cursor-not-allowed'}`}>
-                      {s.startLabel}
-                    </button>
-                  ))}
-                </div>
+                <TooltipProvider delayDuration={150}>
+                  <div className="grid max-h-44 grid-cols-4 gap-1.5 overflow-auto rounded border border-border p-2">
+                    {slots.map((s) => {
+                      const isPicked = picked === s.startLabel;
+                      const reasonClass = !s.available
+                        ? s.reason === 'appointment'
+                          ? 'border-destructive/40 bg-destructive/10 text-destructive line-through cursor-not-allowed'
+                          : s.reason === 'block'
+                          ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 line-through cursor-not-allowed'
+                          : s.reason === 'past'
+                          ? 'border-border bg-muted text-muted-foreground line-through cursor-not-allowed opacity-60'
+                          : 'border-border bg-muted/40 text-muted-foreground line-through cursor-not-allowed'
+                        : 'border-border hover:bg-muted';
+                      const btn = (
+                        <button key={s.startLabel} disabled={!s.available}
+                          aria-disabled={!s.available}
+                          aria-label={s.available ? `Book ${s.startLabel}` : `${s.startLabel} — ${s.reasonLabel || 'unavailable'}`}
+                          onClick={() => { setPicked(s.startLabel); setBookError(null); }}
+                          className={`rounded border px-2 py-1 text-xs transition-colors w-full ${isPicked ? 'border-primary bg-primary text-primary-foreground' : reasonClass}`}>
+                          {s.startLabel}
+                        </button>
+                      );
+                      if (s.available) return <div key={s.startLabel}>{btn}</div>;
+                      return (
+                        <Tooltip key={s.startLabel}>
+                          <TooltipTrigger asChild><span className="block">{btn}</span></TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs">
+                            {s.reasonLabel || 'Unavailable'}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </TooltipProvider>
               )}
             </div>
           )}
