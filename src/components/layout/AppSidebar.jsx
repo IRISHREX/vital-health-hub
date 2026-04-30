@@ -46,7 +46,6 @@ const mainNavItems = [
   { title: "Doctors", url: "/doctors", icon: Stethoscope, module: "doctors" },
   { title: "Nurses", url: "/nurses", icon: Users, module: "nurses" },
   { title: "Appointments", url: "/appointments", icon: Calendar, module: "appointments" },
-  { title: "Scheduler", url: "/scheduler", icon: Calendar, module: "scheduler" },
   { title: "Tasks", url: "/tasks", icon: ClipboardList, module: "tasks" },
   { title: "Nurse", url: "/nurse", icon: Users, module: "nurses" },
   { title: "OPD", url: "/opd", icon: Users, module: "patients" },

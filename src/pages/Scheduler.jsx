@@ -354,7 +354,7 @@ function EventDialog({ open, onClose, editing, onSubmit, submitting }) {
   useEffect(() => { if (open) setForm(defaults(editing)); }, [open, editing]);
 
   const { data: usersRes } = useQuery({ queryKey: ['users-all'], queryFn: getUsers, enabled: open });
-  const users = (usersRes?.data || []).filter(u => u.isActive !== false);
+  const users = (usersRes?.data?.users || []).filter(u => u.isActive !== false);
 
   const toggleAttendee = (uid) => {
     setForm((f) => ({
@@ -501,8 +501,8 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
 
   const { data: doctorsRes } = useQuery({ queryKey: ['doctors-all'], queryFn: getDoctors, enabled: open });
   const { data: patientsRes } = useQuery({ queryKey: ['patients-all'], queryFn: () => getPatients(''), enabled: open });
-  const doctors = doctorsRes?.data || [];
-  const patients = patientsRes?.data || [];
+  const doctors = doctorsRes?.data?.doctors || [];
+  const patients = patientsRes?.data?.patients || [];
 
   const slotsQuery = useQuery({
     queryKey: ['doctor-slots', doctorId, date, duration],

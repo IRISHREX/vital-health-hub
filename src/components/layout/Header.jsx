@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Search, User, LogOut, Sun, Moon, PanelLeft, LayoutGrid } from "lucide-react";
+import { Bell, Search, User, LogOut, Sun, Moon, PanelLeft, LayoutGrid, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -28,8 +28,10 @@ export function Header() {
   const { mode, setMode } = useLayoutMode();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [widgetOverlayOpen, setWidgetOverlayOpen] = useState(false);
   const canViewNotifications = canView("notifications");
   const canViewSettings = canView("settings");
+  const canViewScheduler = canView("scheduler");
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -136,6 +138,19 @@ export function Header() {
           </span>
           <span className="text-xs font-medium text-status-available">Live</span>
         </div>
+
+        {/* Scheduler */}
+        {canViewScheduler && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/scheduler")}
+            className="text-muted-foreground hover:text-foreground"
+            title="Scheduler"
+          >
+            <Calendar className="h-5 w-5" />
+          </Button>
+        )}
 
         {/* Theme Toggle */}
         <Button
