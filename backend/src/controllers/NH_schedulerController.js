@@ -333,12 +333,29 @@ exports.getDoctorSlots = async (req, res, next) => {
       busy.push({
         start: dateAt(a.appointmentDate, a.timeSlot.start),
         end:   dateAt(a.appointmentDate, a.timeSlot.end),
+        type: 'appointment',
+        label: 'Already booked',
       });
     }
-    for (const b of blocks) busy.push({ start: new Date(b.start), end: new Date(b.end) });
+    for (const b of blocks) {
+      busy.push({
+        start: new Date(b.start),
+        end: new Date(b.end),
+        type: b.kind === 'block' ? 'block' : b.kind || 'event',
+        label: b.kind === 'block' ? 'Manually blocked' : `Busy (${b.kind})`,
+      });
+    }
 
-    const isFree = (slot) => !busy.some(b => b.start < slot.end && b.end > slot.start);
-    const slots = candidates.map(s => ({ ...s, available: isFree(s) }));
+    const now = new Date();
+    const conflictFor = (slot) => busy.find(b => b.start < slot.end && b.end > slot.start);
+    const slots = candidates.map(s => {
+      if (s.end <= now) {
+        return { ...s, available: false, reason: 'past', reasonLabel: 'Time has passed' };
+      }
+      const c = conflictFor(s);
+      if (c) return { ...s, available: false, reason: c.type, reasonLabel: c.label };
+      return { ...s, available: true };
+    });
 
     res.json({ success: true, data: { duration, slots, allowedDurations: ALLOWED_DURATIONS } });
   } catch (err) { next(err); }
@@ -363,22 +380,41 @@ exports.bookAppointment = async (req, res, next) => {
     const slotStart = dateAt(date, startTime);
     const slotEnd = new Date(slotStart.getTime() + Number(duration) * 60000);
 
-    // Conflict check
+    if (slotEnd <= new Date()) {
+      throw new AppError('Cannot book a slot in the past', 400);
+    }
+
+    // Conflict check — calendar events / blocks
     const conflict = await Event.findOne({
       status: { $ne: 'cancelled' },
       $or: [{ doctor: doctorId }, { 'attendees.user': doctor.user }],
       start: { $lt: slotEnd },
       end: { $gt: slotStart },
-    });
-    if (conflict) throw new AppError('Selected slot is no longer available', 409);
+    }).select('kind title start end');
+    if (conflict) {
+      const kindLabel = conflict.kind === 'block' ? 'a manual block' : `another ${conflict.kind}`;
+      throw new AppError(
+        `Slot overlaps with ${kindLabel} ("${conflict.title}") from ${new Date(conflict.start).toLocaleTimeString()} to ${new Date(conflict.end).toLocaleTimeString()}.`,
+        409,
+      );
+    }
 
+    // Conflict check — overlapping appointments (not just same start)
     const apptConflict = await Appointment.findOne({
       doctor: doctorId,
       status: { $nin: ['cancelled', 'no_show'] },
       appointmentDate: { $gte: startOfDay(slotStart), $lte: endOfDay(slotStart) },
-      'timeSlot.start': startTime,
-    });
-    if (apptConflict) throw new AppError('Slot already booked', 409);
+    }).select('appointmentDate timeSlot patient').populate('patient', 'name');
+    if (apptConflict?.timeSlot?.start && apptConflict?.timeSlot?.end) {
+      const aStart = dateAt(apptConflict.appointmentDate, apptConflict.timeSlot.start);
+      const aEnd   = dateAt(apptConflict.appointmentDate, apptConflict.timeSlot.end);
+      if (aStart < slotEnd && aEnd > slotStart) {
+        throw new AppError(
+          `This doctor already has an appointment from ${apptConflict.timeSlot.start} to ${apptConflict.timeSlot.end}. Please pick another slot.`,
+          409,
+        );
+      }
+    }
 
     const appointment = await Appointment.create({
       patient: patientId,
