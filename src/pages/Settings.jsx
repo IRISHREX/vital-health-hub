@@ -1858,6 +1858,40 @@ export default function Settings() {
                     />
                   </div>
 
+                  <Separator />
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="text-base font-medium">Per-module notifications</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Only modules enabled for your organization are shown.
+                      </p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {rbacModules
+                        .filter((mod) => isModuleEnabled(mod) && !["dashboard", "settings", "notifications"].includes(mod))
+                        .map((mod) => {
+                          const enabled = notificationSettings.perModule?.[mod] !== false;
+                          return (
+                            <label
+                              key={`notif-${mod}`}
+                              className="flex items-center justify-between rounded-md border px-3 py-2"
+                            >
+                              <span className="text-sm">{moduleLabels[mod] || mod}</span>
+                              <Switch
+                                checked={enabled}
+                                onCheckedChange={(checked) =>
+                                  setNotificationSettings((prev) => ({
+                                    ...prev,
+                                    perModule: { ...(prev.perModule || {}), [mod]: checked },
+                                  }))
+                                }
+                              />
+                            </label>
+                          );
+                        })}
+                    </div>
+                  </div>
+
                   <div className="flex justify-end">
                     <Button onClick={handleSaveNotifications} disabled={saving}>
                       {saving ? (
