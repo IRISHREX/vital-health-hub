@@ -26,6 +26,7 @@ export const validationFormRegistry = [
   },
   {
     id: "appointment_dialog",
+    module: "appointments",
     label: "Appointment dialog",
     description: "Book and edit OPD appointments.",
     fields: [
@@ -41,6 +42,7 @@ export const validationFormRegistry = [
   },
   {
     id: "doctor_dialog",
+    module: "doctors",
     label: "Doctor dialog",
     description: "Add and edit doctors.",
     fields: [
@@ -57,6 +59,7 @@ export const validationFormRegistry = [
   },
   {
     id: "bed_dialog",
+    module: "beds",
     label: "Bed dialog",
     description: "Create and edit bed records.",
     fields: [
@@ -73,6 +76,7 @@ export const validationFormRegistry = [
   },
   {
     id: "user_dialog",
+    module: "settings",
     label: "User dialog",
     description: "Create hospital users from settings.",
     fields: [
@@ -86,6 +90,7 @@ export const validationFormRegistry = [
   },
   {
     id: "quick_vital_dialog",
+    module: "vitals",
     label: "Quick vital dialog",
     description: "Record vital signs quickly.",
     fields: [
@@ -101,6 +106,7 @@ export const validationFormRegistry = [
   },
   {
     id: "nurse_dialog",
+    module: "nurses",
     label: "Nurse dialog",
     description: "Create and edit nurse accounts.",
     fields: [
@@ -115,6 +121,7 @@ export const validationFormRegistry = [
   },
   {
     id: "lab_order_dialog",
+    module: "lab",
     label: "Lab order dialog",
     description: "Order pathology tests.",
     fields: [
@@ -130,6 +137,7 @@ export const validationFormRegistry = [
   },
   {
     id: "radiology_order_dialog",
+    module: "radiology",
     label: "Radiology order dialog",
     description: "Create imaging study orders.",
     fields: [
@@ -150,6 +158,7 @@ export const validationFormRegistry = [
   },
   {
     id: "medicine_dialog",
+    module: "pharmacy",
     label: "Medicine dialog",
     description: "Add and edit medicine inventory rows.",
     fields: [
@@ -174,6 +183,7 @@ export const validationFormRegistry = [
   },
   {
     id: "surgery_dialog",
+    module: "ot",
     label: "Surgery request dialog",
     description: "Create OT surgery requests.",
     fields: [
