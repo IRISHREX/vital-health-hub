@@ -78,28 +78,28 @@ const WIDGET_TONES = [
 ];
 
 const DEFAULT_WIDGETS = [
-  { id: "view:admin", title: "Admin View", defaultW: 3, defaultH: 1 },
-  { id: "view:doctor", title: "Doctor View", defaultW: 3, defaultH: 1 },
-  { id: "view:nurse", title: "Nurse View", defaultW: 3, defaultH: 1 },
-  { id: "totalBeds", title: "Total Beds", defaultW: 3, defaultH: 1 },
-  { id: "admittedPatients", title: "Admitted Patients", defaultW: 3, defaultH: 1 },
-  { id: "availableDoctors", title: "Available Doctors", defaultW: 3, defaultH: 1 },
-  { id: "pendingBills", title: "Pending Bills", defaultW: 3, defaultH: 1 },
-  { id: "todayAppointments", title: "Today's Appointments", defaultW: 3, defaultH: 1 },
-  { id: "pathologyToday", title: "Pathology Today", defaultW: 3, defaultH: 1 },
-  { id: "radiologyToday", title: "Radiology Today", defaultW: 3, defaultH: 1 },
-  { id: "activePrescriptions", title: "Active Prescriptions", defaultW: 3, defaultH: 1 },
-  { id: "nursesAvailable", title: "Nurses Available", defaultW: 3, defaultH: 1 },
-  { id: "recentPatients", title: "Recent Patients", defaultW: 8, defaultH: 3 },
+  { id: "view:admin", title: "Admin View", defaultW: 3, defaultH: 1, adminOnly: true },
+  { id: "view:doctor", title: "Doctor View", defaultW: 3, defaultH: 1, module: "doctors" },
+  { id: "view:nurse", title: "Nurse View", defaultW: 3, defaultH: 1, module: "nurses" },
+  { id: "totalBeds", title: "Total Beds", defaultW: 3, defaultH: 1, module: "beds" },
+  { id: "admittedPatients", title: "Admitted Patients", defaultW: 3, defaultH: 1, module: "admissions" },
+  { id: "availableDoctors", title: "Available Doctors", defaultW: 3, defaultH: 1, module: "doctors" },
+  { id: "pendingBills", title: "Pending Bills", defaultW: 3, defaultH: 1, module: "billing" },
+  { id: "todayAppointments", title: "Today's Appointments", defaultW: 3, defaultH: 1, module: "appointments" },
+  { id: "pathologyToday", title: "Pathology Today", defaultW: 3, defaultH: 1, module: "lab" },
+  { id: "radiologyToday", title: "Radiology Today", defaultW: 3, defaultH: 1, module: "radiology" },
+  { id: "activePrescriptions", title: "Active Prescriptions", defaultW: 3, defaultH: 1, module: "pharmacy" },
+  { id: "nursesAvailable", title: "Nurses Available", defaultW: 3, defaultH: 1, module: "nurses" },
+  { id: "recentPatients", title: "Recent Patients", defaultW: 8, defaultH: 3, module: "patients" },
   { id: "quickActions", title: "Quick Actions", defaultW: 4, defaultH: 3 },
-  { id: "bedOccupancy", title: "Bed Occupancy by Type", defaultW: 6, defaultH: 3 },
-  { id: "weeklyAdmissions", title: "Weekly Admissions & Discharges", defaultW: 6, defaultH: 3 },
-  { id: "moduleVolume", title: "Module Volume", defaultW: 8, defaultH: 3 },
-  { id: "moduleRevenue", title: "Module Revenue", defaultW: 4, defaultH: 3 },
-  { id: "workforce", title: "Workforce", defaultW: 4, defaultH: 3 },
-  { id: "nurseWorkload", title: "Nurse Workload", defaultW: 4, defaultH: 3 },
-  { id: "doctorWidget", title: "Doctor Widget", defaultW: 4, defaultH: 3 },
-  { id: "alerts", title: "Revenue & Alerts", defaultW: 12, defaultH: 2 },
+  { id: "bedOccupancy", title: "Bed Occupancy by Type", defaultW: 6, defaultH: 3, module: "beds" },
+  { id: "weeklyAdmissions", title: "Weekly Admissions & Discharges", defaultW: 6, defaultH: 3, module: "admissions" },
+  { id: "moduleVolume", title: "Module Volume", defaultW: 8, defaultH: 3, anyModule: ["lab", "radiology", "pharmacy"] },
+  { id: "moduleRevenue", title: "Module Revenue", defaultW: 4, defaultH: 3, anyModule: ["lab", "radiology", "pharmacy"] },
+  { id: "workforce", title: "Workforce", defaultW: 4, defaultH: 3, anyModule: ["doctors", "nurses"] },
+  { id: "nurseWorkload", title: "Nurse Workload", defaultW: 4, defaultH: 3, module: "nurses" },
+  { id: "doctorWidget", title: "Doctor Widget", defaultW: 4, defaultH: 3, module: "doctors" },
+  { id: "alerts", title: "Revenue & Alerts", defaultW: 12, defaultH: 2, module: "billing" },
 ];
 
 const DEFAULT_ORDER = DEFAULT_WIDGETS.map((w) => w.id);
@@ -126,8 +126,26 @@ const getWidgetToneClass = (widgetId = "") => {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canView } = useVisualAuth();
+  const { canView, isModuleEnabled } = useVisualAuth();
   const isAdmin = ADMIN_ROLES.includes(user?.role);
+
+  const isWidgetAllowed = (widget) => {
+    if (!widget) return false;
+    if (widget.adminOnly && !isAdmin) return false;
+    if (widget.module) {
+      return isModuleEnabled(widget.module) && canView(widget.module);
+    }
+    if (Array.isArray(widget.anyModule)) {
+      return widget.anyModule.some((m) => isModuleEnabled(m) && canView(m));
+    }
+    return true;
+  };
+
+  const allowedWidgetIds = useMemo(
+    () => DEFAULT_WIDGETS.filter(isWidgetAllowed).map((w) => w.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.role, isAdmin, canView, isModuleEnabled]
+  );
 
   const [stats, setStats] = useState({
     totalPatients: 0,
@@ -315,8 +333,8 @@ export default function Dashboard() {
   );
 
   const visibleWidgetIds = useMemo(
-    () => widgetOrder.filter((id) => !hiddenWidgetIds.includes(id)),
-    [widgetOrder, hiddenWidgetIds]
+    () => widgetOrder.filter((id) => !hiddenWidgetIds.includes(id) && allowedWidgetIds.includes(id)),
+    [widgetOrder, hiddenWidgetIds, allowedWidgetIds]
   );
 
   useEffect(() => {
@@ -563,7 +581,7 @@ export default function Dashboard() {
                 <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto">
                   <DropdownMenuLabel>Show / Hide Widgets</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {DEFAULT_WIDGETS.map((widget) => {
+                  {DEFAULT_WIDGETS.filter((w) => allowedWidgetIds.includes(w.id)).map((widget) => {
                     const isVisible = !hiddenWidgetIds.includes(widget.id);
                     return (
                       <DropdownMenuCheckboxItem

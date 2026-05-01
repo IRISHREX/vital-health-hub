@@ -57,7 +57,7 @@ const managementItems = [
   { title: "Radiology", url: "/radiology", icon: ScanLine, module: "radiology" },
   { title: "Pharmacy", url: "/pharmacy", icon: Pill, module: "pharmacy" },
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
-  { title: "Service Catalog", url: "/service-catalog", icon: PackageSearch, module: "billing" },
+  { title: "Service Catalog", url: "/service-catalog", icon: PackageSearch, module: "billing", requireAction: "canCreate" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];
@@ -71,7 +71,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const { user } = useAuth();
-  const { canView } = useVisualAuth();
+  const { canView, can } = useVisualAuth();
   const isCollapsed = state === "collapsed";
   const { data: hospitalRes } = useQuery({
     queryKey: ["hospital-settings"],
@@ -84,8 +84,8 @@ export function AppSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const filterByRole = (items) => 
-    items.filter(item => canView(item.module));
+  const filterByRole = (items) =>
+    items.filter((item) => (item.requireAction ? can(item.module, item.requireAction) : canView(item.module)));
 
   return (
     <Sidebar className="border-r-0 bg-gradient-sidebar">
