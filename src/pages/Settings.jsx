@@ -97,6 +97,7 @@ import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
 import SoundSettings from "@/components/settings/SoundSettings";
+import DOBAgeSetting from "@/components/settings/DOBAgeSetting";
 import { normalizeValidationPreferences, validationFormRegistry } from "@/lib/validationPreferences";
 
 const assignmentRoleOptions = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"];
@@ -1196,6 +1197,12 @@ export default function Settings() {
             <Volume2 className="h-4 w-4" />
             Sounds
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="data-settings" className="gap-2">
+              <Database className="h-4 w-4" />
+              Data Settings
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6">
@@ -2627,6 +2634,12 @@ export default function Settings() {
         <TabsContent value="sounds">
           <SoundSettings />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="data-settings" className="space-y-6">
+            <DOBAgeSetting />
+          </TabsContent>
+        )}
 
         {isAdmin && (
           <TabsContent value="approvals">

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,6 +12,9 @@ import { createInvoice, getInvoices, updateInvoice } from "@/lib/invoices";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { playSound } from "@/lib/sounds";
+import { validateDOB, validateAge, DOB_OPTIONS } from "@/lib/dobAgeUtils";
+import { useDOBMode } from "@/hooks/useDOBAgeSetting";
+import DOBAgePicker from "@/components/shared/DOBAgePicker";
 import {
   Dialog,
   DialogContent,
@@ -59,42 +62,65 @@ const getYesterdayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
-const patientSchema = z.object({
-  firstName: z.string().min(1, "First name is required").max(50),
-  lastName: z.string().min(1, "Last name is required").max(50),
-  dateOfBirth: z.string()
-    .min(1, "Date of birth is required")
-    .refine(
-      (date) => {
-        const selectedDate = new Date(date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return selectedDate < today;
-      },
-      "Date of birth cannot be today or in the future"
-    ),
-  gender: z.enum(["male", "female", "other"]),
-  contactNumber: phoneSchema,
-  email: z.string().email("Valid email required").optional(),
-  address: z.string().min(1, "Address is required").max(200),
-  emergencyContact: z.object({
-    name: z.string().min(1, "Emergency contact name required"),
-    relationship: z.string().min(1, "Relationship required"),
-    phone: phoneSchema,
-  }),
-  bloodGroup: z.string().optional(),
-  registrationType: z.enum(["opd", "ipd", "emergency"]),
-  medicalHistory: z.string().optional(),
-  assignedDoctor: z.string().optional(),
-  assignedBed: z.string().optional(),
-  assignedNurses: z.array(z.string()).optional(),
-  primaryNurse: z.string().nullable().optional(),
-});
+// Create schema based on DOB mode
+const createPatientSchema = (dobMode) => {
+  let dobSchema = z.string().optional();
+
+  if (dobMode === DOB_OPTIONS.REQUIRED) {
+    dobSchema = z.string()
+      .min(1, "Date of birth is required")
+      .refine(
+        (date) => {
+          const selectedDate = new Date(date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return selectedDate < today;
+        },
+        "Date of birth cannot be today or in the future"
+      );
+  } else if (dobMode === DOB_OPTIONS.OPTIONAL) {
+    dobSchema = z.string()
+      .min(1, "Date of birth or age is required")
+      .refine(
+        (date) => {
+          const selectedDate = new Date(date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return selectedDate < today;
+        },
+        "Date of birth cannot be today or in the future"
+      );
+  }
+
+  return z.object({
+    firstName: z.string().min(1, "First name is required").max(50),
+    lastName: z.string().min(1, "Last name is required").max(50),
+    dateOfBirth: dobSchema,
+    gender: z.enum(["male", "female", "other"]),
+    contactNumber: phoneSchema,
+    email: z.string().email("Valid email required").optional(),
+    address: z.string().min(1, "Address is required").max(200),
+    emergencyContact: z.object({
+      name: z.string().min(1, "Emergency contact name required"),
+      relationship: z.string().min(1, "Relationship required"),
+      phone: phoneSchema,
+    }),
+    bloodGroup: z.string().optional(),
+    registrationType: z.enum(["opd", "ipd", "emergency"]),
+    medicalHistory: z.string().optional(),
+    assignedDoctor: z.string().optional(),
+    assignedBed: z.string().optional(),
+    assignedNurses: z.array(z.string()).optional(),
+    primaryNurse: z.string().nullable().optional(),
+  });
+};
 
 export default function PatientDialog({ isOpen, onClose, patient, mode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const dobMode = useDOBMode("patient_dialog");
+  const [patientSchema] = useState(() => createPatientSchema(dobMode));
 
   const { data: doctorsData } = useQuery({
     queryKey: ["doctors"],
@@ -394,19 +420,18 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="dateOfBirth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date of Birth</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} max={getYesterdayDateString()} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="col-span-2">
+                <DOBAgePicker
+                  value={form.watch("dateOfBirth")}
+                  onChange={(dob) => form.setValue("dateOfBirth", dob || "")}
+                  mode={dobMode}
+                  required={dobMode !== DOB_OPTIONS.NONE}
+                  disabled={false}
+                  error={form.formState.errors.dateOfBirth?.message || ""}
+                  label="Date of Birth"
+                  showAge={true}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="gender"

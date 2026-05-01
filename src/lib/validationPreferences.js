@@ -197,6 +197,10 @@ export const validationFormRegistry = [
 
 export const createDefaultValidationPreferences = () => ({
   enabled: true,
+  dobAgeSetting: {
+    option: "required",  // 'required' | 'optional' | 'none'
+    allowAgeInput: true,
+  },
   forms: validationFormRegistry.reduce((acc, form) => {
     acc[form.id] = {
       enabled: true,
@@ -212,6 +216,7 @@ export const createDefaultValidationPreferences = () => ({
 export const normalizeValidationPreferences = (value) => {
   const source = value && typeof value === "object" ? value : {};
   const sourceForms = source.forms && typeof source.forms === "object" ? source.forms : {};
+  const sourceDobAgeSetting = source.dobAgeSetting && typeof source.dobAgeSetting === "object" ? source.dobAgeSetting : {};
   const defaults = createDefaultValidationPreferences();
   const forms = { ...defaults.forms };
 
@@ -233,6 +238,10 @@ export const normalizeValidationPreferences = (value) => {
 
   return {
     enabled: source.enabled !== false,
+    dobAgeSetting: {
+      option: sourceDobAgeSetting.option || defaults.dobAgeSetting.option,
+      allowAgeInput: sourceDobAgeSetting.allowAgeInput !== false,
+    },
     forms,
   };
 };
