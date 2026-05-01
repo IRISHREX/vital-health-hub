@@ -439,8 +439,9 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
 
 export default function Billing() {
   const qc = useQueryClient();
-  const { getModulePermissions, canUseFeature } = useVisualAuth();
+  const { getModulePermissions, canUseFeature, canView, isModuleEnabled } = useVisualAuth();
   const permissions = getModulePermissions("billing");
+  const hasIpdAccess = isModuleEnabled("admissions") && canView("admissions");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
