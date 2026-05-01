@@ -268,6 +268,7 @@ export default function Settings() {
     emailNotifications: true,
     smsAlerts: false,
     pushNotifications: true,
+    perModule: {},
   });
 
   // User stats state
