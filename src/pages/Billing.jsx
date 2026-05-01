@@ -506,11 +506,25 @@ export default function Billing() {
   const enablePartialPayment = billingPaymentConfig ? billingPaymentConfig.enablePartialPayment !== false : true;
   const enableRefunds = billingPaymentConfig ? billingPaymentConfig.enableRefunds !== false : true;
 
+  // Map billing option keys to source modules used to gate by enabled modules
+  const billingOptionModuleMap = {
+    opd: "appointments",
+    ipd: "admissions",
+    emergency: "admissions",
+    lab: "lab",
+    radiology: "radiology",
+    pharmacy: "pharmacy",
+    ot: "ot",
+    other: null,
+  };
+
   const allowedBillingOptions = useMemo(() => {
-    return Object.keys(billingOptionConfig).filter((option) =>
-      canUseFeature("billing", `billing_${option}`)
-    );
-  }, [canUseFeature]);
+    return Object.keys(billingOptionConfig).filter((option) => {
+      const requiredModule = billingOptionModuleMap[option];
+      if (requiredModule && !(isModuleEnabled(requiredModule) && canView(requiredModule))) return false;
+      return canUseFeature("billing", `billing_${option}`);
+    });
+  }, [canUseFeature, isModuleEnabled, canView]);
 
   const effectiveBillingOptionFilter =
     billingOptionFilter === "all" || allowedBillingOptions.includes(billingOptionFilter)
