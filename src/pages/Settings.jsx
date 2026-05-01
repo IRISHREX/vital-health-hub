@@ -1412,7 +1412,9 @@ export default function Settings() {
                   </p>
                 </div>
                 <Accordion type="multiple" className="w-full rounded-lg border px-4">
-                  {validationFormRegistry.map((formConfig) => {
+                  {validationFormRegistry
+                    .filter((formConfig) => !formConfig.module || isModuleEnabled(formConfig.module))
+                    .map((formConfig) => {
                     const formState = validationPreferencesDraft.forms?.[formConfig.id];
                     return (
                       <AccordionItem key={formConfig.id} value={formConfig.id}>
