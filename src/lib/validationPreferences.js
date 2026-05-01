@@ -1,6 +1,7 @@
 export const validationFormRegistry = [
   {
     id: "patient_dialog",
+    module: "patients",
     label: "Patient dialog",
     description: "Register and edit patient records.",
     fields: [
