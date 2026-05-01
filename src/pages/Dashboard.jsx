@@ -126,8 +126,26 @@ const getWidgetToneClass = (widgetId = "") => {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canView } = useVisualAuth();
+  const { canView, isModuleEnabled } = useVisualAuth();
   const isAdmin = ADMIN_ROLES.includes(user?.role);
+
+  const isWidgetAllowed = (widget) => {
+    if (!widget) return false;
+    if (widget.adminOnly && !isAdmin) return false;
+    if (widget.module) {
+      return isModuleEnabled(widget.module) && canView(widget.module);
+    }
+    if (Array.isArray(widget.anyModule)) {
+      return widget.anyModule.some((m) => isModuleEnabled(m) && canView(m));
+    }
+    return true;
+  };
+
+  const allowedWidgetIds = useMemo(
+    () => DEFAULT_WIDGETS.filter(isWidgetAllowed).map((w) => w.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.role, isAdmin]
+  );
 
   const [stats, setStats] = useState({
     totalPatients: 0,
