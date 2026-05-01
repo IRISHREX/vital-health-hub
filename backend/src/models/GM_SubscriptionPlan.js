@@ -18,7 +18,7 @@ const subscriptionPlanSchema = new mongoose.Schema({
       'dashboard', 'beds', 'admissions', 'patients', 'doctors', 'nurses',
       'appointments', 'facilities', 'billing', 'reports', 'notifications',
       'settings', 'tasks', 'vitals', 'lab', 'pharmacy', 'radiology', 'ot',
-      'opd', 'ipd', 'inventory'
+      'opd', 'ipd', 'inventory', 'service_catalog'
     ]
   },
 

@@ -18,7 +18,7 @@ import { isValidPhone } from '@/lib/phoneValidation';
 const ALL_MODULES = [
   'dashboard', 'beds', 'admissions', 'patients', 'doctors', 'nurses',
   'appointments', 'facilities', 'billing', 'reports', 'notifications',
-  'settings', 'tasks', 'vitals', 'lab', 'pharmacy', 'radiology', 'ot'
+  'settings', 'tasks', 'vitals', 'lab', 'pharmacy', 'radiology', 'ot', 'service_catalog'
 ];
 
 const ORG_TYPES = [

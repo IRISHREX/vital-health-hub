@@ -14,6 +14,7 @@ import {
   X,
   MoveDiagonal2,
   LayoutGrid,
+  Edit,
 } from "lucide-react";
 import { Fragment, useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -181,6 +182,7 @@ export default function Dashboard() {
   const [widgetMeta, setWidgetMeta] = useState(DEFAULT_META);
   const [draggingWidgetId, setDraggingWidgetId] = useState("");
   const [resizing, setResizing] = useState(null);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     if (!user?._id) return;
@@ -599,6 +601,15 @@ export default function Dashboard() {
               </DropdownMenu>
               <Button
                 size="icon"
+                variant={editMode ? "default" : "ghost"}
+                onClick={() => setEditMode(!editMode)}
+                title={editMode ? "Exit edit mode" : "Enter edit mode"}
+                aria-label={editMode ? "Exit edit mode" : "Enter edit mode"}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
                 variant="ghost"
                 onClick={resetWidgets}
                 title="Reset layout"
@@ -639,39 +650,43 @@ export default function Dashboard() {
                         {draggingWidgetId === widgetId ? <Badge variant="secondary">Dragging</Badge> : null}
                       </div>
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => removeWidget(widgetId)}
-                          disabled={visibleWidgetIds.length <= 1}
-                          title="Remove widget"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                        {editMode && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => removeWidget(widgetId)}
+                            disabled={visibleWidgetIds.length <= 1}
+                            title="Remove widget"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <div className="relative h-[calc(100%-65px)] overflow-auto">
                       {renderWidgetBody(widgetId)}
-                      <button
-                        type="button"
-                        className="absolute bottom-2 right-2 inline-flex h-6 w-6 cursor-nwse-resize items-center justify-center rounded border bg-background/90 text-muted-foreground hover:text-foreground"
-                        title="Pull to resize"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          const current = widgetMeta[widgetId] || { w: def.defaultW, h: def.defaultH };
-                          setResizing({
-                            widgetId,
-                            startX: event.clientX,
-                            startY: event.clientY,
-                            baseW: current.w,
-                            baseH: current.h,
-                          });
-                        }}
-                      >
-                        <MoveDiagonal2 className="h-3.5 w-3.5" />
-                      </button>
+                      {editMode && (
+                        <button
+                          type="button"
+                          className="absolute bottom-2 right-2 inline-flex h-6 w-6 cursor-nwse-resize items-center justify-center rounded border bg-background/90 text-muted-foreground hover:text-foreground"
+                          title="Pull to resize"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const current = widgetMeta[widgetId] || { w: def.defaultW, h: def.defaultH };
+                            setResizing({
+                              widgetId,
+                              startX: event.clientX,
+                              startY: event.clientY,
+                              baseW: current.w,
+                              baseH: current.h,
+                            });
+                          }}
+                        >
+                          <MoveDiagonal2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </Fragment>

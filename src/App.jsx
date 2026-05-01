@@ -184,7 +184,7 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="ot" />}>
                   <Route path="/ot" element={<Page><OTDashboard /></Page>} />
                 </Route>
-                <Route element={<AuthorizedRoute module="billing" action="create" />}>
+                <Route element={<AuthorizedRoute module="service_catalog" />}>
                   <Route path="/service-catalog" element={<Page><ServiceCatalogPage /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="pharmacy" />}>

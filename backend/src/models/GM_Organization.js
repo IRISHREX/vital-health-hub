@@ -57,6 +57,7 @@ const organizationSchema = new mongoose.Schema(
         'opd',
         'ipd',
         'inventory',
+        'service_catalog',
       ],
     },
 

@@ -53,7 +53,11 @@ export const removeGmUser = () => localStorage.removeItem('gm_user');
 
 // Organizations
 export const listOrganizations = (params) => {
-  const qs = new URLSearchParams(params).toString();
+  // Filter out undefined and empty values to prevent invalid query strings
+  const filteredParams = Object.entries(params || {})
+    .filter(([_, v]) => v !== undefined && v !== '')
+    .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {});
+  const qs = new URLSearchParams(filteredParams).toString();
   return gmApi.get(`/organizations${qs ? `?${qs}` : ''}`);
 };
 export const getOrganization = (id) => gmApi.get(`/organizations/${id}`);
