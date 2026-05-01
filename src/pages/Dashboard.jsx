@@ -333,8 +333,8 @@ export default function Dashboard() {
   );
 
   const visibleWidgetIds = useMemo(
-    () => widgetOrder.filter((id) => !hiddenWidgetIds.includes(id)),
-    [widgetOrder, hiddenWidgetIds]
+    () => widgetOrder.filter((id) => !hiddenWidgetIds.includes(id) && allowedWidgetIds.includes(id)),
+    [widgetOrder, hiddenWidgetIds, allowedWidgetIds]
   );
 
   useEffect(() => {
