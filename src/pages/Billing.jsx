@@ -969,16 +969,18 @@ export default function Billing() {
               <CardTitle className="text-base">Billing Scope Split</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setBillingScopeFilter("internal")}
-                  className={`rounded-lg border p-3 text-left ${billingScopeFilter === "internal" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
-                >
-                  <p className="text-xs text-muted-foreground">Internal Billing</p>
-                  <p className="text-sm font-semibold">{scopeSummary.internalCount} invoices</p>
-                  <p className="text-xs text-muted-foreground">Due Rs {scopeSummary.internalDue.toLocaleString()}</p>
-                </button>
+              <div className={`grid gap-3 ${hasIpdAccess ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+                {hasIpdAccess && (
+                  <button
+                    type="button"
+                    onClick={() => setBillingScopeFilter("internal")}
+                    className={`rounded-lg border p-3 text-left ${billingScopeFilter === "internal" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                  >
+                    <p className="text-xs text-muted-foreground">Internal Billing</p>
+                    <p className="text-sm font-semibold">{scopeSummary.internalCount} invoices</p>
+                    <p className="text-xs text-muted-foreground">Due Rs {scopeSummary.internalDue.toLocaleString()}</p>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setBillingScopeFilter("external")}
