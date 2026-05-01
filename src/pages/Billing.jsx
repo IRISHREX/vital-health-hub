@@ -887,8 +887,8 @@ export default function Billing() {
             <SelectContent>
               <SelectItem value="all">All Care</SelectItem>
               <SelectItem value="opd">OPD</SelectItem>
-              <SelectItem value="ipd">IPD</SelectItem>
-              <SelectItem value="emergency">Emergency</SelectItem>
+              {hasIpdAccess && <SelectItem value="ipd">IPD</SelectItem>}
+              {hasIpdAccess && <SelectItem value="emergency">Emergency</SelectItem>}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -907,19 +907,19 @@ export default function Billing() {
           <Select value={billingScopeFilter} onValueChange={setBillingScopeFilter}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Scope" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Scope</SelectItem>
-              <SelectItem value="internal">Internal</SelectItem>
-              <SelectItem value="external">External</SelectItem>
+              {hasIpdAccess && <SelectItem value="all">All Scope</SelectItem>}
+              {hasIpdAccess && <SelectItem value="internal">Internal</SelectItem>}
+              <SelectItem value="external">External (Walk-in)</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sourceModuleFilter} onValueChange={setSourceModuleFilter}>
             <SelectTrigger className="w-full sm:w-[190px]"><SelectValue placeholder="Source Module" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Modules</SelectItem>
-              <SelectItem value="pathology">Pathology</SelectItem>
-              <SelectItem value="radiology">Radiology</SelectItem>
-              <SelectItem value="pharmacy">Pharmacy</SelectItem>
-              <SelectItem value="ot">OT</SelectItem>
+              {isModuleEnabled("lab") && canView("lab") && <SelectItem value="pathology">Pathology</SelectItem>}
+              {isModuleEnabled("radiology") && canView("radiology") && <SelectItem value="radiology">Radiology</SelectItem>}
+              {isModuleEnabled("pharmacy") && canView("pharmacy") && <SelectItem value="pharmacy">Pharmacy</SelectItem>}
+              {isModuleEnabled("ot") && canView("ot") && <SelectItem value="ot">OT</SelectItem>}
               <SelectItem value="general">General</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
