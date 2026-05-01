@@ -71,7 +71,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const { user } = useAuth();
-  const { canView } = useVisualAuth();
+  const { canView, can } = useVisualAuth();
   const isCollapsed = state === "collapsed";
   const { data: hospitalRes } = useQuery({
     queryKey: ["hospital-settings"],
