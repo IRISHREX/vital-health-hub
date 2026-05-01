@@ -581,7 +581,7 @@ export default function Dashboard() {
                 <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto">
                   <DropdownMenuLabel>Show / Hide Widgets</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {DEFAULT_WIDGETS.map((widget) => {
+                  {DEFAULT_WIDGETS.filter((w) => allowedWidgetIds.includes(w.id)).map((widget) => {
                     const isVisible = !hiddenWidgetIds.includes(widget.id);
                     return (
                       <DropdownMenuCheckboxItem
