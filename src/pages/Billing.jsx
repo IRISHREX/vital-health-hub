@@ -439,13 +439,14 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
 
 export default function Billing() {
   const qc = useQueryClient();
-  const { getModulePermissions, canUseFeature } = useVisualAuth();
+  const { getModulePermissions, canUseFeature, canView, isModuleEnabled } = useVisualAuth();
   const permissions = getModulePermissions("billing");
+  const hasIpdAccess = isModuleEnabled("admissions") && canView("admissions");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [careFilter, setCareFilter] = useState("all");
-  const [billingScopeFilter, setBillingScopeFilter] = useState("all");
+  const [billingScopeFilter, setBillingScopeFilter] = useState(hasIpdAccess ? "all" : "external");
   const [sourceModuleFilter, setSourceModuleFilter] = useState("all");
   const [billingOptionFilter, setBillingOptionFilter] = useState("all");
 
@@ -505,11 +506,25 @@ export default function Billing() {
   const enablePartialPayment = billingPaymentConfig ? billingPaymentConfig.enablePartialPayment !== false : true;
   const enableRefunds = billingPaymentConfig ? billingPaymentConfig.enableRefunds !== false : true;
 
+  // Map billing option keys to source modules used to gate by enabled modules
+  const billingOptionModuleMap = {
+    opd: "appointments",
+    ipd: "admissions",
+    emergency: "admissions",
+    lab: "lab",
+    radiology: "radiology",
+    pharmacy: "pharmacy",
+    ot: "ot",
+    other: null,
+  };
+
   const allowedBillingOptions = useMemo(() => {
-    return Object.keys(billingOptionConfig).filter((option) =>
-      canUseFeature("billing", `billing_${option}`)
-    );
-  }, [canUseFeature]);
+    return Object.keys(billingOptionConfig).filter((option) => {
+      const requiredModule = billingOptionModuleMap[option];
+      if (requiredModule && !(isModuleEnabled(requiredModule) && canView(requiredModule))) return false;
+      return canUseFeature("billing", `billing_${option}`);
+    });
+  }, [canUseFeature, isModuleEnabled, canView]);
 
   const effectiveBillingOptionFilter =
     billingOptionFilter === "all" || allowedBillingOptions.includes(billingOptionFilter)
@@ -872,8 +887,8 @@ export default function Billing() {
             <SelectContent>
               <SelectItem value="all">All Care</SelectItem>
               <SelectItem value="opd">OPD</SelectItem>
-              <SelectItem value="ipd">IPD</SelectItem>
-              <SelectItem value="emergency">Emergency</SelectItem>
+              {hasIpdAccess && <SelectItem value="ipd">IPD</SelectItem>}
+              {hasIpdAccess && <SelectItem value="emergency">Emergency</SelectItem>}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -892,19 +907,19 @@ export default function Billing() {
           <Select value={billingScopeFilter} onValueChange={setBillingScopeFilter}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Scope" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Scope</SelectItem>
-              <SelectItem value="internal">Internal</SelectItem>
-              <SelectItem value="external">External</SelectItem>
+              {hasIpdAccess && <SelectItem value="all">All Scope</SelectItem>}
+              {hasIpdAccess && <SelectItem value="internal">Internal</SelectItem>}
+              <SelectItem value="external">External (Walk-in)</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sourceModuleFilter} onValueChange={setSourceModuleFilter}>
             <SelectTrigger className="w-full sm:w-[190px]"><SelectValue placeholder="Source Module" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Modules</SelectItem>
-              <SelectItem value="pathology">Pathology</SelectItem>
-              <SelectItem value="radiology">Radiology</SelectItem>
-              <SelectItem value="pharmacy">Pharmacy</SelectItem>
-              <SelectItem value="ot">OT</SelectItem>
+              {isModuleEnabled("lab") && canView("lab") && <SelectItem value="pathology">Pathology</SelectItem>}
+              {isModuleEnabled("radiology") && canView("radiology") && <SelectItem value="radiology">Radiology</SelectItem>}
+              {isModuleEnabled("pharmacy") && canView("pharmacy") && <SelectItem value="pharmacy">Pharmacy</SelectItem>}
+              {isModuleEnabled("ot") && canView("ot") && <SelectItem value="ot">OT</SelectItem>}
               <SelectItem value="general">General</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
@@ -954,16 +969,18 @@ export default function Billing() {
               <CardTitle className="text-base">Billing Scope Split</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setBillingScopeFilter("internal")}
-                  className={`rounded-lg border p-3 text-left ${billingScopeFilter === "internal" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
-                >
-                  <p className="text-xs text-muted-foreground">Internal Billing</p>
-                  <p className="text-sm font-semibold">{scopeSummary.internalCount} invoices</p>
-                  <p className="text-xs text-muted-foreground">Due Rs {scopeSummary.internalDue.toLocaleString()}</p>
-                </button>
+              <div className={`grid gap-3 ${hasIpdAccess ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+                {hasIpdAccess && (
+                  <button
+                    type="button"
+                    onClick={() => setBillingScopeFilter("internal")}
+                    className={`rounded-lg border p-3 text-left ${billingScopeFilter === "internal" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                  >
+                    <p className="text-xs text-muted-foreground">Internal Billing</p>
+                    <p className="text-sm font-semibold">{scopeSummary.internalCount} invoices</p>
+                    <p className="text-xs text-muted-foreground">Due Rs {scopeSummary.internalDue.toLocaleString()}</p>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setBillingScopeFilter("external")}

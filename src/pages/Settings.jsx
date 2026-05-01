@@ -268,6 +268,7 @@ export default function Settings() {
     emailNotifications: true,
     smsAlerts: false,
     pushNotifications: true,
+    perModule: {},
   });
 
   // User stats state
@@ -1412,7 +1413,9 @@ export default function Settings() {
                   </p>
                 </div>
                 <Accordion type="multiple" className="w-full rounded-lg border px-4">
-                  {validationFormRegistry.map((formConfig) => {
+                  {validationFormRegistry
+                    .filter((formConfig) => !formConfig.module || isModuleEnabled(formConfig.module))
+                    .map((formConfig) => {
                     const formState = validationPreferencesDraft.forms?.[formConfig.id];
                     return (
                       <AccordionItem key={formConfig.id} value={formConfig.id}>
@@ -1853,6 +1856,40 @@ export default function Settings() {
                         }))
                       }
                     />
+                  </div>
+
+                  <Separator />
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="text-base font-medium">Per-module notifications</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Only modules enabled for your organization are shown.
+                      </p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {rbacModules
+                        .filter((mod) => isModuleEnabled(mod) && !["dashboard", "settings", "notifications"].includes(mod))
+                        .map((mod) => {
+                          const enabled = notificationSettings.perModule?.[mod] !== false;
+                          return (
+                            <label
+                              key={`notif-${mod}`}
+                              className="flex items-center justify-between rounded-md border px-3 py-2"
+                            >
+                              <span className="text-sm">{moduleLabels[mod] || mod}</span>
+                              <Switch
+                                checked={enabled}
+                                onCheckedChange={(checked) =>
+                                  setNotificationSettings((prev) => ({
+                                    ...prev,
+                                    perModule: { ...(prev.perModule || {}), [mod]: checked },
+                                  }))
+                                }
+                              />
+                            </label>
+                          );
+                        })}
+                    </div>
                   </div>
 
                   <div className="flex justify-end">

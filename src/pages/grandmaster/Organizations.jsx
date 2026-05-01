@@ -205,7 +205,7 @@ export default function Organizations() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-foreground">{org.name}</p>
+                    <p className="font-medium text-foreground">{org.name || org.dbName || 'Unnamed Organization'}</p>
                     <Badge variant={statusColor[org.status]}>{org.status}</Badge>
                     <Badge variant="outline" className="text-xs">{org.type?.replace('_', ' ')}</Badge>
                   </div>
