@@ -446,7 +446,7 @@ export default function Billing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [careFilter, setCareFilter] = useState("all");
-  const [billingScopeFilter, setBillingScopeFilter] = useState("all");
+  const [billingScopeFilter, setBillingScopeFilter] = useState(hasIpdAccess ? "all" : "external");
   const [sourceModuleFilter, setSourceModuleFilter] = useState("all");
   const [billingOptionFilter, setBillingOptionFilter] = useState("all");
 
