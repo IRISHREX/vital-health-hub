@@ -16,9 +16,9 @@ const fallbackRouteOrder = [
   { module: 'settings', path: '/settings' },
 ];
 
-const AuthorizedRoute = ({ module }) => {
+const AuthorizedRoute = ({ module, action = "view" }) => {
   const { user, isLoading } = useAuth();
-  const { canView, isLoading: isVisualAuthLoading } = useVisualAuth();
+  const { can, canView, isLoading: isVisualAuthLoading } = useVisualAuth();
 
   if (isLoading || isVisualAuthLoading) {
     return <div>Loading...</div>; // Or a spinner
@@ -28,7 +28,10 @@ const AuthorizedRoute = ({ module }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (module && !canView(module)) {
+  const actionMap = { view: "canView", create: "canCreate", edit: "canEdit", delete: "canDelete" };
+  const requiredAction = actionMap[String(action).toLowerCase()] || "canView";
+
+  if (module && !can(module, requiredAction)) {
     const fallbackPath = fallbackRouteOrder.find((item) => canView(item.module))?.path;
     return <Navigate to={fallbackPath || "/login"} replace />;
   }
