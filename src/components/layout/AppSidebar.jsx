@@ -84,8 +84,8 @@ export function AppSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const filterByRole = (items) => 
-    items.filter(item => canView(item.module));
+  const filterByRole = (items) =>
+    items.filter((item) => (item.requireAction ? can(item.module, item.requireAction) : canView(item.module)));
 
   return (
     <Sidebar className="border-r-0 bg-gradient-sidebar">
