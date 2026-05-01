@@ -144,7 +144,7 @@ export default function Dashboard() {
   const allowedWidgetIds = useMemo(
     () => DEFAULT_WIDGETS.filter(isWidgetAllowed).map((w) => w.id),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user?.role, isAdmin]
+    [user?.role, isAdmin, canView, isModuleEnabled]
   );
 
   const [stats, setStats] = useState({
