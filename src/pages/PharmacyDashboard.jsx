@@ -79,6 +79,7 @@ export default function PharmacyDashboard() {
   const [editMed, setEditMed] = useState(null);
   const [stockMed, setStockMed] = useState(null);
   const [rxOpen, setRxOpen] = useState(false);
+  const [walkInOpen, setWalkInOpen] = useState(false);
   const [dispenseRx, setDispenseRx] = useState(null);
 
   const { data: stats } = useQuery({ queryKey: ["pharmacy-stats"], queryFn: getPharmacyStats });
