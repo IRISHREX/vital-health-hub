@@ -32,6 +32,7 @@ import AddMedicineDialog from "@/components/pharmacy/AddMedicineDialog";
 import StockAdjustDialog from "@/components/pharmacy/StockAdjustDialog";
 import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import DispenseDialog from "@/components/pharmacy/DispenseDialog";
+import WalkInSaleDialog from "@/components/pharmacy/WalkInSaleDialog";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
 import { useNavigate } from "react-router-dom";
