@@ -371,25 +371,58 @@ export default function PharmacyDashboard() {
                     <TableRow>
                       <TableHead>Invoice ID</TableHead>
                       <TableHead>Patient</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Scope</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead>Total</TableHead>
+                      <TableHead>Paid</TableHead>
                       <TableHead>Due</TableHead>
+                      <TableHead>Payment</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {invoices.map((invoice) => {
-                      const patientName = invoice.patient
-                        ? `${invoice.patient.firstName || ""} ${invoice.patient.lastName || ""}`.trim()
-                        : "Unknown";
+                      const isExternal = String(invoice?.billingScope || "internal").toLowerCase() === "external";
+                      const patientName = isExternal
+                        ? invoice?.externalPatientInfo?.name || "Walk-in"
+                        : (invoice.patient
+                          ? `${invoice.patient.firstName || ""} ${invoice.patient.lastName || ""}`.trim()
+                          : "Unknown");
+                      const patientId = isExternal
+                        ? "WALK-IN"
+                        : (invoice?.patient?.patientId || "-");
+                      const contact = isExternal
+                        ? (invoice?.externalPatientInfo?.phone || "-")
+                        : (invoice?.patient?.contactNumber || invoice?.patient?.phone || "-");
+                      const lastPayment = Array.isArray(invoice?.payments) && invoice.payments.length
+                        ? invoice.payments[invoice.payments.length - 1]
+                        : null;
                       return (
                         <TableRow key={invoice._id}>
                           <TableCell className="font-medium">{invoice.invoiceNumber || "-"}</TableCell>
-                          <TableCell>{patientName}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">{patientName}</div>
+                            <div className="text-xs text-muted-foreground">{patientId}</div>
+                          </TableCell>
+                          <TableCell className="text-sm">{contact}</TableCell>
+                          <TableCell>
+                            <Badge variant={isExternal ? "secondary" : "outline"}>
+                              {isExternal ? "External" : "Internal"}
+                            </Badge>
+                          </TableCell>
                           <TableCell>{invoice.items?.length || 0}</TableCell>
                           <TableCell>Rs {Number(invoice.totalAmount || 0).toFixed(2)}</TableCell>
-                          <TableCell>Rs {Number(invoice.dueAmount || 0).toFixed(2)}</TableCell>
+                          <TableCell className="text-status-available">Rs {Number(invoice.paidAmount || 0).toFixed(2)}</TableCell>
+                          <TableCell className={Number(invoice.dueAmount || 0) > 0 ? "text-status-occupied" : ""}>Rs {Number(invoice.dueAmount || 0).toFixed(2)}</TableCell>
+                          <TableCell className="text-sm">
+                            {lastPayment ? (
+                              <span className="capitalize">{String(lastPayment.method || "-").replace(/_/g, " ")}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Badge variant={invoiceStatusVariant(invoice.status)} className="capitalize">{invoice.status || "pending"}</Badge>
                           </TableCell>
@@ -398,7 +431,7 @@ export default function PharmacyDashboard() {
                       );
                     })}
                     {invoices.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No pharmacy invoices found</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No pharmacy invoices found</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
