@@ -146,6 +146,13 @@ export default function PharmacyDashboard() {
         <div className="flex flex-wrap gap-2">
           {permissions.canCreate && (
           <RestrictedAction module="pharmacy" feature="create">
+            <Button variant="outline" onClick={() => setWalkInOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />Walk-in Sale
+            </Button>
+          </RestrictedAction>
+          )}
+          {permissions.canCreate && (
+          <RestrictedAction module="pharmacy" feature="create">
             <Button variant="outline" onClick={() => setRxOpen(true)}>
               <ClipboardList className="mr-2 h-4 w-4" />New Prescription
             </Button>
