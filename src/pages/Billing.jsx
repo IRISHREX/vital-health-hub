@@ -420,9 +420,11 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(row.patientName, row.invoices)}>
-                      <Download className="mr-2 h-3 w-3" />CSV
-                    </Button>
+                    {row.invoices.length > 1 && (
+                      <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(row.patientName, row.invoices)}>
+                        <Download className="mr-2 h-3 w-3" />CSV
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(row.patientName, row.invoices, "All Invoices", hospitalSettings)}>
                       <Download className="mr-2 h-3 w-3" />PDF
                     </Button>
