@@ -373,11 +373,28 @@ export default function PrescriptionDialog({
     toast.success("Template removed");
   };
 
+  // Build a synthetic patient from external form so the preview/print work in walk-in mode
+  const previewPatient = useMemo(() => {
+    if (rxMode === "internal") return selectedPatient || null;
+    if (!externalPatient?.name?.trim()) return null;
+    return {
+      firstName: externalPatient.name,
+      lastName: "",
+      patientId: "WALK-IN",
+      gender: externalPatient.gender || "",
+      contactNumber: externalPatient.phone || "",
+      address: externalPatient.address || "",
+      _externalAge: externalPatient.age || "",
+    };
+  }, [rxMode, selectedPatient, externalPatient]);
+
   const draftPreviewRx = useMemo(
     () => ({
       _id: savedPrescription?._id || "draft",
       createdAt: savedPrescription?.createdAt || new Date().toISOString(),
-      patient: selectedPatient,
+      mode: rxMode,
+      patient: previewPatient,
+      externalPatient: rxMode === "external" ? externalPatient : undefined,
       doctor: selectedDoctor,
       encounterType,
       complaints: parseList(complaints),
@@ -390,7 +407,7 @@ export default function PrescriptionDialog({
       testAdvice,
       notes,
     }),
-    [savedPrescription, selectedPatient, selectedDoctor, encounterType, complaints, medicalHistory, diagnosis, followUpDate, vitals, femaleHealth, items, testAdvice, notes]
+    [savedPrescription, rxMode, previewPatient, externalPatient, selectedDoctor, encounterType, complaints, medicalHistory, diagnosis, followUpDate, vitals, femaleHealth, items, testAdvice, notes]
   );
 
   const handleSavePrescription = async () => {
