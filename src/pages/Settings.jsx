@@ -572,6 +572,7 @@ export default function Settings() {
       await updateSecuritySettings({
         ...securitySettings,
         sessionTimeout: parseInt(securitySettings.sessionTimeout),
+        passwordExpiry: parseInt(securitySettings.passwordExpiry),
       });
       toast.success("Security settings saved successfully");
     } catch (error) {
@@ -1309,70 +1310,6 @@ export default function Settings() {
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Theme Selection */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-medium">Appearance</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Customize how the dashboard looks
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setTheme('light')}
-                    className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:bg-accent ${
-                      theme === 'light' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-                      <Sun className="h-5 w-5 text-amber-600" />
-                    </div>
-                    <span className="text-sm font-medium">Light</span>
-                    {theme === 'light' && (
-                      <span className="text-xs text-primary">Active</span>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTheme('dark')}
-                    className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:bg-accent ${
-                      theme === 'dark' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800">
-                      <Moon className="h-5 w-5 text-slate-200" />
-                    </div>
-                    <span className="text-sm font-medium">Dark</span>
-                    {theme === 'dark' && (
-                      <span className="text-xs text-primary">Active</span>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTheme('system')}
-                    className={`flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:bg-accent ${
-                      theme === 'system' ? 'border-primary bg-primary/5' : 'border-border'
-                    }`}
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-100 to-slate-800">
-                      <Monitor className="h-5 w-5 text-white" />
-                    </div>
-                    <span className="text-sm font-medium">System</span>
-                    {theme === 'system' && (
-                      <span className="text-xs text-primary">
-                        Active ({resolvedTheme})
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
-
               <div className="flex justify-end">
                 <Button onClick={handleSaveProfile} disabled={saving}>
                   {saving ? (
@@ -1382,119 +1319,6 @@ export default function Settings() {
                   )}
                   Save Profile
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Validation UI</CardTitle>
-              <CardDescription>
-                Control inline validation feedback globally, per form, and per field. Validation rules still run even when the UI is hidden.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-1">
-                  <p className="font-medium">Enable validation UI everywhere</p>
-                  <p className="text-sm text-muted-foreground">
-                    Turn all inline validation feedback on or off at once.
-                  </p>
-                </div>
-                <Switch
-                  checked={validationPreferencesDraft.enabled}
-                  onCheckedChange={(enabled) =>
-                    setValidationPreferencesDraft((prev) => ({
-                      ...normalizeValidationPreferences(prev),
-                      enabled,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <h3 className="text-base font-medium">Per form and per field</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Disable validation UI form-by-form, then drill down to individual fields if needed.
-                  </p>
-                </div>
-                <Accordion type="multiple" className="w-full rounded-lg border px-4">
-                  {validationFormRegistry
-                    .filter((formConfig) => !formConfig.module || isModuleEnabled(formConfig.module))
-                    .map((formConfig) => {
-                    const formState = validationPreferencesDraft.forms?.[formConfig.id];
-                    return (
-                      <AccordionItem key={formConfig.id} value={formConfig.id}>
-                        <AccordionTrigger className="hover:no-underline">
-                          <div className="text-left">
-                            <p className="font-medium">{formConfig.label}</p>
-                            <p className="text-xs text-muted-foreground">{formConfig.description}</p>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-4">
-                          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-                            <div>
-                              <p className="text-sm font-medium">Show validation for this form</p>
-                              <p className="text-xs text-muted-foreground">
-                                This is the one-by-one switch for the whole form.
-                              </p>
-                            </div>
-                            <Switch
-                              checked={formState?.enabled ?? true}
-                              onCheckedChange={(enabled) => updateValidationFormState(formConfig.id, enabled)}
-                              disabled={!validationPreferencesDraft.enabled}
-                            />
-                          </div>
-
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {formConfig.fields.map((field) => (
-                              <div key={`${formConfig.id}-${field.key}`} className="flex items-center justify-between rounded-md border px-3 py-2">
-                                <div className="pr-3">
-                                  <p className="text-sm font-medium">{field.label}</p>
-                                  <p className="text-xs text-muted-foreground font-mono">{field.key}</p>
-                                </div>
-                                <Switch
-                                  checked={formState?.fields?.[field.key] ?? true}
-                                  onCheckedChange={(enabled) => updateValidationFieldState(formConfig.id, field.key, enabled)}
-                                  disabled={!validationPreferencesDraft.enabled || formState?.enabled === false}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    );
-                  })}
-                </Accordion>
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  {validationPreferencesLoading ? "Loading current validation preferences..." : "Preferences are saved per user profile."}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setValidationPreferencesDraft(normalizeValidationPreferences())}
-                    disabled={savingValidationPreferences}
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSaveValidationPreferences}
-                    disabled={savingValidationPreferences || validationPreferencesLoading}
-                  >
-                    {savingValidationPreferences ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
-                    )}
-                    Save Validation UI
-                  </Button>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -1714,15 +1538,19 @@ export default function Settings() {
                         Require 2FA for all admin accounts
                       </p>
                     </div>
-                    <Switch
-                      checked={securitySettings.twoFactorEnabled}
-                      onCheckedChange={(checked) =>
-                        setSecuritySettings((prev) => ({
-                          ...prev,
-                          twoFactorEnabled: checked,
-                        }))
-                      }
-                    />
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">Coming Soon</Badge>
+                      <Switch
+                        checked={securitySettings.twoFactorEnabled}
+                        onCheckedChange={(checked) =>
+                          setSecuritySettings((prev) => ({
+                            ...prev,
+                            twoFactorEnabled: checked,
+                          }))
+                        }
+                        disabled
+                      />
+                    </div>
                   </div>
 
                   <Separator />
@@ -1747,10 +1575,12 @@ export default function Settings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="2">2 minutes</SelectItem>
+                        <SelectItem value="5">5 minutes</SelectItem>
+                        <SelectItem value="10">10 minutes</SelectItem>
                         <SelectItem value="15">15 minutes</SelectItem>
+                        <SelectItem value="20">20 minutes</SelectItem>
                         <SelectItem value="30">30 minutes</SelectItem>
-                        <SelectItem value="60">1 hour</SelectItem>
-                        <SelectItem value="120">2 hours</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1777,10 +1607,11 @@ export default function Settings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="7">7 days</SelectItem>
+                        <SelectItem value="15">15 days</SelectItem>
                         <SelectItem value="30">30 days</SelectItem>
                         <SelectItem value="60">60 days</SelectItem>
                         <SelectItem value="90">90 days</SelectItem>
-                        <SelectItem value="never">Never</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2675,6 +2506,119 @@ export default function Settings() {
         {isAdmin && (
           <TabsContent value="data-settings" className="space-y-6">
             <DOBAgeSetting />
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Validation UI</CardTitle>
+                <CardDescription>
+                  Control inline validation feedback globally, per form, and per field. Validation rules still run even when the UI is hidden.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <p className="font-medium">Enable validation UI everywhere</p>
+                    <p className="text-sm text-muted-foreground">
+                      Turn all inline validation feedback on or off at once.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={validationPreferencesDraft.enabled}
+                    onCheckedChange={(enabled) =>
+                      setValidationPreferencesDraft((prev) => ({
+                        ...normalizeValidationPreferences(prev),
+                        enabled,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-medium">Per form and per field</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Disable validation UI form-by-form, then drill down to individual fields if needed.
+                    </p>
+                  </div>
+                  <Accordion type="multiple" className="w-full rounded-lg border px-4">
+                    {validationFormRegistry
+                      .filter((formConfig) => !formConfig.module || isModuleEnabled(formConfig.module))
+                      .map((formConfig) => {
+                      const formState = validationPreferencesDraft.forms?.[formConfig.id];
+                      return (
+                        <AccordionItem key={formConfig.id} value={formConfig.id}>
+                          <AccordionTrigger className="hover:no-underline">
+                            <div className="text-left">
+                              <p className="font-medium">{formConfig.label}</p>
+                              <p className="text-xs text-muted-foreground">{formConfig.description}</p>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-4">
+                            <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+                              <div>
+                                <p className="text-sm font-medium">Show validation for this form</p>
+                                <p className="text-xs text-muted-foreground">
+                                  This is the one-by-one switch for the whole form.
+                                </p>
+                              </div>
+                              <Switch
+                                checked={formState?.enabled ?? true}
+                                onCheckedChange={(enabled) => updateValidationFormState(formConfig.id, enabled)}
+                                disabled={!validationPreferencesDraft.enabled}
+                              />
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              {formConfig.fields.map((field) => (
+                                <div key={`${formConfig.id}-${field.key}`} className="flex items-center justify-between rounded-md border px-3 py-2">
+                                  <div className="pr-3">
+                                    <p className="text-sm font-medium">{field.label}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">{field.key}</p>
+                                  </div>
+                                  <Switch
+                                    checked={formState?.fields?.[field.key] ?? true}
+                                    onCheckedChange={(enabled) => updateValidationFieldState(formConfig.id, field.key, enabled)}
+                                    disabled={!validationPreferencesDraft.enabled || formState?.enabled === false}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    {validationPreferencesLoading ? "Loading current validation preferences..." : "Preferences are saved per user profile."}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setValidationPreferencesDraft(normalizeValidationPreferences())}
+                      disabled={savingValidationPreferences}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSaveValidationPreferences}
+                      disabled={savingValidationPreferences || validationPreferencesLoading}
+                    >
+                      {savingValidationPreferences ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Save Validation UI
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         )}
 

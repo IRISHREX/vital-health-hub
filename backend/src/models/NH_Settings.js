@@ -56,12 +56,12 @@ const securitySettingsSchema = new mongoose.Schema({
   sessionTimeout: {
     type: Number,
     default: 30, // minutes
-    enum: [15, 30, 60, 120]
+    enum: [2, 5, 10, 15, 20, 30]
   },
   passwordExpiry: {
     type: String,
-    default: '90', // days or 'never'
-    enum: ['30', '60', '90', 'never']
+    default: '90', // days
+    enum: ['7', '15', '30', '60', '90']
   },
   minPasswordLength: {
     type: Number,

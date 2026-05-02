@@ -158,7 +158,6 @@ export default function ApprovalsDiagnostics() {
               <Button size="sm" variant="secondary" onClick={handleStop}>Stop Scene</Button>
             )}
             <Button size="sm" variant="outline" onClick={handleClear}><Trash2 className="mr-2 h-4 w-4" />Clear Logs</Button>
-            <Badge variant="outline">{logs.length} entries</Badge>
           </div>
 
           {showScene && (
