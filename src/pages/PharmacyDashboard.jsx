@@ -480,6 +480,7 @@ export default function PharmacyDashboard() {
       <AddMedicineDialog open={addOpen} onOpenChange={setAddOpen} medicine={editMed} />
       {stockMed && <StockAdjustDialog open={!!stockMed} onOpenChange={() => setStockMed(null)} medicine={stockMed} />}
       <PrescriptionDialog open={rxOpen} onOpenChange={setRxOpen} />
+      <WalkInSaleDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
       {dispenseRx && <DispenseDialog open={!!dispenseRx} onOpenChange={() => setDispenseRx(null)} prescription={dispenseRx} />}
     </div>
   );
