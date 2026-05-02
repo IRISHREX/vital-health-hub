@@ -222,18 +222,31 @@ const downloadInvoicePdf = (invoice, hospitalSettings = defaultHospital) => {
   const doc = new jsPDF();
   addPdfHeaderFooter(doc, 1, "Invoice", hospitalSettings);
 
+  const isExternal = String(invoice?.billingScope || "internal").toLowerCase() === "external";
   const patientName = getPatientName(invoice);
-  const patientId = invoice?.patient?.patientId || "-";
+  const patientId = isExternal ? "WALK-IN" : (invoice?.patient?.patientId || "-");
+  const contact = isExternal
+    ? (invoice?.externalPatientInfo?.phone || "-")
+    : (invoice?.patient?.contactNumber || invoice?.patient?.phone || "-");
   const billType = (invoice?.type || "other").toUpperCase();
   const referredBy = getGeneratedByLabel(invoice);
+  const lastPayment = Array.isArray(invoice?.payments) && invoice.payments.length
+    ? invoice.payments[invoice.payments.length - 1]
+    : null;
+
+  // Organization block
+  doc.setFontSize(9);
+  doc.text(`Org: ${hospitalSettings?.hospitalName || "-"}`, 14, 26);
+  if (hospitalSettings?.address) doc.text(`Addr: ${hospitalSettings.address}`, 14, 30);
 
   doc.setFontSize(11);
-  doc.text(`Invoice Number: ${invoice?.invoiceNumber || "-"}`, 14, 30);
-  doc.text(`Patient: ${patientName}`, 14, 36);
-  doc.text(`Patient ID: ${patientId}`, 14, 42);
-  doc.text(`Bill Type: ${billType}`, 14, 48);
-  doc.text(`Referred By: ${referredBy}`, 14, 54);
-  doc.text(`Date: ${new Date(invoice?.createdAt).toLocaleString()}`, 14, 60);
+  doc.text(`Invoice Number: ${invoice?.invoiceNumber || "-"}`, 14, 38);
+  doc.text(`Patient: ${patientName}`, 14, 44);
+  doc.text(`Patient ID: ${patientId}`, 14, 50);
+  doc.text(`Contact: ${contact}`, 14, 56);
+  doc.text(`Bill Type: ${billType} (${isExternal ? "External" : "Internal"})`, 14, 62);
+  doc.text(`Referred By: ${referredBy}`, 14, 68);
+  doc.text(`Date: ${new Date(invoice?.createdAt).toLocaleString()}`, 14, 74);
 
   const rows = (invoice?.items || []).map((item) => [
     item?.description || "-",
@@ -243,19 +256,24 @@ const downloadInvoicePdf = (invoice, hospitalSettings = defaultHospital) => {
   ]);
 
   autoTable(doc, {
-    startY: 66,
+    startY: 80,
     head: [["Item", "Qty", "Unit Price", "Amount"]],
     body: rows.length ? rows : [["-", "-", "-", "-"]],
     styles: { fontSize: 9 },
     headStyles: { fillColor: [22, 163, 74] }
   });
 
-  const endY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 8 : 78;
+  const endY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 8 : 92;
   doc.setFontSize(10);
   doc.text(`Total: Rs ${Number(invoice?.totalAmount || 0).toLocaleString()}`, 14, endY);
   doc.text(`Paid: Rs ${Number(invoice?.paidAmount || 0).toLocaleString()}`, 14, endY + 6);
   doc.text(`Due: Rs ${Number(invoice?.dueAmount || 0).toLocaleString()}`, 14, endY + 12);
   doc.text(`Status: ${(invoice?.status || "pending").toUpperCase()}`, 14, endY + 18);
+  doc.text(
+    `Payment Mode: ${lastPayment ? String(lastPayment.method || "-").toUpperCase() : "—"}${lastPayment?.reference ? ` (Ref: ${lastPayment.reference})` : ""}`,
+    14,
+    endY + 24
+  );
 
   doc.save(`${invoice?.invoiceNumber || "invoice"}.pdf`);
 };
@@ -402,9 +420,11 @@ const PatientBillingTable = ({ rows, onOpenPatient, onOpenBulkPay, canEdit, canP
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(row.patientName, row.invoices)}>
-                      <Download className="mr-2 h-3 w-3" />CSV
-                    </Button>
+                    {row.invoices.length > 1 && (
+                      <Button variant="outline" size="sm" onClick={() => downloadPatientInvoices(row.patientName, row.invoices)}>
+                        <Download className="mr-2 h-3 w-3" />CSV
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => downloadInvoicesPdfBundle(row.patientName, row.invoices, "All Invoices", hospitalSettings)}>
                       <Download className="mr-2 h-3 w-3" />PDF
                     </Button>

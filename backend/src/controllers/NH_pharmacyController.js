@@ -447,14 +447,27 @@ exports.dispensePrescription = async (req, res, next) => {
       const rxItem = rx.items.id(dispenseItem.itemId);
       if (!rxItem) continue;
       if (!rxItem.medicine) {
+        // Cannot dispense items without a linked medicine
         allDispensed = false;
+        if (Number(dispenseItem.dispensedQty || 0) > 0) {
+          throw new AppError(`Cannot dispense "${rxItem.medicineName}" — no medicine linked from inventory.`, 400);
+        }
         continue;
       }
 
       const med = await Medicine.findById(rxItem.medicine?._id || rxItem.medicine);
       if (!med) continue;
 
-      const qty = Math.min(dispenseItem.dispensedQty, med.stock);
+      const requested = Number(dispenseItem.dispensedQty || 0);
+      if (requested <= 0) continue;
+      const remainingPrescribed = Math.max(0, Number(rxItem.quantity || 0) - Number(rxItem.dispensedQty || 0));
+      if (requested > remainingPrescribed) {
+        throw new AppError(`"${med.name}": requested ${requested} exceeds remaining prescribed ${remainingPrescribed}.`, 400);
+      }
+      if (requested > med.stock) {
+        throw new AppError(`"${med.name}": requested ${requested} exceeds available stock ${med.stock}.`, 400);
+      }
+      const qty = requested;
       if (qty <= 0) continue;
       hasAnyDispense = true;
 

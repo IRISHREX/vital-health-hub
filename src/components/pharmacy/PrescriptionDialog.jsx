@@ -373,11 +373,28 @@ export default function PrescriptionDialog({
     toast.success("Template removed");
   };
 
+  // Build a synthetic patient from external form so the preview/print work in walk-in mode
+  const previewPatient = useMemo(() => {
+    if (rxMode === "internal") return selectedPatient || null;
+    if (!externalPatient?.name?.trim()) return null;
+    return {
+      firstName: externalPatient.name,
+      lastName: "",
+      patientId: "WALK-IN",
+      gender: externalPatient.gender || "",
+      contactNumber: externalPatient.phone || "",
+      address: externalPatient.address || "",
+      _externalAge: externalPatient.age || "",
+    };
+  }, [rxMode, selectedPatient, externalPatient]);
+
   const draftPreviewRx = useMemo(
     () => ({
       _id: savedPrescription?._id || "draft",
       createdAt: savedPrescription?.createdAt || new Date().toISOString(),
-      patient: selectedPatient,
+      mode: rxMode,
+      patient: previewPatient,
+      externalPatient: rxMode === "external" ? externalPatient : undefined,
       doctor: selectedDoctor,
       encounterType,
       complaints: parseList(complaints),
@@ -390,7 +407,7 @@ export default function PrescriptionDialog({
       testAdvice,
       notes,
     }),
-    [savedPrescription, selectedPatient, selectedDoctor, encounterType, complaints, medicalHistory, diagnosis, followUpDate, vitals, femaleHealth, items, testAdvice, notes]
+    [savedPrescription, rxMode, previewPatient, externalPatient, selectedDoctor, encounterType, complaints, medicalHistory, diagnosis, followUpDate, vitals, femaleHealth, items, testAdvice, notes]
   );
 
   const handleSavePrescription = async () => {
@@ -877,9 +894,17 @@ export default function PrescriptionDialog({
           >
             <h3 className="font-semibold text-lg mb-3">Live Preview</h3>
             <div className="space-y-2 text-sm">
-              <p><strong>Patient:</strong> {selectedPatient ? getPatientLabel(selectedPatient) : "-"}</p>
-              <p><strong>Doctor:</strong> {doctorName(selectedDoctor)}</p>
-              <p><strong>Encounter:</strong> {encounterType.toUpperCase()}</p>
+              <p><strong>Mode:</strong> {rxMode === "external" ? "External (Walk-in)" : "Internal"}</p>
+              <p>
+                <strong>Patient:</strong>{" "}
+                {previewPatient
+                  ? rxMode === "external"
+                    ? `${previewPatient.firstName}${previewPatient._externalAge ? ` (${previewPatient._externalAge})` : ""}${previewPatient.gender ? ` · ${previewPatient.gender}` : ""}${previewPatient.contactNumber ? ` · ${previewPatient.contactNumber}` : ""}`
+                    : getPatientLabel(previewPatient)
+                  : "-"}
+              </p>
+              <p><strong>Doctor:</strong> {selectedDoctor ? `Dr. ${doctorName(selectedDoctor)}` : "-"}</p>
+              <p><strong>Encounter:</strong> {String(encounterType || "opd").toUpperCase()}</p>
               <p><strong>Status:</strong> {savedPrescription?._id ? "Saved" : "Draft"}</p>
               <hr />
               <p><strong>Complaints:</strong> {parseList(complaints).join(", ") || "-"}</p>
@@ -891,8 +916,11 @@ export default function PrescriptionDialog({
                 vitals.pulseRate ? `PR ${vitals.pulseRate}` : "",
                 vitals.spo2 ? `SpO2 ${vitals.spo2}` : "",
                 vitals.temperature ? `Temp ${vitals.temperature}` : "",
-                vitals.bmi ? `BMI ${vitals.bmi}` : ""
+                vitals.heightCm ? `Ht ${vitals.heightCm}cm` : "",
+                vitals.weightKg ? `Wt ${vitals.weightKg}kg` : "",
+                vitals.bmi ? `BMI ${vitals.bmi}` : "",
               ].filter(Boolean).join(" | ") || "-"}</p>
+              {vitals.others ? <p><strong>Other:</strong> {vitals.others}</p> : null}
             </div>
             <div className="mt-3">
               <h4 className="font-semibold mb-2">Medicines</h4>
@@ -902,8 +930,9 @@ export default function PrescriptionDialog({
                 ) : (
                   items.filter((it) => it.medicineName).map((it, idx) => (
                     <div key={idx} className="border rounded p-2">
-                      <p className="font-medium">{it.medicineName}</p>
-                      <p>{it.dosage || "-"} | {it.frequency || "-"} | {it.route || "-"} | {it.duration || "-"}</p>
+                      <p className="font-medium">{it.medicineName} {it.medicine ? "" : <span className="text-amber-600">(custom)</span>}</p>
+                      <p>{it.dosage || "-"} | {it.frequency || "-"} | {it.route || "-"} | {it.duration || "-"} | Qty {it.quantity || "-"}</p>
+                      {it.instructions ? <p className="italic">{it.instructions}</p> : null}
                     </div>
                   ))
                 )}

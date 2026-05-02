@@ -15,12 +15,31 @@ export default function DispenseDialog({ open, onOpenChange, prescription }) {
   if (!prescription) return null;
   const items = prescription.items || [];
 
-  const handleDispense = async () => {
-    const dispenseItems = items
-      .filter(it => !it.dispensed && (quantities[it._id] || 0) > 0)
-      .map(it => ({ itemId: it._id, dispensedQty: +quantities[it._id] }));
+  const getStock = (item) => {
+    if (typeof item?.medicine?.stock === "number") return item.medicine.stock;
+    return null; // unknown / no medicine linked
+  };
 
-    if (dispenseItems.length === 0) { toast.error("No items to dispense"); return; }
+  const handleDispense = async () => {
+    const dispenseItems = [];
+    for (const it of items) {
+      if (it.dispensed) continue;
+      if (!it.medicine) continue; // can't dispense unlinked medicine
+      const requested = Number(quantities[it._id] || 0);
+      if (requested <= 0) continue;
+      const stock = getStock(it) ?? 0;
+      const max = Math.min(Number(it.quantity || 0), stock);
+      if (requested > max) {
+        toast.error(`"${it.medicineName}": cannot dispense ${requested}. Max allowed is ${max} (Prescribed ${it.quantity}, Stock ${stock}).`);
+        return;
+      }
+      dispenseItems.push({ itemId: it._id, dispensedQty: requested });
+    }
+
+    if (dispenseItems.length === 0) {
+      toast.error("Nothing to dispense. Set quantity for at least one stocked item.");
+      return;
+    }
     setLoading(true);
     try {
       await dispensePrescription(prescription._id, dispenseItems);
@@ -34,7 +53,9 @@ export default function DispenseDialog({ open, onOpenChange, prescription }) {
     setLoading(false);
   };
 
-  const patientName = prescription.patient ? `${prescription.patient.firstName || ''} ${prescription.patient.lastName || ''}`.trim() : 'Unknown';
+  const patientName = prescription.patient
+    ? `${prescription.patient.firstName || ''} ${prescription.patient.lastName || ''}`.trim()
+    : (prescription.externalPatient?.name || 'Unknown');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,23 +65,49 @@ export default function DispenseDialog({ open, onOpenChange, prescription }) {
         <div className="space-y-3 mt-2">
           {items.map(item => {
             const medName = item.medicineName || item.medicine?.name || 'Unknown';
-            const stock = item.medicine?.stock ?? '?';
+            const stock = getStock(item);
+            const noMedicine = !item.medicine;
+            const outOfStock = !noMedicine && (stock ?? 0) <= 0;
+            const max = noMedicine ? 0 : Math.min(Number(item.quantity || 0), stock ?? 0);
+
             return (
-              <div key={item._id} className="flex items-center gap-3 border rounded-lg p-3">
+              <div key={item._id} className="flex items-start gap-3 border rounded-lg p-3">
                 <div className="flex-1">
                   <p className="font-medium text-sm">{medName}</p>
                   <p className="text-xs text-muted-foreground">{item.dosage} · {item.frequency} · {item.duration}</p>
-                  <p className="text-xs">Prescribed: {item.quantity} | Stock: {stock}</p>
+                  <p className="text-xs">
+                    Prescribed: <span className="font-semibold">{item.quantity}</span> | Stock: <span className={outOfStock ? "text-destructive font-semibold" : "font-semibold"}>{stock ?? "—"}</span>
+                  </p>
+                  {noMedicine && (
+                    <p className="text-xs text-amber-600 mt-1">No medicine linked from inventory — cannot be dispensed. Add the medicine to inventory first.</p>
+                  )}
+                  {!noMedicine && outOfStock && (
+                    <p className="text-xs text-destructive mt-1">Out of stock — cannot dispense.</p>
+                  )}
                 </div>
                 {item.dispensed ? (
                   <Badge variant="success" className="text-xs">Dispensed</Badge>
                 ) : (
-                  <Input
-                    type="number" min="0" max={Math.min(item.quantity, stock)}
-                    className="w-20" placeholder="Qty"
-                    value={quantities[item._id] || ''}
-                    onChange={e => setQuantities(p => ({ ...p, [item._id]: e.target.value }))}
-                  />
+                  <div className="flex flex-col items-end gap-1">
+                    <Input
+                      type="number"
+                      min="0"
+                      max={max}
+                      className="w-20"
+                      placeholder="Qty"
+                      disabled={noMedicine || outOfStock}
+                      value={quantities[item._id] || ''}
+                      onChange={e => {
+                        const raw = e.target.value;
+                        if (raw === '') return setQuantities(p => ({ ...p, [item._id]: '' }));
+                        const n = Math.max(0, Math.min(max, Number(raw)));
+                        setQuantities(p => ({ ...p, [item._id]: String(n) }));
+                      }}
+                    />
+                    {!noMedicine && !outOfStock && (
+                      <span className="text-[10px] text-muted-foreground">max {max}</span>
+                    )}
+                  </div>
                 )}
               </div>
             );
