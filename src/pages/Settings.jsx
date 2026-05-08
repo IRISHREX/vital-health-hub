@@ -60,7 +60,7 @@ import {
   AlertCircle,
   Eye,
   Volume2,
-  ImageIcon,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import ApprovalsManager from "@/components/approvals/ApprovalsManager";
