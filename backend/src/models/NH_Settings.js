@@ -42,9 +42,28 @@ const hospitalSettingsSchema = new mongoose.Schema({
   currency: {
     type: String,
     default: 'INR'
+  },
+  // Branded print/PDF assets used by all invoices, reports, prescriptions and the appointment receipt.
+  // Stored as base64 strings (data URLs) for simplicity. Per-module overrides live under `branding.modules`.
+  branding: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({
+      logo: '',          // data URL or URL
+      signature: '',     // data URL
+      stamp: '',         // data URL
+      signatoryName: '',
+      signatoryDesignation: '',
+      headerText: '',    // free text shown beneath hospital name in header
+      footerText: '',    // free text shown in print footer
+      showLogo: true,
+      showSignature: true,
+      showStamp: true,
+      modules: {}        // { invoice: {headerText, footerText, signature, stamp, signatoryName, signatoryDesignation, logo}, lab: {...}, radiology: {...}, pharmacy: {...}, prescription: {...}, ot: {...}, appointment: {...} }
+    })
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  minimize: false
 });
 
 // Security Settings Schema
