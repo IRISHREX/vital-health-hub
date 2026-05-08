@@ -444,10 +444,7 @@ export const printPrescription = (rx, options = {}) => {
               : ""
           }
 
-          <div class="footer ${section.showFooter ? "" : "hidden"}">
-            <div>For queries contact: ${escapeHtml(hospital.phone || "-")}${hospital.email ? ` | ${escapeHtml(hospital.email)}` : ""}${hospital.website ? ` | ${escapeHtml(hospital.website)}` : ""}</div>
-            <div>This is a digitally generated prescription.</div>
-          </div>
+          ${section.showFooter ? brandedFooterHtml(branding) : ""}
         </div>
       </body>
     </html>
