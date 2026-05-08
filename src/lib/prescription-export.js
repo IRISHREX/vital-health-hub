@@ -69,6 +69,7 @@ const getSections = (rx, options = {}) => ({
 
 export const downloadPrescriptionPdf = (rx, options = {}) => {
   const hospital = normalizeHospital(options.hospitalSettings);
+  const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
   const doc = new jsPDF("p", "mm", "a4");
   const pageHeight = 297;
@@ -78,9 +79,10 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   let y = 14;
 
   const ensureSpace = (needed = 10) => {
-    if (y + needed <= pageHeight - 20) return;
+    if (y + needed <= pageHeight - 30) return;
+    addJsPdfFooter(doc, branding);
     doc.addPage();
-    y = 14;
+    y = section.showHeader ? addJsPdfHeader(doc, branding) : 14;
   };
 
   const drawWrapped = (label, value, fontSize = 9) => {
@@ -95,25 +97,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   };
 
   if (section.showHeader) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(String(hospital.hospitalName || DEFAULT_HOSPITAL.hospitalName), (left + right) / 2, y, { align: "center" });
-    y += 6;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(String(hospital.address || DEFAULT_HOSPITAL.address), (left + right) / 2, y, { align: "center" });
-    y += 4.8;
-    doc.text(
-      `Phone: ${hospital.phone || "-"}    Email: ${hospital.email || "-"}${hospital.website ? `    Web: ${hospital.website}` : ""}`,
-      (left + right) / 2,
-      y,
-      { align: "center" }
-    );
-    y += 5;
-    doc.setDrawColor(40, 40, 40);
-    doc.line(left, y, right, y);
-    y += 7;
+    y = addJsPdfHeader(doc, branding);
   }
 
   doc.setFont("helvetica", "bold");
