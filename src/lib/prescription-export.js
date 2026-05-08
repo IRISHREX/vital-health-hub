@@ -1,11 +1,12 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { resolveBranding, addJsPdfHeader, addJsPdfFooter, brandedHeaderHtml, brandedFooterHtml } from "./branding";
 
 const DEFAULT_HOSPITAL = {
-  hospitalName: "Vital Health Hub Hospital",
-  address: "Address not configured",
-  phone: "N/A",
-  email: "N/A",
+  hospitalName: "Hospital",
+  address: "",
+  phone: "",
+  email: "",
   website: "",
   registrationNumber: "",
 };
