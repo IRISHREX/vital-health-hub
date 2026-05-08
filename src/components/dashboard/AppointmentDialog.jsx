@@ -206,6 +206,10 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       } catch (e) { /* non-fatal */ }
       handleClose();
     },
+    onError: (error) => {
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to book appointment." }); playSound('error');
+    },
+  });
 
   const updateMutation = useMutation({
     mutationFn: (data) => {
