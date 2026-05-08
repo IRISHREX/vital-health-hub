@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getHospitalSettings } from "@/lib/settings";
+import { resolveBranding, printBrandedHtml } from "@/lib/branding";
 import { Download, Printer } from "lucide-react";
 
 const defaultHospital = { hospitalName: "Hospital", address: "", phone: "", email: "", website: "" };
@@ -72,11 +73,8 @@ export default function LabReportDialog({ isOpen, onClose, test, tests = [] }) {
   const openPrintWindow = () => {
     const content = reportRef.current;
     if (!content) return;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`<html><head><title>${titleText}</title><style>${printStyles}</style></head><body>${content.innerHTML}</body></html>`);
-    w.document.close();
-    w.print();
+    const branding = resolveBranding(hospitalSettings, "lab");
+    printBrandedHtml(titleText, branding, content.innerHTML, printStyles);
   };
 
   const handleDownload = () => {

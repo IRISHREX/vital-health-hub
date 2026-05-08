@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getRadiologyOrderById } from "@/lib/radiology";
 import { getHospitalSettings } from "@/lib/settings";
+import { resolveBranding, printBrandedHtml } from "@/lib/branding";
 import { jsPDF } from "jspdf";
 import {
   Download, Printer, Bold, Italic, Underline, Highlighter,
@@ -90,17 +91,9 @@ export default function RadiologyReportPreview() {
   const handlePrint = () => {
     const el = previewRef.current;
     if (!el) return;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`<html><head><title>Radiology Report</title><style>
-      body{font-family:'Segoe UI',sans-serif;padding:20px;color:#1a1a2e}
-      .header{text-align:center;border-bottom:2px solid #1565c0;padding-bottom:16px;margin-bottom:16px}
-      .header h1{color:#1565c0;margin:0;font-size:24px}.header p{margin:4px 0;color:#555;font-size:12px}
-      h3{margin:12px 0 6px;font-size:15px}.section{margin-bottom:16px}
-      .footer{margin-top:32px;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:8px}
-    </style></head><body>${el.innerHTML}</body></html>`);
-    w.document.close();
-    w.print();
+    const branding = resolveBranding(hospitalSettings, "radiology");
+    const styles = `h3{margin:12px 0 6px;font-size:15px}.section{margin-bottom:16px}`;
+    printBrandedHtml("Radiology Report", branding, el.innerHTML, styles);
   };
 
   const handleDownloadPdf = () => {

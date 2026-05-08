@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getLabTestById } from "@/lib/labTests";
 import { getHospitalSettings } from "@/lib/settings";
+import { resolveBranding, printBrandedHtml } from "@/lib/branding";
 import { jsPDF } from "jspdf";
 import {
   Download, Printer, Bold, Italic, Underline, Highlighter,
@@ -89,21 +90,16 @@ export default function LabReportPreview() {
   const handlePrint = () => {
     const el = previewRef.current;
     if (!el) return;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`<html><head><title>Lab Report</title><style>
-      body{font-family:'Segoe UI',sans-serif;padding:20px;color:#1a1a2e}
-      .header{text-align:center;border-bottom:2px solid #1565c0;padding-bottom:16px;margin-bottom:16px}
-      .header h1{color:#1565c0;margin:0;font-size:24px}.header p{margin:4px 0;color:#555;font-size:12px}
+    const branding = resolveBranding(hospitalSettings, "lab");
+    const styles = `
       .section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1565c0;border-bottom:1px solid #ddd;padding-bottom:4px;margin:12px 0 8px}
-      table{width:100%;border-collapse:collapse;margin:8px 0}th{background:#f0f4f8;padding:6px 10px;text-align:left;border:1px solid #ddd;font-size:11px}
+      table{width:100%;border-collapse:collapse;margin:8px 0}
+      th{background:#f0f4f8;padding:6px 10px;text-align:left;border:1px solid #ddd;font-size:11px}
       td{padding:6px 10px;border:1px solid #ddd;font-size:12px}
       .group-header td{background:#f8f9fa;font-weight:600}
       .sub-param td:first-child{padding-left:24px}
-      .footer{margin-top:32px;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:8px}
-    </style></head><body>${el.innerHTML}</body></html>`);
-    w.document.close();
-    w.print();
+    `;
+    printBrandedHtml("Lab Report", branding, el.innerHTML, styles);
   };
 
   const handleDownloadPdf = () => {
