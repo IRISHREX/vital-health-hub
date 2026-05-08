@@ -377,11 +377,7 @@ export const printPrescription = (rx, options = {}) => {
       </head>
       <body>
         <div class="sheet">
-          <div class="hospital ${section.showHeader ? "" : "hidden"}">
-            <h1>${escapeHtml(hospital.hospitalName)}</h1>
-            <div class="meta">${escapeHtml(hospital.address)}</div>
-            <div class="meta">Phone: ${escapeHtml(hospital.phone || "-")} | Email: ${escapeHtml(hospital.email || "-")}${hospital.website ? ` | Web: ${escapeHtml(hospital.website)}` : ""}</div>
-          </div>
+          ${section.showHeader ? brandedHeaderHtml(branding) : ""}
           <div class="title">PRESCRIPTION</div>
           <div class="rx-meta">
             <div>Rx ID: ${escapeHtml(rx?._id || "-")}</div>
