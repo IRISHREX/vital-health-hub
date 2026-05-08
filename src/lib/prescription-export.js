@@ -241,20 +241,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   }
 
   if (section.showFooter) {
-    ensureSpace(16);
-    doc.setDrawColor(170, 170, 170);
-    doc.line(left, y, right, y);
-    y += 5;
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `For queries contact: ${hospital.phone || "-"}${hospital.email ? ` | ${hospital.email}` : ""}${hospital.website ? ` | ${hospital.website}` : ""}`,
-      (left + right) / 2,
-      y,
-      { align: "center" }
-    );
-    y += 4.5;
-    doc.text("This is a digitally generated prescription.", (left + right) / 2, y, { align: "center" });
+    addJsPdfFooter(doc, branding);
   }
 
   doc.save(`prescription-${rx?._id || "record"}.pdf`);
@@ -262,6 +249,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
 
 export const printPrescription = (rx, options = {}) => {
   const hospital = normalizeHospital(options.hospitalSettings);
+  const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
   const female = String(rx?.patient?.gender || "").toLowerCase() === "female";
 
