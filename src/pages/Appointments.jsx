@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2, ClipboardPlus } from "lucide-react";
+import { Search, Plus, Calendar, Clock, CheckCircle2, XCircle, Pencil, Eye, Trash2, ClipboardPlus, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AppointmentDialog from "@/components/dashboard/AppointmentDialog";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
@@ -26,6 +26,9 @@ import PrescriptionDialog from "@/components/pharmacy/PrescriptionDialog";
 import PrescriptionHistoryDialog from "@/components/pharmacy/PrescriptionHistoryDialog";
 import ViewAppointmentDialog from "@/components/dashboard/ViewAppointmentDialog";
 import RowActions from "@/components/shared/RowActions";
+import { getHospitalSettings } from "@/lib/settings";
+import { printAppointmentReceipt } from "@/lib/appointment-receipt";
+import { useQuery } from "@tanstack/react-query";
 
 const statusConfig = {
   scheduled: { label: "Pending", variant: "info" },
@@ -57,6 +60,20 @@ export default function Appointments() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedViewAppointment, setSelectedViewAppointment] = useState(null);
   const { toast } = useToast();
+
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
+
+  const handlePrintReceipt = (apt) => {
+    const enriched = {
+      ...apt,
+      patient: typeof apt.patient === "object" ? apt.patient : patients.find((p) => p._id === apt.patient),
+      doctor: typeof apt.doctor === "object" ? apt.doctor : doctors.find((d) => d._id === apt.doctor),
+    };
+    printAppointmentReceipt(enriched, hospitalRes?.data || {});
+  };
 
   const openCreateDialog = () => {
     setSelectedAppointment(null);
@@ -415,6 +432,7 @@ export default function Appointments() {
                       <RowActions
                         actions={[
                           { icon: Eye, label: "View Details", onClick: () => openViewDialog(apt), variant: "info" },
+                          { icon: Printer, label: "Print Receipt", onClick: () => handlePrintReceipt(apt), variant: "info" },
                           { icon: Pencil, label: "Edit", onClick: () => openEditDialog(apt), variant: "primary", disabled: apt.status === "completed" },
                           { icon: ClipboardPlus, label: "Prescription", onClick: () => openPrescriptionDialog(apt), variant: "info" },
                           { icon: CheckCircle2, label: "Complete", onClick: () => handleStatusUpdate(apt._id, "completed"), variant: "success", hidden: apt.status !== "scheduled" },
