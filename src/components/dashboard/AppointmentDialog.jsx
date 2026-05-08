@@ -6,6 +6,8 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createAppointment, updateAppointment } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
+import { getHospitalSettings } from "@/lib/settings";
+import { printAppointmentReceipt } from "@/lib/appointment-receipt";
 import { useToast } from "@/hooks/use-toast";
 import { playSound } from "@/lib/sounds";
 import {
