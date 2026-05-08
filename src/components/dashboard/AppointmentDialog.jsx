@@ -110,6 +110,11 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     queryFn: getDoctors,
   });
 
+  const { data: hospitalRes } = useQuery({
+    queryKey: ["hospital-settings"],
+    queryFn: () => getHospitalSettings(),
+  });
+
   const patients = patientsData?.data?.patients || [];
   const allDoctors = doctorsData?.data?.doctors || [];
   const isDoctorUser = user?.role === "doctor";
@@ -184,15 +189,23 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
         status: data.status || "scheduled",
       });
     },
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
       toast({ title: "Success", description: "Appointment booked successfully." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      // Auto-print branded receipt with token for the patient
+      try {
+        const created = response?.data?.appointment || response?.data || response;
+        if (created) {
+          const patientObj = patients.find((p) => p._id === variables?.patientId) || created.patient;
+          const doctorObj = allDoctors.find((d) => d._id === (variables?.doctorId)) || created.doctor;
+          printAppointmentReceipt(
+            { ...created, patient: created.patient || patientObj, doctor: created.doctor || doctorObj },
+            hospitalRes?.data || {}
+          );
+        }
+      } catch (e) { /* non-fatal */ }
       handleClose();
     },
-    onError: (error) => {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to book appointment." }); playSound('error');
-    },
-  });
 
   const updateMutation = useMutation({
     mutationFn: (data) => {
