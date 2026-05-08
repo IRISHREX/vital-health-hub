@@ -60,6 +60,7 @@ import {
   AlertCircle,
   Eye,
   Volume2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import ApprovalsManager from "@/components/approvals/ApprovalsManager";
@@ -98,6 +99,7 @@ import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
 import SoundSettings from "@/components/settings/SoundSettings";
 import DOBAgeSetting from "@/components/settings/DOBAgeSetting";
+import BrandingSettings from "@/components/settings/BrandingSettings";
 import { normalizeValidationPreferences, validationFormRegistry } from "@/lib/validationPreferences";
 
 const assignmentRoleOptions = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"];
@@ -1200,12 +1202,24 @@ export default function Settings() {
             Sounds
           </TabsTrigger>
           {isAdmin && (
+            <TabsTrigger value="branding" className="gap-2">
+              <ImageIcon className="h-4 w-4" />
+              Branding
+            </TabsTrigger>
+          )}
+          {isAdmin && (
             <TabsTrigger value="data-settings" className="gap-2">
               <Database className="h-4 w-4" />
               Data Settings
             </TabsTrigger>
           )}
         </TabsList>
+
+        {isAdmin && (
+          <TabsContent value="branding" className="space-y-6">
+            <BrandingSettings />
+          </TabsContent>
+        )}
 
         <TabsContent value="profile" className="space-y-6">
           <Card>

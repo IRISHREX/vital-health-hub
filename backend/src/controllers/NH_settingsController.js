@@ -132,30 +132,39 @@ exports.updateHospitalSettings = async (req, res, next) => {
       logo,
       gstNumber,
       defaultTaxRate,
-      currency
+      currency,
+      branding,
     } = req.body;
 
+    const updates = {};
+    [
+      ['hospitalName', hospitalName], ['registrationNumber', registrationNumber],
+      ['address', address], ['phone', phone], ['email', email], ['website', website],
+      ['logo', logo], ['gstNumber', gstNumber], ['defaultTaxRate', defaultTaxRate],
+      ['currency', currency],
+    ].forEach(([k, v]) => { if (v !== undefined) updates[k] = v; });
+
     let settings = await HospitalSettings.findOne();
-    
     if (!settings) {
-      settings = await HospitalSettings.create(req.body);
+      settings = await HospitalSettings.create({ ...updates, ...(branding ? { branding } : {}) });
     } else {
       settings = await HospitalSettings.findOneAndUpdate(
         {},
-        {
-          hospitalName,
-          registrationNumber,
-          address,
-          phone,
-          email,
-          website,
-          logo,
-          gstNumber,
-          defaultTaxRate,
-          currency
-        },
+        updates,
         { new: true, runValidators: true }
       );
+      if (branding && typeof branding === 'object') {
+        // Deep-merge branding so partial updates (e.g. module override only) don't blow away other keys.
+        const existing = settings.branding && typeof settings.branding === 'object' ? settings.branding : {};
+        const merged = {
+          ...existing,
+          ...branding,
+          modules: { ...(existing.modules || {}), ...(branding.modules || {}) },
+        };
+        settings.branding = merged;
+        settings.markModified('branding');
+        await settings.save();
+      }
     }
 
     res.json({

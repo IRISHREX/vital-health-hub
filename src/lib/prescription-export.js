@@ -1,11 +1,12 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { resolveBranding, addJsPdfHeader, addJsPdfFooter, brandedHeaderHtml, brandedFooterHtml } from "./branding";
 
 const DEFAULT_HOSPITAL = {
-  hospitalName: "Vital Health Hub Hospital",
-  address: "Address not configured",
-  phone: "N/A",
-  email: "N/A",
+  hospitalName: "Hospital",
+  address: "",
+  phone: "",
+  email: "",
   website: "",
   registrationNumber: "",
 };
@@ -68,6 +69,7 @@ const getSections = (rx, options = {}) => ({
 
 export const downloadPrescriptionPdf = (rx, options = {}) => {
   const hospital = normalizeHospital(options.hospitalSettings);
+  const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
   const doc = new jsPDF("p", "mm", "a4");
   const pageHeight = 297;
@@ -77,9 +79,10 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   let y = 14;
 
   const ensureSpace = (needed = 10) => {
-    if (y + needed <= pageHeight - 20) return;
+    if (y + needed <= pageHeight - 30) return;
+    addJsPdfFooter(doc, branding);
     doc.addPage();
-    y = 14;
+    y = section.showHeader ? addJsPdfHeader(doc, branding) : 14;
   };
 
   const drawWrapped = (label, value, fontSize = 9) => {
@@ -94,25 +97,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   };
 
   if (section.showHeader) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(String(hospital.hospitalName || DEFAULT_HOSPITAL.hospitalName), (left + right) / 2, y, { align: "center" });
-    y += 6;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(String(hospital.address || DEFAULT_HOSPITAL.address), (left + right) / 2, y, { align: "center" });
-    y += 4.8;
-    doc.text(
-      `Phone: ${hospital.phone || "-"}    Email: ${hospital.email || "-"}${hospital.website ? `    Web: ${hospital.website}` : ""}`,
-      (left + right) / 2,
-      y,
-      { align: "center" }
-    );
-    y += 5;
-    doc.setDrawColor(40, 40, 40);
-    doc.line(left, y, right, y);
-    y += 7;
+    y = addJsPdfHeader(doc, branding);
   }
 
   doc.setFont("helvetica", "bold");
@@ -256,20 +241,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   }
 
   if (section.showFooter) {
-    ensureSpace(16);
-    doc.setDrawColor(170, 170, 170);
-    doc.line(left, y, right, y);
-    y += 5;
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `For queries contact: ${hospital.phone || "-"}${hospital.email ? ` | ${hospital.email}` : ""}${hospital.website ? ` | ${hospital.website}` : ""}`,
-      (left + right) / 2,
-      y,
-      { align: "center" }
-    );
-    y += 4.5;
-    doc.text("This is a digitally generated prescription.", (left + right) / 2, y, { align: "center" });
+    addJsPdfFooter(doc, branding);
   }
 
   doc.save(`prescription-${rx?._id || "record"}.pdf`);
@@ -277,6 +249,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
 
 export const printPrescription = (rx, options = {}) => {
   const hospital = normalizeHospital(options.hospitalSettings);
+  const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
   const female = String(rx?.patient?.gender || "").toLowerCase() === "female";
 
@@ -404,11 +377,7 @@ export const printPrescription = (rx, options = {}) => {
       </head>
       <body>
         <div class="sheet">
-          <div class="hospital ${section.showHeader ? "" : "hidden"}">
-            <h1>${escapeHtml(hospital.hospitalName)}</h1>
-            <div class="meta">${escapeHtml(hospital.address)}</div>
-            <div class="meta">Phone: ${escapeHtml(hospital.phone || "-")} | Email: ${escapeHtml(hospital.email || "-")}${hospital.website ? ` | Web: ${escapeHtml(hospital.website)}` : ""}</div>
-          </div>
+          ${section.showHeader ? brandedHeaderHtml(branding) : ""}
           <div class="title">PRESCRIPTION</div>
           <div class="rx-meta">
             <div>Rx ID: ${escapeHtml(rx?._id || "-")}</div>
@@ -475,10 +444,7 @@ export const printPrescription = (rx, options = {}) => {
               : ""
           }
 
-          <div class="footer ${section.showFooter ? "" : "hidden"}">
-            <div>For queries contact: ${escapeHtml(hospital.phone || "-")}${hospital.email ? ` | ${escapeHtml(hospital.email)}` : ""}${hospital.website ? ` | ${escapeHtml(hospital.website)}` : ""}</div>
-            <div>This is a digitally generated prescription.</div>
-          </div>
+          ${section.showFooter ? brandedFooterHtml(branding) : ""}
         </div>
       </body>
     </html>

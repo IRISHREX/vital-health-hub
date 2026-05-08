@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { getHospitalSettings } from "@/lib/settings";
+import { resolveBranding, printBrandedHtml } from "@/lib/branding";
 import { Download, FileText, Printer, Eye, EyeOff } from 'lucide-react';
 
 const invoiceStatusColors = {
@@ -367,15 +368,12 @@ export default function InvoicePreview({ invoice, admission, onClose }) {
                 size="sm"
                 className="gap-2"
                 onClick={() => {
-                  const printWindow = window.open('', '_blank');
-                  const content = document.getElementById('invoice-print-area');
-                  if (printWindow && content) {
-                    printWindow.document.write('<html><head><title>Invoice</title><style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}</style></head><body>');
-                    printWindow.document.write(content.innerHTML);
-                    printWindow.document.write('</body></html>');
-                    printWindow.document.close();
-                    printWindow.print();
-                  }
+                  const content = document.getElementById('invoice-print-area') || document.querySelector('.brand-invoice-body');
+                  const branding = resolveBranding(hospitalRes?.data || {}, "invoice");
+                  const html = content
+                    ? content.innerHTML
+                    : `<h2>Invoice #${invoice.invoiceNumber}</h2><p>Total: ₹${invoice.totalAmount}</p>`;
+                  printBrandedHtml(`Invoice ${invoice.invoiceNumber}`, branding, html, "table{border-collapse:collapse;width:100%}th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}");
                 }}
               >
                 <Download className="h-4 w-4" />
