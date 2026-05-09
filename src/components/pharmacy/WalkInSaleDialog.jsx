@@ -82,6 +82,11 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
 
     setLoading(true);
     try {
+      // Compose a notes string that preserves the captured payment intent so it
+      // is not lost (the auto-generated invoice can then be settled in Billing).
+      const paymentNote = `Payment: ${paymentMethod.toUpperCase()}${paymentReference ? ` (Ref: ${paymentReference})` : ""}`;
+      const composedNotes = [notes?.trim(), paymentNote].filter(Boolean).join(" | ");
+
       // Create an external (walk-in) prescription with the chosen items
       const rxPayload = {
         mode: "external",
@@ -93,7 +98,7 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
           address: patient.address || undefined,
         },
         encounterType: "opd",
-        notes: notes || (saveAsRx ? "Walk-in sale" : "Walk-in counter sale (no prescription kept on record)"),
+        notes: composedNotes || "Walk-in sale",
         items: validItems.map((it) => ({
           medicine: it.medicineId,
           medicineName: it.medicineName,
