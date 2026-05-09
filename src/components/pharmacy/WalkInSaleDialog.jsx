@@ -67,7 +67,6 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
     setPaymentMethod("cash");
     setPaymentReference("");
     setNotes("");
-    setSaveAsRx(true);
   };
 
   const handleSubmit = async () => {
