@@ -271,10 +271,9 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={saveAsRx} onCheckedChange={(v) => setSaveAsRx(!!v)} />
-            <span>Also save as a prescription record (recommended for audit)</span>
-          </label>
+          <p className="text-xs text-muted-foreground">
+            A walk-in prescription record will be auto-created for audit and an external invoice will be generated.
+          </p>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
