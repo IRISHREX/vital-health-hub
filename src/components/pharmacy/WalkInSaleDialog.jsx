@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getMedicines, createPrescription, dispensePrescription } from "@/lib/pharmacy";
@@ -28,7 +28,6 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paymentReference, setPaymentReference] = useState("");
   const [notes, setNotes] = useState("");
-  const [saveAsRx, setSaveAsRx] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const { data: medsData } = useQuery({
@@ -68,7 +67,6 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
     setPaymentMethod("cash");
     setPaymentReference("");
     setNotes("");
-    setSaveAsRx(true);
   };
 
   const handleSubmit = async () => {
@@ -84,6 +82,11 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
 
     setLoading(true);
     try {
+      // Compose a notes string that preserves the captured payment intent so it
+      // is not lost (the auto-generated invoice can then be settled in Billing).
+      const paymentNote = `Payment: ${paymentMethod.toUpperCase()}${paymentReference ? ` (Ref: ${paymentReference})` : ""}`;
+      const composedNotes = [notes?.trim(), paymentNote].filter(Boolean).join(" | ");
+
       // Create an external (walk-in) prescription with the chosen items
       const rxPayload = {
         mode: "external",
@@ -95,7 +98,7 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
           address: patient.address || undefined,
         },
         encounterType: "opd",
-        notes: notes || (saveAsRx ? "Walk-in sale" : "Walk-in counter sale (no prescription kept on record)"),
+        notes: composedNotes || "Walk-in sale",
         items: validItems.map((it) => ({
           medicine: it.medicineId,
           medicineName: it.medicineName,
@@ -268,10 +271,9 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={saveAsRx} onCheckedChange={(v) => setSaveAsRx(!!v)} />
-            <span>Also save as a prescription record (recommended for audit)</span>
-          </label>
+          <p className="text-xs text-muted-foreground">
+            A walk-in prescription record will be auto-created for audit and an external invoice will be generated.
+          </p>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
