@@ -28,7 +28,6 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paymentReference, setPaymentReference] = useState("");
   const [notes, setNotes] = useState("");
-  const [saveAsRx, setSaveAsRx] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const { data: medsData } = useQuery({
