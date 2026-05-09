@@ -154,14 +154,20 @@ exports.updateHospitalSettings = async (req, res, next) => {
         { new: true, runValidators: true }
       );
       if (branding && typeof branding === 'object') {
-        // Deep-merge branding so partial updates (e.g. module override only) don't blow away other keys.
+        // Merge top-level branding fields with existing values, but REPLACE the
+        // modules map entirely when the client sends one. Deep-merging modules
+        // here would silently re-introduce overrides the user just cleared in
+        // the UI, so we treat `branding.modules` as the new source of truth.
         const existing = settings.branding && typeof settings.branding === 'object' ? settings.branding : {};
-        const merged = {
+        const incomingModules = Object.prototype.hasOwnProperty.call(branding, 'modules')
+          ? (branding.modules || {})
+          : (existing.modules || {});
+        const { modules: _ignored, ...brandingTop } = branding;
+        settings.branding = {
           ...existing,
-          ...branding,
-          modules: { ...(existing.modules || {}), ...(branding.modules || {}) },
+          ...brandingTop,
+          modules: incomingModules,
         };
-        settings.branding = merged;
         settings.markModified('branding');
         await settings.save();
       }
