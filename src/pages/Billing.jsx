@@ -488,9 +488,12 @@ export default function Billing() {
   const [adjustmentDiscount, setAdjustmentDiscount] = useState("");
   const [creatingAdjustment, setCreatingAdjustment] = useState(false);
 
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const { data: invoicesRes, isLoading, isError } = useQuery({
-    queryKey: ["invoices", "patient-centric"],
-    queryFn: () => getInvoices()
+    queryKey: ["invoices", "patient-centric", dateFrom, dateTo],
+    queryFn: () => getInvoices({ startDate: dateFrom || undefined, endDate: dateTo || undefined })
   });
   const { data: hospitalRes } = useQuery({
     queryKey: ["hospital-settings"],
@@ -905,6 +908,8 @@ export default function Billing() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search by patient/invoice ID..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-[160px]" title="From date" />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-[160px]" title="To date" />
           <Select value={careFilter} onValueChange={setCareFilter}>
             <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Care" /></SelectTrigger>
             <SelectContent>

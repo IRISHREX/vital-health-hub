@@ -317,13 +317,64 @@ export default function AdmissionDetailsModal({ admission, isOpen, onClose, onDi
     }
   };
 
+  const downloadAdmissionPdf = async () => {
+    const { jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text(`Admission Form - ${admission.admissionId || ''}`, 14, 16);
+    doc.setFontSize(10);
+    autoTable(doc, {
+      startY: 24,
+      head: [['Field', 'Value']],
+      body: [
+        ['Patient', `${admission.patient?.firstName || ''} ${admission.patient?.lastName || ''}`.trim()],
+        ['Patient ID', admission.patient?.patientId || '-'],
+        ['Age / Gender', `${admission.patient?.age || '-'} / ${admission.patient?.gender || '-'}`],
+        ['Contact', admission.patient?.phoneNumber || admission.patient?.phone || '-'],
+        ['Admission Date', admission.admissionDate ? new Date(admission.admissionDate).toLocaleString() : '-'],
+        ['Discharge Date', admission.dischargeDate ? new Date(admission.dischargeDate).toLocaleString() : '-'],
+        ['Status', admission.status || '-'],
+        ['Admission Type', admission.admissionType || '-'],
+        ['Length of Stay', `${los} days`],
+        ['Doctor', `${admission.doctor?.firstName || admission.admittingDoctor?.name || ''} ${admission.doctor?.lastName || ''}`.trim() || '-'],
+        ['Diagnosis', admission.diagnosis?.primary || (typeof admission.diagnosis === 'string' ? admission.diagnosis : '-')],
+        ['Treatment Plan', admission.treatmentPlan || '-'],
+        ['Notes', admission.notes || '-'],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [30, 64, 175] },
+    });
+    if (bedAllocations.length) {
+      autoTable(doc, {
+        startY: (doc.lastAutoTable?.finalY || 60) + 8,
+        head: [['Bed', 'Ward', 'Rate/Day', 'From', 'To', 'Total']],
+        body: bedAllocations.map((a) => [
+          a.bed?.bedNumber || '-', a.bed?.ward || '-',
+          a.dailyRate || 0,
+          a.startDate ? new Date(a.startDate).toLocaleDateString() : '-',
+          a.endDate ? new Date(a.endDate).toLocaleDateString() : '-',
+          a.totalCost || 0,
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [16, 185, 129] },
+      });
+    }
+    doc.save(`admission-${admission.admissionId || 'form'}.pdf`);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Admission Details - {admission.admissionId}
+          <DialogTitle className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Admission Details - {admission.admissionId}
+            </span>
+            <Button size="sm" variant="outline" onClick={downloadAdmissionPdf}>
+              <FileText className="h-4 w-4 mr-2" />Download PDF
+            </Button>
           </DialogTitle>
         </DialogHeader>
 
