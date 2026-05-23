@@ -40,6 +40,10 @@ export const getBillingReport = async (filters = {}) => {
   if (filters.status) queryParams.append('status', filters.status);
   if (filters.type) queryParams.append('type', filters.type);
   if (filters.billingScope) queryParams.append('billingScope', filters.billingScope);
+  if (filters.groupBy) queryParams.append('groupBy', filters.groupBy);
+  if (filters.dueOnly) queryParams.append('dueOnly', 'true');
+  if (filters.doctorId) queryParams.append('doctorId', filters.doctorId);
+  if (filters.userId) queryParams.append('userId', filters.userId);
   if (filters.page) queryParams.append('page', String(filters.page));
   if (filters.limit) queryParams.append('limit', String(filters.limit));
   const query = queryParams.toString();
