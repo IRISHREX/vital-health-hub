@@ -185,45 +185,94 @@ const getPrescriptionsReport = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/billing
 // @access  Private
 const getBillingReport = asyncHandler(async (req, res) => {
-    const { Invoice } = getModels(req);
-    const { startDate, endDate, status, type, billingScope } = req.query;
+    const { Invoice, User } = getModels(req);
+    const { startDate, endDate, status, type, billingScope, groupBy, dueOnly, doctorId, userId } = req.query;
     const { page, limit, skip } = parsePagination(req.query);
 
     const query = {};
     if (status) query.status = status;
     if (type) query.type = type;
     if (billingScope) query.billingScope = billingScope;
+    if (String(dueOnly) === 'true') query.dueAmount = { $gt: 0 };
+    if (userId) query.generatedBy = userId;
     applyDateRange(query, 'createdAt', startDate, endDate);
 
     const [total, invoices, totals] = await Promise.all([
         Invoice.countDocuments(query),
         Invoice.find(query)
             .populate('patient', 'firstName lastName patientId')
-            .populate('generatedBy', 'firstName lastName email')
+            .populate('generatedBy', 'firstName lastName email role')
+            .populate({
+                path: 'admission',
+                select: 'admissionId admittingDoctor',
+                populate: { path: 'admittingDoctor', select: 'name user', populate: { path: 'user', select: 'firstName lastName' } }
+            })
+            .populate({
+                path: 'appointment',
+                select: 'doctor appointmentDate',
+                populate: { path: 'doctor', select: 'name user', populate: { path: 'user', select: 'firstName lastName' } }
+            })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .lean(),
         Invoice.aggregate([
             { $match: query },
-            {
-                $group: {
-                    _id: null,
-                    totalBilled: { $sum: '$totalAmount' },
-                    totalPaid: { $sum: '$paidAmount' },
-                    totalDue: { $sum: '$dueAmount' },
-                    count: { $sum: 1 }
-                }
-            }
+            { $group: { _id: null, totalBilled: { $sum: '$totalAmount' }, totalPaid: { $sum: '$paidAmount' }, totalDue: { $sum: '$dueAmount' }, count: { $sum: 1 } } }
         ])
     ]);
+
+    let groups = null;
+    if (groupBy === 'day') {
+        groups = await Invoice.aggregate([
+            { $match: query },
+            { $group: {
+                _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                totalBilled: { $sum: '$totalAmount' },
+                totalPaid: { $sum: '$paidAmount' },
+                totalDue: { $sum: '$dueAmount' },
+                count: { $sum: 1 }
+            } },
+            { $sort: { _id: -1 } }
+        ]);
+    } else if (groupBy === 'user') {
+        const raw = await Invoice.aggregate([
+            { $match: query },
+            { $group: { _id: '$generatedBy', totalBilled: { $sum: '$totalAmount' }, totalPaid: { $sum: '$paidAmount' }, totalDue: { $sum: '$dueAmount' }, count: { $sum: 1 } } },
+            { $sort: { totalBilled: -1 } }
+        ]);
+        const users = await User.find({ _id: { $in: raw.map((r) => r._id).filter(Boolean) } })
+            .select('firstName lastName email role').lean();
+        const map = new Map(users.map((u) => [String(u._id), u]));
+        groups = raw.map((r) => {
+            const u = r._id ? map.get(String(r._id)) : null;
+            return { ...r, label: u ? (`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'User') : 'System', role: u?.role || '' };
+        });
+    } else if (groupBy === 'doctor') {
+        const buckets = new Map();
+        for (const inv of invoices) {
+            const docObj = inv?.admission?.admittingDoctor || inv?.appointment?.doctor || null;
+            const key = docObj?._id ? String(docObj._id) : 'walk-in';
+            const u = docObj?.user || {};
+            const label = docObj?.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Walk-in / Unassigned';
+            if (!buckets.has(key)) buckets.set(key, { _id: key, label, totalBilled: 0, totalPaid: 0, totalDue: 0, count: 0 });
+            const b = buckets.get(key);
+            b.totalBilled += Number(inv.totalAmount || 0);
+            b.totalPaid += Number(inv.paidAmount || 0);
+            b.totalDue += Number(inv.dueAmount || 0);
+            b.count += 1;
+        }
+        groups = Array.from(buckets.values()).sort((a, b) => b.totalBilled - a.totalBilled);
+        if (doctorId) groups = groups.filter((g) => g._id === doctorId);
+    }
 
     res.json({
         data: invoices,
         total,
         page,
         pages: Math.ceil(total / limit),
-        summary: totals[0] || { totalBilled: 0, totalPaid: 0, totalDue: 0, count: 0 }
+        summary: totals[0] || { totalBilled: 0, totalPaid: 0, totalDue: 0, count: 0 },
+        groups
     });
 });
 
