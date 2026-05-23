@@ -442,12 +442,50 @@ export default function Reports() {
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Select value={billingGroupBy} onValueChange={setBillingGroupBy}>
+                <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No grouping</SelectItem>
+                  <SelectItem value="day">Day-wise</SelectItem>
+                  <SelectItem value="doctor">Doctor-wise</SelectItem>
+                  <SelectItem value="user">User-wise</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant={billingDueOnly ? "default" : "outline"} onClick={() => setBillingDueOnly((v) => !v)}>
+                {billingDueOnly ? "Showing Due Only" : "Show Due Only"}
+              </Button>
+            </div>
             <Button onClick={exportBilling}>
               <Download className="mr-2 h-4 w-4" />
               Download Billing
             </Button>
           </div>
+          {Array.isArray(billingData?.groups) && billingData.groups.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">{billingGroupBy === "day" ? "Day-wise" : billingGroupBy === "doctor" ? "Doctor-wise" : "User-wise"} Summary</CardTitle></CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>{billingGroupBy === "day" ? "Date" : billingGroupBy === "doctor" ? "Doctor" : "User"}</TableHead>
+                    <TableHead>Invoices</TableHead><TableHead>Billed</TableHead><TableHead>Paid</TableHead><TableHead>Due</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {billingData.groups.map((g, i) => (
+                      <TableRow key={`${g._id}-${i}`}>
+                        <TableCell>{g.label || g._id || "-"}{g.role ? ` (${g.role})` : ""}</TableCell>
+                        <TableCell>{g.count}</TableCell>
+                        <TableCell>{formatCurrency(g.totalBilled)}</TableCell>
+                        <TableCell>{formatCurrency(g.totalPaid)}</TableCell>
+                        <TableCell>{formatCurrency(g.totalDue)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">

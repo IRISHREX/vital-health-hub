@@ -247,6 +247,9 @@ const downloadInvoicePdf = (invoice, hospitalSettings = defaultHospital) => {
   doc.text(`Bill Type: ${billType} (${isExternal ? "External" : "Internal"})`, 14, 62);
   doc.text(`Referred By: ${referredBy}`, 14, 68);
   doc.text(`Date: ${new Date(invoice?.createdAt).toLocaleString()}`, 14, 74);
+  if (lastPayment?.paidAt) {
+    doc.text(`Payment Date: ${new Date(lastPayment.paidAt).toLocaleString()}`, 14, 78);
+  }
 
   const rows = (invoice?.items || []).map((item) => [
     item?.description || "-",

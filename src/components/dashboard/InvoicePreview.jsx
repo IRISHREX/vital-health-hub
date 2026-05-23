@@ -335,6 +335,12 @@ export default function InvoicePreview({ invoice, admission, onClose }) {
                         ₹{(invoice.totalAmount || 0) - (invoice.paidAmount || 0)}
                       </span>
                     </div>
+                    {Array.isArray(invoice.payments) && invoice.payments.length > 0 && (
+                      <div className="text-xs text-gray-600 pt-1">
+                        Last Payment: {new Date(invoice.payments[invoice.payments.length - 1].paidAt).toLocaleString()}
+                        {invoice.payments[invoice.payments.length - 1].method ? ` • ${String(invoice.payments[invoice.payments.length - 1].method).toUpperCase()}` : ""}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
