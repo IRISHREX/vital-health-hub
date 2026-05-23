@@ -121,12 +121,16 @@ export default function Reports() {
     })
   });
 
+  const [billingGroupBy, setBillingGroupBy] = useState("none");
+  const [billingDueOnly, setBillingDueOnly] = useState(false);
   const { data: billingData, isLoading: billingLoading, isError: billingError } = useQuery({
-    queryKey: ["billingReport", period, range.startDate, range.endDate],
+    queryKey: ["billingReport", period, range.startDate, range.endDate, billingGroupBy, billingDueOnly],
     queryFn: () => getBillingReport({
       startDate: range.startDate,
       endDate: range.endDate,
-      limit: 100,
+      limit: 200,
+      groupBy: billingGroupBy === "none" ? undefined : billingGroupBy,
+      dueOnly: billingDueOnly,
     })
   });
 
