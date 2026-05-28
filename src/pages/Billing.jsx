@@ -721,9 +721,15 @@ export default function Billing() {
     const effectiveAmount = (!enablePartialPayment && mode === "single") ? String(due) : String(due);
     const defaultMethod = allowedPaymentMethods[0]?.value || 'cash';
     setPaymentTarget({ mode, invoice, row, due });
-    setPaymentForm({ amount: effectiveAmount, method: defaultMethod, reference: "" });
+    setPaymentForm({
+      amount: effectiveAmount,
+      method: defaultMethod,
+      reference: "",
+      paidAt: new Date().toISOString().slice(0, 10),
+    });
     setPaymentDialogOpen(true);
   };
+
 
   const applyLocalPaymentCache = (paymentByInvoiceId) => {
     qc.setQueriesData({ queryKey: ["invoices"] }, (old) => {
