@@ -341,7 +341,9 @@ const addPayment = asyncHandler(async (req, res) => {
         method,
         reference: reference || '',
         receivedBy: req.user._id,
+        ...(paidAtDate ? { paidAt: paidAtDate } : {}),
     };
+
 
     invoice.payments.push(payment);
     invoice.paidAmount += amount;
