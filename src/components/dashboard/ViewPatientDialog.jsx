@@ -43,6 +43,7 @@ const getPatientDisplayId = (patient) =>
   "";
 
 const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
+  const navigate = useNavigate();
   if (!patient) return null;
 
   const patientId = patient?._id || patient?.id;
