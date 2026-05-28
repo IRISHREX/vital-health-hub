@@ -255,14 +255,27 @@ const deleteInvoice = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error('Cannot delete invoice with payments. Mark as cancelled instead.');
     }
-    
-    invoice.status = 'cancelled';
-    invoice.lastUpdatedBy = req.user._id;
-    await invoice.save();
-    
-    res.json({ 
-      success: true,
-      message: 'Invoice cancelled successfully',
+    const { amount, method, reference, paidAt } = req.body;
+
+    // Validate required fields
+    if (!amount || !method) {
+      res.status(400);
+      throw new Error('Missing required fields: amount, method');
+    }
+
+    let paidAtDate;
+    if (paidAt) {
+      paidAtDate = new Date(paidAt);
+      if (Number.isNaN(paidAtDate.getTime())) {
+        res.status(400);
+        throw new Error('Invalid paidAt date');
+      }
+      if (paidAtDate.getTime() > Date.now() + 60_000) {
+        res.status(400);
+        throw new Error('Payment date cannot be in the future');
+      }
+    }
+
       invoice
     });
   } else {
@@ -328,7 +341,9 @@ const addPayment = asyncHandler(async (req, res) => {
         method,
         reference: reference || '',
         receivedBy: req.user._id,
+        ...(paidAtDate ? { paidAt: paidAtDate } : {}),
     };
+
 
     invoice.payments.push(payment);
     invoice.paidAmount += amount;

@@ -721,9 +721,15 @@ export default function Billing() {
     const effectiveAmount = (!enablePartialPayment && mode === "single") ? String(due) : String(due);
     const defaultMethod = allowedPaymentMethods[0]?.value || 'cash';
     setPaymentTarget({ mode, invoice, row, due });
-    setPaymentForm({ amount: effectiveAmount, method: defaultMethod, reference: "" });
+    setPaymentForm({
+      amount: effectiveAmount,
+      method: defaultMethod,
+      reference: "",
+      paidAt: new Date().toISOString().slice(0, 10),
+    });
     setPaymentDialogOpen(true);
   };
+
 
   const applyLocalPaymentCache = (paymentByInvoiceId) => {
     qc.setQueriesData({ queryKey: ["invoices"] }, (old) => {
@@ -751,8 +757,7 @@ export default function Billing() {
       });
     });
   };
-
-  const applyPaymentToPatientInvoices = async (row, amount, method, reference) => {
+  const applyPaymentToPatientInvoices = async (row, amount, method, reference, paidAt) => {
     let remaining = amount;
     const applied = {};
     const dueInvoices = [...row.invoices]
@@ -764,7 +769,7 @@ export default function Billing() {
       const due = Number(inv.dueAmount || 0);
       const payAmount = Math.min(due, remaining);
       if (payAmount > 0) {
-        await addPayment(inv._id, { amount: payAmount, method, reference });
+        await addPayment(inv._id, { amount: payAmount, method, reference, paidAt });
         applied[inv._id] = Number(applied[inv._id] || 0) + payAmount;
         remaining -= payAmount;
       }
@@ -782,6 +787,21 @@ export default function Billing() {
       return;
     }
 
+    // Build paidAt ISO if provided; guard future dates
+    let paidAtIso;
+    if (paymentForm.paidAt) {
+      const d = new Date(paymentForm.paidAt);
+      if (Number.isNaN(d.getTime())) {
+        toast.error("Invalid payment date");
+        return;
+      }
+      if (d.getTime() > Date.now() + 60_000) {
+        toast.error("Payment date cannot be in the future");
+        return;
+      }
+      paidAtIso = d.toISOString();
+    }
+
     try {
       setPaying(true);
       let localApplied = {};
@@ -789,7 +809,8 @@ export default function Billing() {
         await addPayment(paymentTarget.invoice._id, {
           amount,
           method: paymentForm.method,
-          reference: paymentForm.reference
+          reference: paymentForm.reference,
+          paidAt: paidAtIso,
         });
         localApplied = { [paymentTarget.invoice._id]: amount };
       } else {
@@ -797,7 +818,8 @@ export default function Billing() {
           paymentTarget.row,
           amount,
           paymentForm.method,
-          paymentForm.reference
+          paymentForm.reference,
+          paidAtIso
         );
       }
       applyLocalPaymentCache(localApplied);
@@ -812,6 +834,8 @@ export default function Billing() {
     } finally {
       setPaying(false);
     }
+  };
+
   };
 
   const openPatientDialog = (row) => {
@@ -1068,6 +1092,16 @@ export default function Billing() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Reference</Label><Input placeholder="Txn/Ref No." value={paymentForm.reference} onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))} /></div>
+            <div className="space-y-2">
+              <Label>Payment Date</Label>
+              <Input
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                value={paymentForm.paidAt || ""}
+                onChange={(e) => setPaymentForm((prev) => ({ ...prev, paidAt: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">Defaults to today. Backdate if the payment was received earlier.</p>
+            </div>
             <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button><Button onClick={submitPayment} disabled={paying}>{paying ? "Saving..." : "Save Payment"}</Button></div>
           </div>
         </DialogContent>

@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar, Download, FileText, Phone, Mail, MapPin, User, Heart, Pill, Shield, FileBarChart2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Calendar, Download, FileText, Phone, Mail, MapPin, User, Heart, Pill, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getNurses } from "@/lib/users";
@@ -42,6 +43,7 @@ const getPatientDisplayId = (patient) =>
   "";
 
 const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
+  const navigate = useNavigate();
   if (!patient) return null;
 
   const patientId = patient?._id || patient?.id;
@@ -192,16 +194,30 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {`${patientData.firstName?.[0] || ''}${patientData.lastName?.[0] || ''}`}
-              </AvatarFallback>
-            </Avatar>
-            Patient Details - {displayPatientId}
+          <DialogTitle className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {`${patientData.firstName?.[0] || ''}${patientData.lastName?.[0] || ''}`}
+                </AvatarFallback>
+              </Avatar>
+              <span>Patient Details - {displayPatientId}</span>
+            </div>
+            {patientId && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mr-6"
+                onClick={() => navigate(`/patients/${patientId}/overview`)}
+              >
+                <FileBarChart2 className="mr-2 h-4 w-4" />
+                Overview / PDF
+              </Button>
+            )}
           </DialogTitle>
+        </DialogHeader>
+
         </DialogHeader>
 
         <div className="space-y-6">
