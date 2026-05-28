@@ -194,16 +194,30 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {`${patientData.firstName?.[0] || ''}${patientData.lastName?.[0] || ''}`}
-              </AvatarFallback>
-            </Avatar>
-            Patient Details - {displayPatientId}
+          <DialogTitle className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {`${patientData.firstName?.[0] || ''}${patientData.lastName?.[0] || ''}`}
+                </AvatarFallback>
+              </Avatar>
+              <span>Patient Details - {displayPatientId}</span>
+            </div>
+            {patientId && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mr-6"
+                onClick={() => navigate(`/patients/${patientId}/overview`)}
+              >
+                <FileBarChart2 className="mr-2 h-4 w-4" />
+                Overview / PDF
+              </Button>
+            )}
           </DialogTitle>
+        </DialogHeader>
+
         </DialogHeader>
 
         <div className="space-y-6">
