@@ -1092,6 +1092,16 @@ export default function Billing() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Reference</Label><Input placeholder="Txn/Ref No." value={paymentForm.reference} onChange={(e) => setPaymentForm((prev) => ({ ...prev, reference: e.target.value }))} /></div>
+            <div className="space-y-2">
+              <Label>Payment Date</Label>
+              <Input
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                value={paymentForm.paidAt || ""}
+                onChange={(e) => setPaymentForm((prev) => ({ ...prev, paidAt: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">Defaults to today. Backdate if the payment was received earlier.</p>
+            </div>
             <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button><Button onClick={submitPayment} disabled={paying}>{paying ? "Saving..." : "Save Payment"}</Button></div>
           </div>
         </DialogContent>
