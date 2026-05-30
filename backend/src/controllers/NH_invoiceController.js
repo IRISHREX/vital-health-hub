@@ -255,27 +255,14 @@ const deleteInvoice = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error('Cannot delete invoice with payments. Mark as cancelled instead.');
     }
-    const { amount, method, reference, paidAt } = req.body;
 
-    // Validate required fields
-    if (!amount || !method) {
-      res.status(400);
-      throw new Error('Missing required fields: amount, method');
-    }
+    invoice.status = 'cancelled';
+    invoice.lastUpdatedBy = req.user._id;
+    await invoice.save();
 
-    let paidAtDate;
-    if (paidAt) {
-      paidAtDate = new Date(paidAt);
-      if (Number.isNaN(paidAtDate.getTime())) {
-        res.status(400);
-        throw new Error('Invalid paidAt date');
-      }
-      if (paidAtDate.getTime() > Date.now() + 60_000) {
-        res.status(400);
-        throw new Error('Payment date cannot be in the future');
-      }
-    }
-
+    res.json({
+      success: true,
+      message: 'Invoice cancelled successfully',
       invoice
     });
   } else {
@@ -289,7 +276,7 @@ const deleteInvoice = asyncHandler(async (req, res) => {
 // @access  Private
 const addPayment = asyncHandler(async (req, res) => {
     const { Invoice } = getModels(req);
-    const { amount, method, reference } = req.body;
+    const { amount, method, reference, paidAt } = req.body;
 
     // Validate required fields
     if (!amount || !method) {
@@ -306,6 +293,19 @@ const addPayment = asyncHandler(async (req, res) => {
     if (!validMethods.includes(method)) {
       res.status(400);
       throw new Error(`Invalid payment method. Must be one of: ${validMethods.join(', ')}`);
+    }
+
+    let paidAtDate;
+    if (paidAt) {
+      paidAtDate = new Date(paidAt);
+      if (Number.isNaN(paidAtDate.getTime())) {
+        res.status(400);
+        throw new Error('Invalid paidAt date');
+      }
+      if (paidAtDate.getTime() > Date.now() + 60_000) {
+        res.status(400);
+        throw new Error('Payment date cannot be in the future');
+      }
     }
 
     const invoice = await Invoice.findById(req.params.id);
