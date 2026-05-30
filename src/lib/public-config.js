@@ -104,6 +104,6 @@ export const PUBLIC_API_BASE = (() => {
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:5000/public/api/v1';
   }
-  return (import.meta.env.VITE_PRODUCTION_API_URL || 'https://your-backend.railway.app/nh/api/v1')
+  return (import.meta.env.VITE_PRODUCTION_API_URL || `${window.location.origin}/nh/api/v1`)
     .replace(/\/nh\/api\/v1\/?$/, '/public/api/v1');
 })();

@@ -10,8 +10,8 @@ const getApiUrl = () => {
     return 'http://localhost:5000/nh/api/v1';
   }
   
-  // Production: Update this with your deployed backend URL
-  return import.meta.env.VITE_PRODUCTION_API_URL || 'https://your-backend.railway.app/nh/api/v1';
+  // Production: default to the same Render service that serves the frontend.
+  return import.meta.env.VITE_PRODUCTION_API_URL || `${window.location.origin}/nh/api/v1`;
 };
 
 export const API_URL = getApiUrl();

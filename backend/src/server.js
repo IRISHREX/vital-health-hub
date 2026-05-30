@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const path = require('path');
 const config = require('./config');
 const connectDB = require('./config/database');
 const { initializeSocket } = require('./config/socket');
@@ -31,6 +32,15 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
 app.use('/', require('./routes'));
+
+// Serve the built frontend from the same Render web service in production.
+if (config.isProduction()) {
+  const frontendDist = path.resolve(__dirname, '../../dist');
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
 
 // Error handler
 app.use(errorHandler);
