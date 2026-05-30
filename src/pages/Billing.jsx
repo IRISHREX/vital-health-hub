@@ -836,8 +836,6 @@ export default function Billing() {
     }
   };
 
-  };
-
   const openPatientDialog = (row) => {
     setSelectedPatientId(row.patientId);
     setAdjustmentRows([{ key: "", value: "" }]);

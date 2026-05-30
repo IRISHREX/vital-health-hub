@@ -137,7 +137,6 @@ const App = () => (
                   <Route path="/patients/:id" element={<Page><PatientDetails /></Page>} />
                   <Route path="/patients/:id/overview" element={<Page><PatientOverview /></Page>} />
                 </Route>
-                </Route>
                 <Route element={<AuthorizedRoute module="doctors" />}>
                   <Route path="/doctors" element={<Page><Doctors /></Page>} />
                 </Route>

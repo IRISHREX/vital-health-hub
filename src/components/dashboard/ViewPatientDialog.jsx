@@ -13,7 +13,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Calendar, Download, FileText, Phone, Mail, MapPin, User, Heart, Pill, Shield, FileBarChart2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Download, FileText, Phone, Mail, MapPin, User, Heart, Pill, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getNurses } from "@/lib/users";
 import { getPatientById, getPatientHistory } from "@/lib/patients";
@@ -194,6 +193,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -216,8 +216,6 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
               </Button>
             )}
           </DialogTitle>
-        </DialogHeader>
-
         </DialogHeader>
 
         <div className="space-y-6">
