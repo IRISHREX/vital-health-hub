@@ -2,6 +2,7 @@ services:
   - type: web
     name: vital-health-hub
     runtime: node
+    plan: free
     buildCommand: npm ci && npm run build && cd backend && npm ci --omit=dev
     startCommand: cd backend && npm start
     healthCheckPath: /nh/api/v1/health
