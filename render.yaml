@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: vital-health-hub
+    name: BIOMECHASOFT
     runtime: node
     plan: free
     buildCommand: npm ci && npm run build && cd backend && npm ci --omit=dev
