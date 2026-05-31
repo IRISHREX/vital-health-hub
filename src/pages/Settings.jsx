@@ -1109,6 +1109,7 @@ export default function Settings() {
     nurse: "Nurse",
     receptionist: "Receptionist",
     billingStaff: "Billing Staff",
+    pharmacist: "Pharmacist",
   };
 
   const userInitials = user?.fullName

@@ -17,13 +17,13 @@ export const rbacModules = [
   "scheduler",
   "facilities",
   "billing",
+  "pharmacy",
   "reports",
   "notifications",
   "settings",
   "tasks",
   "vitals",
   "lab",
-  "pharmacy",
   "radiology",
   "ot",
   "service_catalog",
@@ -94,6 +94,12 @@ export const rolePermissions = {
     billing: fullAccess, reports: fullAccess, notifications: viewOnly, settings: viewOnly,
     vitals: noAccess, lab: viewOnly, pharmacy: viewOnly, radiology: viewOnly, ot: viewOnly, service_catalog: viewAndCreate,
   },
+  pharmacist: {
+    dashboard: viewOnly, beds: noAccess, admissions: noAccess, patients: viewOnly,
+    doctors: noAccess, appointments: noAccess, scheduler: viewOnly, facilities: viewOnly,
+    billing: viewAndCreate, reports: viewOnly, notifications: viewOnly, settings: viewOnly,
+    tasks: viewOnly, vitals: noAccess, lab: noAccess, pharmacy: fullAccess, radiology: noAccess, ot: noAccess, service_catalog: viewOnly,
+  },
 };
 
 export const getPermissions = (role, module) => {
@@ -124,6 +130,7 @@ export const getRoleLabel = (role) => {
     nurse: 'Nurse',
     receptionist: 'Receptionist',
     billing_staff: 'Accountant',
+    pharmacist: 'Pharmacist',
   };
   return labels[role || ''] || 'User';
 };

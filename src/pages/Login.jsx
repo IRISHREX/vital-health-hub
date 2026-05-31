@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,8 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, Heart, Building2 } from 'lucide-react';
 import { getOrgSlug } from '@/lib/api-client';
-
-const HospitalScene3D = lazy(() => import('@/components/login/HospitalScene3D'));
 
 export default function Login() {
   const navigate = useNavigate();
@@ -35,12 +33,8 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[hsl(215,30%,8%)]">
-      {/* 3D Background */}
-      <Suspense fallback={null}>
-        <HospitalScene3D />
-      </Suspense>
-
-      {/* Gradient overlays */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,hsl(210,85%,28%,0.35),transparent_30%),radial-gradient(circle_at_80%_15%,hsl(174,75%,28%,0.28),transparent_28%),linear-gradient(135deg,hsl(215,30%,8%),hsl(220,28%,11%)_48%,hsl(190,28%,10%))]" />
+      <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(hsl(210,20%,75%,0.16)_1px,transparent_1px),linear-gradient(90deg,hsl(210,20%,75%,0.16)_1px,transparent_1px)] [background-size:44px_44px]" />
       <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[hsl(215,30%,8%,0.3)] via-transparent to-[hsl(215,30%,8%,0.7)]" />
       <div className="absolute inset-0 z-[1] bg-gradient-to-r from-[hsl(215,30%,8%,0.5)] via-transparent to-[hsl(215,30%,8%,0.5)]" />
 

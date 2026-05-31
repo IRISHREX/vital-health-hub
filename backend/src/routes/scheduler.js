@@ -5,10 +5,11 @@ const ctrl = require('../controllers/NH_schedulerController');
 const router = express.Router();
 
 router.use(authenticate);
+const schedulerViewRoles = ['super_admin', 'hospital_admin', 'doctor', 'receptionist', 'head_nurse', 'nurse', 'billing_staff', 'pharmacist'];
 
 // Anyone can read the global calendar
-router.get('/events', ctrl.listEvents);
-router.get('/doctors/:doctorId/slots', ctrl.getDoctorSlots);
+router.get('/events', authorize(...schedulerViewRoles), ctrl.listEvents);
+router.get('/doctors/:doctorId/slots', authorize(...schedulerViewRoles), ctrl.getDoctorSlots);
 
 // Booking / creation — role-gated
 const canBook = authorize('super_admin', 'hospital_admin', 'doctor', 'receptionist', 'head_nurse', 'nurse');

@@ -9,17 +9,18 @@ const {
 } = require('../controllers/NH_radiologyController');
 
 const router = express.Router();
+const radiologyViewRoles = ['doctor', 'hospital_admin', 'super_admin', 'nurse', 'head_nurse', 'receptionist', 'billing_staff'];
 
 // Stats
-router.get('/stats', authenticate, getRadiologyStats);
+router.get('/stats', authenticate, authorize(...radiologyViewRoles), getRadiologyStats);
 
 // CRUD
 router.route('/')
-  .get(authenticate, getRadiologyOrders)
+  .get(authenticate, authorize(...radiologyViewRoles), getRadiologyOrders)
   .post(authenticate, authorize('doctor', 'hospital_admin', 'super_admin', 'nurse', 'head_nurse', 'receptionist'), createRadiologyOrder);
 
 router.route('/:id')
-  .get(authenticate, getRadiologyOrderById)
+  .get(authenticate, authorize(...radiologyViewRoles), getRadiologyOrderById)
   .put(authenticate, authorize('doctor', 'hospital_admin', 'super_admin', 'nurse', 'head_nurse'), updateRadiologyOrder)
   .delete(authenticate, authorize('doctor', 'hospital_admin', 'super_admin'), deleteRadiologyOrder);
 

@@ -55,6 +55,10 @@ const modulePathMap = {
   '/vitals': 'vitals',
   '/lab-tests': 'lab',
   '/pharmacy': 'pharmacy',
+  '/radiology': 'radiology',
+  '/ot': 'ot',
+  '/service-catalog': 'service_catalog',
+  '/scheduler': 'scheduler',
 };
 
 const methodActionMap = {
@@ -248,12 +252,13 @@ const getAllPermissions = () => {
 
 // Role hierarchy for easier permission checks
 const roleHierarchy = {
-  super_admin: ['super_admin', 'hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'],
-  hospital_admin: ['hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'],
+  super_admin: ['super_admin', 'hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'pharmacist', 'nurse', 'head_nurse'],
+  hospital_admin: ['hospital_admin', 'doctor', 'receptionist', 'billing_staff', 'pharmacist', 'nurse', 'head_nurse'],
   head_nurse: ['head_nurse', 'nurse'],
   doctor: ['doctor'],
   receptionist: ['receptionist', 'nurse'],
   billing_staff: ['billing_staff'],
+  pharmacist: ['pharmacist'],
   nurse: ['nurse'],
 };
 

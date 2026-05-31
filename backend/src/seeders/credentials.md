@@ -7,5 +7,6 @@ Here are the credentials for the users created by the seeder:
 | Doctor | doctor@example.com | Sohel@34892 |
 | Receptionist | receptionist@example.com | Sohel@34892 |
 | Billing Staff | billingstaff@example.com | Sohel@34892 |
+| Pharmacist | pharmacist@example.com | Sohel@34892 |
 | Nurse | nurse@example.com | Sohel@34892 |
 | Head Nurse | headnurse@example.com | Sohel@34892 |

@@ -40,7 +40,7 @@ const userSchema = z.object({
   email: z.string().email("Valid email required"),
   phone: phoneSchema.optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["super_admin", "hospital_admin", "doctor", "nurse", "receptionist", "billing_staff"]).optional(),
+  role: z.enum(["super_admin", "hospital_admin", "doctor", "nurse", "receptionist", "billing_staff", "pharmacist"]).optional(),
 });
 
 export default function UserDialog({ isOpen, onClose, mode = "create", user }) {
@@ -202,6 +202,7 @@ export default function UserDialog({ isOpen, onClose, mode = "create", user }) {
                         <SelectItem value="nurse">Nurse</SelectItem>
                         <SelectItem value="receptionist">Receptionist</SelectItem>
                         <SelectItem value="billing_staff">Billing Staff</SelectItem>
+                        <SelectItem value="pharmacist">Pharmacist</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

@@ -426,7 +426,8 @@ exports.getUserStats = async (req, res, next) => {
         doctor: roleStats.doctor || 0,
         nurse: roleStats.nurse || 0,
         receptionist: roleStats.receptionist || 0,
-        billingStaff: roleStats.billing_staff || 0
+        billingStaff: roleStats.billing_staff || 0,
+        pharmacist: roleStats.pharmacist || 0
       }
     });
   } catch (error) {

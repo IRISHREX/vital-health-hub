@@ -83,7 +83,7 @@ const seed = async () => {
     console.log(`Organization ready: ${organization.name} (${organization.slug}) -> ${organization.dbName}`);
 
     // --- Seed Non-Doctor Users ---
-    const roles = ['super_admin', 'hospital_admin', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'];
+    const roles = ['super_admin', 'hospital_admin', 'receptionist', 'billing_staff', 'pharmacist', 'nurse', 'head_nurse'];
     const usersToCreate = [];
     const seedCredentials = [];
     const commonHashedPassword = await bcrypt.hash(SEED_PASSWORD, 10);

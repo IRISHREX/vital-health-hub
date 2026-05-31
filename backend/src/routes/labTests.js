@@ -9,27 +9,28 @@ const {
 } = require('../controllers/NH_labTestController');
 
 const router = express.Router();
+const labViewRoles = ['doctor', 'hospital_admin', 'super_admin', 'nurse', 'head_nurse', 'receptionist', 'billing_staff'];
 
 // Stats
-router.get('/stats', authenticate, getLabStats);
+router.get('/stats', authenticate, authorize(...labViewRoles), getLabStats);
 
 // Catalog
 router.route('/catalog')
-  .get(authenticate, getCatalog)
+  .get(authenticate, authorize(...labViewRoles), getCatalog)
   .post(authenticate, authorize('hospital_admin', 'super_admin'), createCatalogItem);
 
 router.route('/catalog/:id')
-  .get(authenticate, getCatalogItem)
+  .get(authenticate, authorize(...labViewRoles), getCatalogItem)
   .put(authenticate, authorize('hospital_admin', 'super_admin'), updateCatalogItem)
   .delete(authenticate, authorize('hospital_admin', 'super_admin'), deleteCatalogItem);
 
 // Lab test orders
 router.route('/')
-  .get(authenticate, getLabTests)
+  .get(authenticate, authorize(...labViewRoles), getLabTests)
   .post(authenticate, authorize('doctor', 'hospital_admin', 'super_admin', 'nurse', 'head_nurse', 'receptionist'), createLabTest);
 
 router.route('/:id')
-  .get(authenticate, getLabTestById)
+  .get(authenticate, authorize(...labViewRoles), getLabTestById)
   .put(authenticate, authorize('doctor', 'hospital_admin', 'super_admin', 'nurse', 'head_nurse'), updateLabTest)
   .delete(authenticate, authorize('doctor', 'hospital_admin', 'super_admin'), deleteLabTest);
 

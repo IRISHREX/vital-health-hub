@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gmLogin, setGmToken, setGmUser } from '@/lib/grandmaster-api';
 import { Button } from '@/components/ui/button';
@@ -6,8 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, Shield, Zap } from 'lucide-react';
-
-const HospitalScene3D = lazy(() => import('@/components/login/HospitalScene3D'));
 
 export default function GrandmasterLogin() {
   const navigate = useNavigate();
@@ -38,10 +36,8 @@ export default function GrandmasterLogin() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[hsl(215,30%,8%)]">
-      <Suspense fallback={null}>
-        <HospitalScene3D />
-      </Suspense>
-
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,hsl(270,60%,30%,0.34),transparent_30%),radial-gradient(circle_at_78%_24%,hsl(300,70%,24%,0.26),transparent_28%),linear-gradient(135deg,hsl(215,30%,8%),hsl(230,25%,11%)_48%,hsl(270,24%,10%))]" />
+      <div className="absolute inset-0 opacity-[0.16] [background-image:linear-gradient(hsl(270,35%,75%,0.16)_1px,transparent_1px),linear-gradient(90deg,hsl(270,35%,75%,0.16)_1px,transparent_1px)] [background-size:44px_44px]" />
       <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[hsl(215,30%,8%,0.3)] via-transparent to-[hsl(215,30%,8%,0.7)]" />
       <div className="absolute inset-0 z-[1] bg-gradient-to-r from-[hsl(215,30%,8%,0.5)] via-transparent to-[hsl(215,30%,8%,0.5)]" />
 

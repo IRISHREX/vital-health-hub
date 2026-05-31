@@ -7,14 +7,15 @@ const router = express.Router();
 const adminRoles = ['hospital_admin', 'super_admin'];
 const clinicalRoles = ['doctor', 'hospital_admin', 'super_admin', 'nurse', 'head_nurse'];
 const allClinical = [...clinicalRoles, 'receptionist'];
+const otViewRoles = [...allClinical, 'billing_staff'];
 
 // Stats & Schedule
-router.get('/stats', authenticate, ot.getOTStats);
-router.get('/schedule', authenticate, ot.getOTSchedule);
+router.get('/stats', authenticate, authorize(...otViewRoles), ot.getOTStats);
+router.get('/schedule', authenticate, authorize(...otViewRoles), ot.getOTSchedule);
 
 // OT Rooms
 router.route('/rooms')
-  .get(authenticate, ot.getOTRooms)
+  .get(authenticate, authorize(...otViewRoles), ot.getOTRooms)
   .post(authenticate, authorize(...adminRoles), ot.createOTRoom);
 
 router.route('/rooms/:id')
@@ -23,11 +24,11 @@ router.route('/rooms/:id')
 
 // Surgeries CRUD
 router.route('/surgeries')
-  .get(authenticate, ot.getSurgeries)
+  .get(authenticate, authorize(...otViewRoles), ot.getSurgeries)
   .post(authenticate, authorize('doctor', ...adminRoles), ot.createSurgery);
 
 router.route('/surgeries/:id')
-  .get(authenticate, ot.getSurgeryById)
+  .get(authenticate, authorize(...otViewRoles), ot.getSurgeryById)
   .put(authenticate, authorize(...clinicalRoles), ot.updateSurgery)
   .delete(authenticate, authorize('doctor', ...adminRoles), ot.deleteSurgery);
 
