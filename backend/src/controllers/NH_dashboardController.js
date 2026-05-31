@@ -23,7 +23,10 @@ const getModels = (req) => ({
 exports.getDashboard = async (req, res, next) => {
   try {
     const { Appointment, Patient, Vital, User, Doctor, Bed, Admission, Invoice } = getModels(req);
-    const roleQuery = req.query.role || req.user.role;
+    const defaultRoleQuery = ['super_admin', 'hospital_admin'].includes(req.user.role)
+      ? 'admin'
+      : req.user.role;
+    const roleQuery = req.query.role || defaultRoleQuery;
     const requestedNurseId = req.query.nurseId;
     const canQueryOtherNurses = ['super_admin', 'hospital_admin', 'doctor', 'head_nurse'].includes(req.user.role);
 
