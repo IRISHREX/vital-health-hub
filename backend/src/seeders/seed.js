@@ -7,8 +7,11 @@ const Patient = require('../models/NH_Patient');
 const Bed = require('../models/NH_Bed');
 const Admission = require('../models/NH_Admission');
 const Facility = require('../models/NH_Facility');
+const Organization = require('../models/GM_Organization');
 
 const SEED_PASSWORD = 'Sohel@34892';
+const SEED_ORG_SLUG = 'biomechasoft';
+const SEED_ORG_DB = 'test';
 
 const seed = async () => {
   try {
@@ -31,6 +34,53 @@ const seed = async () => {
     await purgeModel('Facilities', Facility);
 
     console.log('Cleared existing data.');
+
+    const organization = await Organization.findOneAndUpdate(
+      { slug: SEED_ORG_SLUG },
+      {
+        name: 'BIOMECHASOFT',
+        slug: SEED_ORG_SLUG,
+        type: 'hospital',
+        email: 'hospitaladmin@example.com',
+        phone: '9609436103',
+        status: 'active',
+        dbName: SEED_ORG_DB,
+        enabledModules: [
+          'dashboard',
+          'beds',
+          'admissions',
+          'patients',
+          'doctors',
+          'nurses',
+          'appointments',
+          'facilities',
+          'billing',
+          'reports',
+          'notifications',
+          'settings',
+          'tasks',
+          'vitals',
+          'lab',
+          'pharmacy',
+          'radiology',
+          'ot',
+          'opd',
+          'ipd',
+          'inventory',
+          'service_catalog',
+        ],
+        allowedSettingsTabs: ['general', 'users', 'security', 'notifications', 'data', 'visual_access', 'module_operations'],
+        adminDetails: {
+          firstName: 'Hospital',
+          lastName: 'Admin',
+          email: 'hospitaladmin@example.com',
+          phone: '9609436103',
+        },
+        onboardedAt: new Date(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    console.log(`Organization ready: ${organization.name} (${organization.slug}) -> ${organization.dbName}`);
 
     // --- Seed Non-Doctor Users ---
     const roles = ['super_admin', 'hospital_admin', 'receptionist', 'billing_staff', 'nurse', 'head_nurse'];
