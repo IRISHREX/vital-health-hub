@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listOrganizations, onboardOrganization, updateOrgModules, suspendOrganization, reactivateOrganization, deleteOrganization } from '@/lib/grandmaster-api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { IconTooltip } from '@/components/ui/icon-tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -218,24 +219,34 @@ export default function Organizations() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" title="Control Panel" onClick={() => navigate(`/grandmaster/organizations/${org._id}`)}>
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setModuleDialogOrg(org); setSelectedModules(org.enabledModules || []); }}>
-                  <Settings2 className="h-4 w-4" />
-                </Button>
+                <IconTooltip label="Control panel">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Control panel" onClick={() => navigate(`/grandmaster/organizations/${org._id}`)}>
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label="Modules">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Modules" onClick={() => { setModuleDialogOrg(org); setSelectedModules(org.enabledModules || []); }}>
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
                 {org.status === 'active' ? (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-yellow-600" onClick={() => suspendMut.mutate(org._id)}>
-                    <Ban className="h-4 w-4" />
-                  </Button>
+                  <IconTooltip label="Suspend">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-yellow-600" aria-label="Suspend" onClick={() => suspendMut.mutate(org._id)}>
+                      <Ban className="h-4 w-4" />
+                    </Button>
+                  </IconTooltip>
                 ) : org.status === 'suspended' ? (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => reactivateMut.mutate(org._id)}>
-                    <Play className="h-4 w-4" />
-                  </Button>
+                  <IconTooltip label="Reactivate">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" aria-label="Reactivate" onClick={() => reactivateMut.mutate(org._id)}>
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  </IconTooltip>
                 ) : null}
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm('Delete this organization?')) deleteMut.mutate(org._id); }}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <IconTooltip label="Delete">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label="Delete" onClick={() => { if (confirm('Delete this organization?')) deleteMut.mutate(org._id); }}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
               </div>
             </CardContent>
           </Card>

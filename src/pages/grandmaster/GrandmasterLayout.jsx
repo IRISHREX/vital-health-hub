@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { IconTooltip } from '@/components/ui/icon-tooltip';
 
 const navItems = [
   { title: 'Dashboard', url: '/grandmaster', icon: LayoutDashboard, end: true },
@@ -82,18 +83,21 @@ export default function GrandmasterLayout() {
         <ScrollArea className="flex-1 px-2 py-3">
           <nav className="flex flex-col gap-1">
             {navItems.map((item) => (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                end={item.end}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors
-                  ${isActive(item.url, item.end)
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>{item.title}</span>}
-              </NavLink>
+              <IconTooltip key={item.title} label={item.title} side="right" disabled={!collapsed}>
+                <NavLink
+                  to={item.url}
+                  end={item.end}
+                  aria-label={item.title}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors
+                    ${collapsed ? 'justify-center' : ''}
+                    ${isActive(item.url, item.end)
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>{item.title}</span>}
+                </NavLink>
+              </IconTooltip>
             ))}
           </nav>
         </ScrollArea>
@@ -137,12 +141,16 @@ export default function GrandmasterLayout() {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="h-8 w-8">
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8 text-destructive hover:text-destructive">
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <IconTooltip label={collapsed ? 'Expand' : 'Collapse'}>
+              <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="h-8 w-8" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+                {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              </Button>
+            </IconTooltip>
+            <IconTooltip label="Log out">
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8 text-destructive hover:text-destructive" aria-label="Log out">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </IconTooltip>
           </div>
         </div>
       </aside>

@@ -40,7 +40,7 @@ import { getHospitalSettings } from "@/lib/settings";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
-  { title: "Bed Management", url: "/beds", icon: Bed, module: "beds" },
+  { title: "Beds", url: "/beds", icon: Bed, module: "beds" },
   { title: "Admissions", url: "/admissions", icon: Hospital, module: "admissions" },
   { title: "Patients", url: "/patients", icon: Users, module: "patients" },
   { title: "Doctors", url: "/doctors", icon: Stethoscope, module: "doctors" },
@@ -52,12 +52,12 @@ const mainNavItems = [
 ];
 
 const managementItems = [
-  { title: "Operating Theatre", url: "/ot", icon: Scissors, module: "ot" },
-  { title: "Pathology Lab", url: "/lab", icon: FlaskConical, module: "lab" },
+  { title: "OT", url: "/ot", icon: Scissors, module: "ot" },
+  { title: "Lab", url: "/lab", icon: FlaskConical, module: "lab" },
   { title: "Radiology", url: "/radiology", icon: ScanLine, module: "radiology" },
   { title: "Pharmacy", url: "/pharmacy", icon: Pill, module: "pharmacy" },
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
-  { title: "Service Catalog", url: "/service-catalog", icon: PackageSearch, module: "service_catalog", requireAction: "canView" },
+  { title: "Catalog", url: "/service-catalog", icon: PackageSearch, module: "service_catalog", requireAction: "canView" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];

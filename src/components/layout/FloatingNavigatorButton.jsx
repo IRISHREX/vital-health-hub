@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 const STORAGE_KEY = "widget_nav_button_position_v1";
 const BUTTON_SIZE = 56;
@@ -146,28 +147,29 @@ export function FloatingNavigatorButton({ open, onToggle }) {
       )}
       style={buttonStyle}
     >
-      <Button
-        ref={buttonRef}
-        type="button"
-        variant={open ? "default" : "secondary"}
-        size="icon"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onDoubleClick={handleDoubleClick}
-        className={cn(
-          "h-14 w-14 rounded-2xl border shadow-lg backdrop-blur-md",
-          "bg-background/95 text-foreground hover:bg-background",
-          "touch-none select-none",
-          open && "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
-          dragging && "cursor-grabbing shadow-2xl",
-          !dragging && "cursor-grab",
-        )}
-        title="Module navigator. Drag to move, double-click to reset."
-        aria-label="Open module navigator"
-      >
-        <LayoutGrid className="h-5 w-5" />
-      </Button>
+      <IconTooltip label="Modules · drag to move" side="left">
+        <Button
+          ref={buttonRef}
+          type="button"
+          variant={open ? "default" : "secondary"}
+          size="icon"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onDoubleClick={handleDoubleClick}
+          className={cn(
+            "h-14 w-14 rounded-2xl border shadow-lg backdrop-blur-md",
+            "bg-background/95 text-foreground hover:bg-background",
+            "touch-none select-none",
+            open && "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
+            dragging && "cursor-grabbing shadow-2xl",
+            !dragging && "cursor-grab",
+          )}
+          aria-label="Open module navigator"
+        >
+          <LayoutGrid className="h-5 w-5" />
+        </Button>
+      </IconTooltip>
     </div>
   );
 }

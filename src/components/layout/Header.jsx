@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { getNotifications, markAsRead } from "@/lib/notifications";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 export function Header() {
   const navigate = useNavigate();
@@ -100,24 +101,28 @@ export function Header() {
         )}
         {/* Layout Mode Toggle */}
         <div className="flex items-center gap-0.5 rounded-lg border bg-muted/40 p-0.5">
-          <Button
-            variant={mode === "sidebar" ? "default" : "ghost"}
-            size="sm"
-            className="h-7 gap-1.5 px-2.5 text-xs"
-            onClick={() => { setMode("sidebar"); setWidgetOverlayOpen(false); }}
-          >
-            <PanelLeft className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Sidebar</span>
-          </Button>
-          <Button
-            variant={mode === "widget" ? "default" : "ghost"}
-            size="sm"
-            className="h-7 gap-1.5 px-2.5 text-xs"
-            onClick={() => { setMode("widget"); setWidgetOverlayOpen(false); }}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Widgets</span>
-          </Button>
+          <IconTooltip label="Sidebar mode">
+            <Button
+              variant={mode === "sidebar" ? "default" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => { setMode("sidebar"); setWidgetOverlayOpen(false); }}
+              aria-label="Sidebar mode"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
+          <IconTooltip label="Widget mode">
+            <Button
+              variant={mode === "widget" ? "default" : "ghost"}
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => { setMode("widget"); setWidgetOverlayOpen(false); }}
+              aria-label="Widget mode"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
         </div>
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -131,57 +136,66 @@ export function Header() {
 
       <div className="flex items-center gap-1.5 sm:gap-3">
         {/* Live indicator */}
-        <div className="hidden items-center gap-2 rounded-full bg-status-available/10 px-3 py-1.5 sm:flex">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-available opacity-75"></span>
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-status-available"></span>
-          </span>
-          <span className="text-xs font-medium text-status-available">Live</span>
-        </div>
+        <IconTooltip label="System live">
+          <div className="hidden h-8 w-8 items-center justify-center rounded-full bg-status-available/10 sm:flex" aria-label="System live">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-available opacity-75"></span>
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-status-available"></span>
+            </span>
+          </div>
+        </IconTooltip>
 
         {/* Scheduler */}
         {canViewScheduler && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/scheduler")}
-            className="text-muted-foreground hover:text-foreground"
-            title="Scheduler"
-          >
-            <Calendar className="h-5 w-5" />
-          </Button>
+          <IconTooltip label="Scheduler">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/scheduler")}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Scheduler"
+            >
+              <Calendar className="h-5 w-5" />
+            </Button>
+          </IconTooltip>
         )}
 
         {/* Theme Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          className="text-muted-foreground hover:text-foreground"
-          title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
-        >
-          {resolvedTheme === 'dark' ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-        </Button>
+        <IconTooltip label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {resolvedTheme === 'dark' ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+          </Button>
+        </IconTooltip>
 
         {/* Notifications */}
         {canViewNotifications && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px] justify-center flex items-center"
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
-                )}
-              </Button>
+              <span>
+                <IconTooltip label="Notifications">
+                  <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-[10px] justify-center flex items-center"
+                      >
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </IconTooltip>
+              </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[calc(100vw-1rem)] max-w-80">
               <DropdownMenuLabel className="flex items-center justify-between">
@@ -236,20 +250,18 @@ export function Header() {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-1 sm:px-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar || ""} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden flex-col items-start md:flex">
-                <span className="text-sm font-medium">{user?.fullName || "User"}</span>
-                <span className="text-xs text-muted-foreground">
-                  {user?.email || "user@example.com"}
-                </span>
-              </div>
-            </Button>
+            <span>
+              <IconTooltip label={`${user?.fullName || "User"} · ${user?.email || "Account"}`}>
+                <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Account menu">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatar || ""} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </IconTooltip>
+            </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 /**
  * Radial fan-out row actions menu.
@@ -77,24 +78,26 @@ function RowActions({ actions = [], align = "end", radius = 56, arc = 140, class
         className,
       )}
     >
-      <button
-        type="button"
-        aria-label="Row actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((o) => !o);
-        }}
-        className={cn(
-          "relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-all",
-          "hover:bg-accent hover:text-foreground",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          open && "bg-accent text-foreground shadow-sm",
-        )}
-      >
-        <MoreHorizontal className="h-5 w-5" />
-      </button>
+      <IconTooltip label="Actions">
+        <button
+          type="button"
+          aria-label="Row actions"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+          className={cn(
+            "relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-all",
+            "hover:bg-accent hover:text-foreground",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            open && "bg-accent text-foreground shadow-sm",
+          )}
+        >
+          <MoreHorizontal className="h-5 w-5" />
+        </button>
+      </IconTooltip>
 
       <div
         className="pointer-events-none absolute right-1/2 top-1/2 z-20 h-0 w-0 [transform:translate(50%,-50%)]"
@@ -105,37 +108,37 @@ function RowActions({ actions = [], align = "end", radius = 56, arc = 140, class
           const { tx, ty } = positions[i];
           const Icon = a.icon;
           return (
-            <button
-              key={`${a.label}-${i}`}
-              type="button"
-              role="menuitem"
-              title={a.label}
-              aria-label={a.label}
-              disabled={a.disabled}
-              tabIndex={open ? 0 : -1}
-              onClick={(e) => {
-                e.stopPropagation();
-                close();
-                a.onClick?.(e);
-              }}
-              style={{
-                transform: open
-                  ? `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(1)`
-                  : "translate(-50%, -50%) scale(0.4)",
-                transitionDelay: open ? `${i * 35}ms` : "0ms",
-              }}
-              className={cn(
-                "absolute left-0 top-0 inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-md",
-                "transition-all duration-300 ease-out",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
-                "disabled:cursor-not-allowed disabled:opacity-40",
-                VARIANT_CLASSES[a.variant] || VARIANT_CLASSES.default,
-              )}
-            >
-              {Icon ? <Icon className="h-4 w-4" /> : null}
-              <span className="sr-only">{a.label}</span>
-            </button>
+            <IconTooltip key={`${a.label}-${i}`} label={a.label} side="top" disabled={!open}>
+              <button
+                type="button"
+                role="menuitem"
+                aria-label={a.label}
+                disabled={a.disabled}
+                tabIndex={open ? 0 : -1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  close();
+                  a.onClick?.(e);
+                }}
+                style={{
+                  transform: open
+                    ? `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(1)`
+                    : "translate(-50%, -50%) scale(0.4)",
+                  transitionDelay: open ? `${i * 35}ms` : "0ms",
+                }}
+                className={cn(
+                  "absolute left-0 top-0 inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-md",
+                  "transition-all duration-300 ease-out",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+                  "disabled:cursor-not-allowed disabled:opacity-40",
+                  VARIANT_CLASSES[a.variant] || VARIANT_CLASSES.default,
+                )}
+              >
+                {Icon ? <Icon className="h-4 w-4" /> : null}
+                <span className="sr-only">{a.label}</span>
+              </button>
+            </IconTooltip>
           );
         })}
       </div>
