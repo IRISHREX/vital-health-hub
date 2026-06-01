@@ -15,7 +15,7 @@ import { Plus, CreditCard, Package, Trash2, DollarSign, XCircle, RefreshCw } fro
 
 const ALL_MODULES = [
   'dashboard', 'beds', 'admissions', 'patients', 'doctors', 'nurses',
-  'appointments', 'facilities', 'billing', 'reports', 'notifications',
+  'appointments', 'scheduler', 'facilities', 'billing', 'reports', 'notifications',
   'settings', 'tasks', 'vitals', 'lab', 'pharmacy', 'radiology', 'ot'
 ];
 
