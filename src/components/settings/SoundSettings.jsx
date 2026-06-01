@@ -57,7 +57,7 @@ export default function SoundSettings() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               {settings.enabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
@@ -77,7 +77,7 @@ export default function SoundSettings() {
         {/* Volume */}
         <div className="space-y-3">
           <Label className="text-sm font-medium">Volume</Label>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <VolumeX className="h-4 w-4 text-muted-foreground" />
             <Slider
               value={[settings.volume]}
@@ -102,7 +102,7 @@ export default function SoundSettings() {
             {categoryConfig.map(({ key, label, icon: Icon, description }) => (
               <div
                 key={key}
-                className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                className={`flex flex-col gap-3 rounded-lg border p-3 transition-colors sm:flex-row sm:items-center sm:justify-between ${
                   settings.enabled && settings.categories[key]
                     ? "bg-primary/5 border-primary/20"
                     : "bg-muted/30"
@@ -115,7 +115,7 @@ export default function SoundSettings() {
                     <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-2">
+                <div className="ml-0 flex w-full items-center justify-end gap-2 sm:ml-2 sm:w-auto">
                   <Button
                     variant="ghost"
                     size="icon"

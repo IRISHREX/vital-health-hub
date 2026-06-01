@@ -3,10 +3,14 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /** Centred spinner with optional caption. */
-export function LoadingState({ label = 'Loading…', className }) {
+export function LoadingState({ label = 'Loading...', className }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground', className)}>
-      <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+    <div className={cn('flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground', className)}>
+      <div className="relative flex h-12 w-12 items-center justify-center">
+        <div className="absolute inset-0 rounded-full border-4 border-primary/15" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+        <Loader2 className="relative h-5 w-5 animate-spin text-primary" aria-hidden />
+      </div>
       <p className="text-sm">{label}</p>
     </div>
   );
