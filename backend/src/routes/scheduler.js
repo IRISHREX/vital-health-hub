@@ -11,7 +11,7 @@ const schedulerViewRoles = ['super_admin', 'hospital_admin', 'doctor', 'receptio
 router.get('/events', authorize(...schedulerViewRoles), ctrl.listEvents);
 router.get('/doctors/:doctorId/slots', authorize(...schedulerViewRoles), ctrl.getDoctorSlots);
 
-// Booking / creation — role-gated
+// Booking / creation - role-gated
 const canBook = authorize('super_admin', 'hospital_admin', 'doctor', 'receptionist', 'head_nurse', 'nurse');
 
 router.post('/events', canBook, ctrl.createEvent);
