@@ -21,7 +21,7 @@ const formatPrice = (n, currency = 'INR') =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n || 0);
 
 const waHref = `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(CONTACT.whatsappMessage)}`;
-const mailHref = `mailto:${CONTACT.email}?subject=${encodeURIComponent('NurseHub enquiry')}`;
+const mailHref = `mailto:${CONTACT.email}?subject=${encodeURIComponent('BIOMECHASOFT enquiry')}`;
 const telHref = `tel:${CONTACT.phone.replace(/\s+/g, '')}`;
 
 const NAV = [
@@ -169,7 +169,7 @@ export default function PublicLanding() {
         <div className="mb-10 text-center">
           <h2 className="text-3xl font-bold sm:text-4xl">Everything your hospital needs</h2>
           <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
-            One unified platform across every department — no more juggling tools.
+            One unified platform across every department - no more juggling tools.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -212,7 +212,7 @@ export default function PublicLanding() {
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-bold sm:text-4xl">Simple, transparent pricing</h2>
           <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
-            Pick the plan that fits today — switch anytime as you grow.
+            Pick the plan that fits today - switch anytime as you grow.
           </p>
           <div className="mx-auto mt-6 inline-flex rounded-full border border-border bg-background p-1">
             {['monthly', 'yearly'].map((b) => (
@@ -303,7 +303,7 @@ export default function PublicLanding() {
           <div>
             <h2 className="text-3xl font-bold sm:text-4xl">Talk to us</h2>
             <p className="mt-3 text-muted-foreground">
-              Reach out on any channel — we usually respond within a few hours.
+              Reach out on any channel - we usually respond within a few hours.
             </p>
             <div className="mt-6 space-y-3">
               <a href={waHref} target="_blank" rel="noreferrer"
@@ -350,7 +350,7 @@ export default function PublicLanding() {
                     <Input id="name" name="name" required autoComplete="name" />
                   </div>
                   <div>
-                    <Label htmlFor="organization">Organisation</Label>
+                    <Label htmlFor="organization">Organization</Label>
                     <Input id="organization" name="organization" autoComplete="organization" />
                   </div>
                 </div>
@@ -370,7 +370,7 @@ export default function PublicLanding() {
                     placeholder="Tell us about your hospital or nursing home..." />
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? 'Sending…' : 'Send message'}
+                  {submitting ? 'Sending...' : 'Send message'}
                 </Button>
               </form>
             </CardContent>
@@ -383,7 +383,7 @@ export default function PublicLanding() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
             <img src={BRAND.logoUrl} alt="" className="h-5 w-5" />
-            <span>© {new Date().getFullYear()} {BRAND.name}. All rights reserved.</span>
+            <span>&copy; {new Date().getFullYear()} {BRAND.name}. All rights reserved.</span>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/login" className="hover:text-foreground">Sign in</Link>
