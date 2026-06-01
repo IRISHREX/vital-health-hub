@@ -43,6 +43,7 @@ const organizationSchema = new mongoose.Schema(
         'doctors',
         'nurses',
         'appointments',
+        'scheduler',
         'facilities',
         'billing',
         'reports',
