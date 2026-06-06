@@ -399,11 +399,13 @@ export default function Appointments() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>S.No.</TableHead>
                 <TableHead>Patient</TableHead>
                 <TableHead>Doctor</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Reason</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Fee</TableHead>
+                <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -412,6 +414,7 @@ export default function Appointments() {
               {filteredAppointments.length > 0 ? (
                 filteredAppointments.map((apt) => (
                   <TableRow key={apt._id}>
+                    <TableCell className="font-mono text-xs">#{apt.tokenNumber ?? "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
