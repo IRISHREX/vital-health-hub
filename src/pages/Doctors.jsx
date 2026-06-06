@@ -110,12 +110,13 @@ export default function Doctors() {
 
   const filteredDoctors = useMemo(() => {
     return (doctors || []).filter(doctor => {
-      const matchesSearch = (doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) || doctor.specialization?.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch = (doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) || doctor.specialization?.toLowerCase().includes(searchQuery.toLowerCase()) || (doctor.tags || []).join(',').toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesDepartment = departmentFilter === "all" || doctor.department === departmentFilter;
       const matchesAvailability = availabilityFilter === "all" || (availabilityFilter === "available" ? doctor.availabilityStatus === "available" : doctor.availabilityStatus !== "available");
-      return matchesSearch && matchesDepartment && matchesAvailability;
+      const matchesType = typeFilter === "all" || (doctor.doctorType || "hospital") === typeFilter;
+      return matchesSearch && matchesDepartment && matchesAvailability && matchesType;
     });
-  }, [doctors, searchQuery, departmentFilter, availabilityFilter]);
+  }, [doctors, searchQuery, departmentFilter, availabilityFilter, typeFilter]);
 
   const stats = {
     total: doctors?.length || 0,
