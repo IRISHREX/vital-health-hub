@@ -14,13 +14,15 @@ const getModels = (req) => ({
 exports.getDoctors = async (req, res, next) => {
   try {
     const { Doctor } = getModels(req);
-    const { department, specialization, availabilityStatus, search, page = 1, limit = 20 } = req.query;
+    const { department, specialization, availabilityStatus, doctorType, tag, search, page = 1, limit = 20 } = req.query;
     
     const query = {};
     
     if (department) query.department = department;
     if (specialization) query.specialization = specialization;
     if (availabilityStatus) query.availabilityStatus = availabilityStatus;
+    if (doctorType) query.doctorType = doctorType;
+    if (tag) query.tags = tag;
 
     let doctors = await Doctor.find(query)
       .populate('user', 'firstName lastName email phone avatar isActive')
