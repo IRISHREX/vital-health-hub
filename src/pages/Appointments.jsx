@@ -369,8 +369,8 @@ export default function Appointments() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by patient or doctor name..."
@@ -378,6 +378,19 @@ export default function Appointments() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
+        </div>
+        <div className="flex items-end gap-2">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">From</label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px]" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">To</label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px]" />
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>Clear</Button>
+          )}
         </div>
       </div>
 
