@@ -396,7 +396,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name</FormLabel>
+                    <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input placeholder="John" {...field} />
                     </FormControl>
