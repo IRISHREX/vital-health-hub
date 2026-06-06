@@ -126,10 +126,14 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
   });
 
   const onSubmit = (values) => {
+    const payload = {
+      ...values,
+      tags: (values.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+    };
     if (mode === "create") {
-      createMutation.mutate(values);
+      createMutation.mutate(payload);
     } else {
-      updateMutation.mutate(values);
+      updateMutation.mutate(payload);
     }
   };
 
