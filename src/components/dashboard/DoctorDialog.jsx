@@ -64,6 +64,8 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
       experience: 0,
       consultationFee: 500,
       availabilityStatus: "available",
+      doctorType: "hospital",
+      tags: "",
     },
   });
 
@@ -79,6 +81,8 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
         experience: doctor.experience || 0,
         consultationFee: doctor.consultationFee?.opd || 500,
         availabilityStatus: doctor.availabilityStatus || "available",
+        doctorType: doctor.doctorType || "hospital",
+        tags: Array.isArray(doctor.tags) ? doctor.tags.join(", ") : (doctor.tags || ""),
       });
     } else {
       form.reset({
@@ -91,6 +95,8 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
         experience: 0,
         consultationFee: 500,
         availabilityStatus: "available",
+        doctorType: "hospital",
+        tags: "",
       });
     }
   }, [doctor, mode, form]);
