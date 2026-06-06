@@ -182,6 +182,16 @@ export default function Doctors() {
             {departments.map(dept => <SelectItem key={dept} value={dept}>{dept}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-[170px]"><SelectValue placeholder="Doctor Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="hospital">Hospital</SelectItem>
+            <SelectItem value="referral">Referral</SelectItem>
+            <SelectItem value="visiting">Visiting</SelectItem>
+            <SelectItem value="consultant">Consultant</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Availability" /></SelectTrigger>
           <SelectContent>
