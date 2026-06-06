@@ -43,6 +43,8 @@ export default function Appointments() {
   const { user } = useAuth();
   const { canCreate } = useVisualAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
