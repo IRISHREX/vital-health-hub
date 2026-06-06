@@ -328,9 +328,17 @@ export default function Doctors() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="font-semibold text-foreground truncate">{doctor.name}</h3>
                         <p className="text-xs text-primary">{doctor.specialization}</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          <Badge variant={doctor.doctorType === "referral" ? "secondary" : "outline"} className="text-[10px] capitalize">
+                            {doctor.doctorType || "hospital"}
+                          </Badge>
+                          {(doctor.tags || []).slice(0, 3).map((t) => (
+                            <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
+                          ))}
+                        </div>
                       </div>
                       <Button variant="ghost" size="sm" className="h-auto p-1" title="Toggle Availability" aria-label="Toggle doctor availability" onClick={() => {
                         const newStatus = doctor.availabilityStatus === "available" ? "unavailable" : "available";
