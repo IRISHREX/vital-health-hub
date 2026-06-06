@@ -46,7 +46,7 @@ const ImageField = ({ label, value, onChange, hint, maxKb = 500 }) => {
   return (
     <div className="space-y-2">
       <Label className="text-xs font-medium">{label}</Label>
-      <div className="flex items-start gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="h-20 w-32 flex items-center justify-center border rounded bg-muted/30 overflow-hidden">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -55,13 +55,13 @@ const ImageField = ({ label, value, onChange, hint, maxKb = 500 }) => {
             <ImageIcon className="h-6 w-6 text-muted-foreground" />
           )}
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto">
           <input ref={ref} type="file" accept="image/*" className="hidden" onChange={handle} />
-          <Button type="button" size="sm" variant="outline" onClick={() => ref.current?.click()}>
+          <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => ref.current?.click()}>
             <Upload className="h-3.5 w-3.5 mr-2" />Upload
           </Button>
           {value && (
-            <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onChange("")}>
+            <Button type="button" size="sm" variant="ghost" className="w-full text-destructive sm:w-auto" onClick={() => onChange("")}>
               <Trash2 className="h-3.5 w-3.5 mr-2" />Remove
             </Button>
           )}
@@ -126,7 +126,12 @@ export default function BrandingSettings() {
   });
 
   if (isLoading) {
-    return <div className="flex items-center gap-2 text-muted-foreground p-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+    return (
+      <div className="flex items-center gap-2 p-6 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -140,7 +145,7 @@ export default function BrandingSettings() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="default">
-          <TabsList className="flex flex-wrap h-auto">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto p-1 [scrollbar-width:none] lg:flex-wrap lg:overflow-visible">
             <TabsTrigger value="default">Default (all modules)</TabsTrigger>
             {MODULES.map((m) => (
               <TabsTrigger key={m.key} value={m.key}>{m.label}</TabsTrigger>
@@ -149,7 +154,7 @@ export default function BrandingSettings() {
 
           <TabsContent value="default" className="space-y-6 pt-4">
             <div className="grid md:grid-cols-3 gap-4">
-              <ImageField label="Logo" value={form.logo} onChange={(v) => update({ logo: v })} hint="PNG/JPG, ≤ 500KB" />
+              <ImageField label="Logo" value={form.logo} onChange={(v) => update({ logo: v })} hint="PNG/JPG, under 500KB" />
               <ImageField label="Signature" value={form.signature} onChange={(v) => update({ signature: v })} hint="Transparent PNG works best" />
               <ImageField label="Stamp / Seal" value={form.stamp} onChange={(v) => update({ stamp: v })} hint="Transparent PNG works best" />
             </div>
@@ -172,22 +177,22 @@ export default function BrandingSettings() {
               </div>
               <div className="space-y-2">
                 <Label>Footer Text</Label>
-                <Textarea rows={2} value={form.footerText} onChange={(e) => update({ footerText: e.target.value })} placeholder="Terms, contact info, disclaimer…" />
+                <Textarea rows={2} value={form.footerText} onChange={(e) => update({ footerText: e.target.value })} placeholder="Terms, contact info, disclaimer..." />
               </div>
             </div>
 
             <Separator />
 
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <Label className="text-sm">Show logo on prints</Label>
                 <Switch checked={form.showLogo} onCheckedChange={(v) => update({ showLogo: v })} />
               </div>
-              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <Label className="text-sm">Show signature</Label>
                 <Switch checked={form.showSignature} onCheckedChange={(v) => update({ showSignature: v })} />
               </div>
-              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <Label className="text-sm">Show stamp</Label>
                 <Switch checked={form.showStamp} onCheckedChange={(v) => update({ showStamp: v })} />
               </div>
@@ -199,13 +204,13 @@ export default function BrandingSettings() {
             const hasOverride = Object.keys(form.modules?.[m.key] || {}).length > 0;
             return (
               <TabsContent key={m.key} value={m.key} className="space-y-5 pt-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">{m.label} override</p>
                     <p className="text-xs text-muted-foreground">Leave fields empty to inherit from Default. Filled fields override the default for this document type.</p>
                   </div>
                   {hasOverride && (
-                    <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => clearModule(m.key)}>
+                    <Button type="button" size="sm" variant="ghost" className="w-full text-destructive sm:w-auto" onClick={() => clearModule(m.key)}>
                       Clear override
                     </Button>
                   )}
@@ -241,7 +246,7 @@ export default function BrandingSettings() {
         </Tabs>
 
         <div className="flex justify-end pt-6">
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <Button className="w-full sm:w-auto" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Save Branding
           </Button>

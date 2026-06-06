@@ -53,6 +53,7 @@ const seed = async () => {
           'doctors',
           'nurses',
           'appointments',
+          'scheduler',
           'facilities',
           'billing',
           'reports',

@@ -9,7 +9,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Save } from "lucide-react";
+import { AlertCircle, Loader2, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useDOBAgeSetting } from "@/hooks/useDOBAgeSetting";
 import { DOB_OPTIONS } from "@/lib/dobAgeUtils";
@@ -110,7 +110,7 @@ export default function DOBAgeSetting() {
         {/* Allow Age Input Toggle */}
         {localSettings.option === DOB_OPTIONS.OPTIONAL && (
           <div className="space-y-3 border-t pt-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <Label htmlFor="allow-age" className="text-base font-semibold">
                   Allow Age Input
@@ -143,16 +143,16 @@ export default function DOBAgeSetting() {
           <h4 className="mb-2 font-semibold text-sm">How it works:</h4>
           <ul className="space-y-1 text-sm text-muted-foreground">
             <li>
-              • All forms using date of birth will respect this setting automatically
+              - All forms using date of birth will respect this setting automatically
             </li>
             <li>
-              • DOB is calculated from age based on today's date (age in years)
+              - DOB is calculated from age based on today's date (age in years)
             </li>
             <li>
-              • Patient age display will show "X yrs, Y mths" based on the calculated DOB
+              - Patient age display will show "X yrs, Y mths" based on the calculated DOB
             </li>
             <li>
-              • This setting applies globally across all modules (Patients, Appointments, Lab, etc.)
+              - This setting applies globally across all modules (Patients, Appointments, Lab, etc.)
             </li>
           </ul>
         </div>
@@ -162,9 +162,9 @@ export default function DOBAgeSetting() {
           <Button
             onClick={handleSave}
             disabled={loading}
-            className="gap-2"
+            className="w-full gap-2 sm:w-auto"
           >
-            <Save className="h-4 w-4" />
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {loading ? "Saving..." : "Save Settings"}
           </Button>
         </div>

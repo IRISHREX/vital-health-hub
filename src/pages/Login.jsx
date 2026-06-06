@@ -45,10 +45,10 @@ export default function Login() {
             <Building2 className="h-8 w-8 text-white" />
           </div>
           <CardTitle className="text-3xl font-bold tracking-tight text-white">
-            Vital Health Hub
+            BIOMECHASOFT
           </CardTitle>
           <CardDescription className="text-[hsl(210,15%,60%)] text-base">
-            Hospital Management System
+            Secure Hospital Operations Platform
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
@@ -110,7 +110,7 @@ export default function Login() {
 
           <div className="mt-6 flex items-center justify-center gap-1.5 text-[hsl(210,15%,45%)] text-xs">
             <Heart className="h-3 w-3" />
-            <span>Powered by Vital Health Hub</span>
+            <span>Powered by BIOMECHASOFT</span>
           </div>
         </CardContent>
       </Card>

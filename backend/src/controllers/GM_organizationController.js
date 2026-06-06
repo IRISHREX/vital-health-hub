@@ -112,7 +112,7 @@ exports.onboard = async (req, res, next) => {
       email,
       website,
       adminDetails,
-      enabledModules: enabledModules || ['dashboard', 'patients', 'beds', 'admissions'],
+      enabledModules: enabledModules || ['dashboard', 'patients', 'beds', 'admissions', 'appointments', 'scheduler'],
       dbName,
       dbUri: providedDbUri,
       maxUsers,

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Users as UsersIcon,
-  Stethoscope, Lock, Trash2, Check, X, Clock,
+  Stethoscope, Lock, Trash2, Check, X, Clock, AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +28,7 @@ import {
   createBlock, getDoctorSlots, bookAppointment, ALLOWED_DURATIONS,
 } from '@/lib/scheduler';
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// Helpers
 const startOfDay = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
 const endOfDay   = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
 const addDays    = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
@@ -50,7 +49,7 @@ const KIND_META = {
   personal:   { label: 'Personal',    color: 'bg-muted text-foreground border-border' },
 };
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// Page
 export default function Scheduler() {
   const { user } = useAuth();
   const { canCreate } = useVisualAuth();
@@ -107,7 +106,7 @@ export default function Scheduler() {
     onSuccess: () => { invalidate(); toast({ title: 'Response sent' }); },
   });
 
-  // ─── Header / nav ─────────────────────────────────────────────────────────
+  // Header / nav
   const stepBack    = () => setAnchor(view === 'day' ? addDays(anchor, -1) : view === 'week' ? addDays(anchor, -7) : new Date(anchor.getFullYear(), anchor.getMonth()-1, 1));
   const stepForward = () => setAnchor(view === 'day' ? addDays(anchor, 1)  : view === 'week' ? addDays(anchor, 7)  : new Date(anchor.getFullYear(), anchor.getMonth()+1, 1));
 
@@ -121,7 +120,7 @@ export default function Scheduler() {
     return anchor.toLocaleDateString(undefined, { month:'long', year:'numeric' });
   }, [view, anchor]);
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // Render
   return (
     <div className="space-y-4 p-1">
       {/* Toolbar */}
@@ -130,7 +129,7 @@ export default function Scheduler() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <CalendarIcon className="h-6 w-6 text-primary" /> Scheduler
           </h1>
-          <p className="text-sm text-muted-foreground">Global calendar — meetings, blocks, tasks & appointments.</p>
+          <p className="text-sm text-muted-foreground">Global calendar - meetings, blocks, tasks & appointments.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
@@ -202,7 +201,7 @@ export default function Scheduler() {
                     <div className="flex flex-wrap gap-1.5">
                       {detail.attendees.map((a) => (
                         <Badge key={a.user?._id || a.user} variant="secondary" className="text-xs">
-                          {a.user?.name || 'User'} · {a.status}
+                          {a.user?.name || 'User'} - {a.status}
                         </Badge>
                       ))}
                     </div>
@@ -255,7 +254,7 @@ export default function Scheduler() {
   );
 }
 
-// ─── MONTH ──────────────────────────────────────────────────────────────────
+// Month view
 function MonthGrid({ anchor, from, events, onPick }) {
   const cells = Array.from({ length: 42 }, (_, i) => addDays(from, i));
   const monthIdx = anchor.getMonth();
@@ -291,7 +290,7 @@ function MonthGrid({ anchor, from, events, onPick }) {
   );
 }
 
-// ─── WEEK ───────────────────────────────────────────────────────────────────
+// Week view
 function WeekGrid({ anchor, events, onPick }) {
   const start = addDays(anchor, -anchor.getDay());
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -308,7 +307,7 @@ function WeekGrid({ anchor, events, onPick }) {
               {day.toLocaleDateString(undefined, { weekday:'short' })} <span className="text-muted-foreground">{day.getDate()}</span>
             </div>
             <div className="space-y-1.5">
-              {dayEvents.length === 0 && <div className="text-[11px] text-muted-foreground/70">—</div>}
+              {dayEvents.length === 0 && <div className="text-[11px] text-muted-foreground/70">-</div>}
               {dayEvents.map((e) => (
                 <button key={e._id} onClick={() => onPick(e)}
                   className={`block w-full rounded border px-2 py-1 text-left text-xs ${KIND_META[e.kind]?.color}`}>
@@ -324,7 +323,7 @@ function WeekGrid({ anchor, events, onPick }) {
   );
 }
 
-// ─── DAY ────────────────────────────────────────────────────────────────────
+// Day view
 function DayList({ date, events, onPick }) {
   const dayEvents = events.filter((e) => sameDay(e.start, date))
     .sort((a, b) => new Date(a.start) - new Date(b.start));
@@ -348,7 +347,7 @@ function DayList({ date, events, onPick }) {
   );
 }
 
-// ─── Event create/edit dialog ───────────────────────────────────────────────
+// Event create/edit dialog
 function EventDialog({ open, onClose, editing, onSubmit, submitting }) {
   const isEdit = !!editing?._id && !String(editing._id).includes('__');
   const [form, setForm] = useState(() => defaults(editing));
@@ -407,9 +406,9 @@ function EventDialog({ open, onClose, editing, onSubmit, submitting }) {
               <Select value={form.visibility} onValueChange={(v) => setForm({ ...form, visibility: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="public">Public — show details</SelectItem>
-                  <SelectItem value="busy">Busy — hide details</SelectItem>
-                  <SelectItem value="private">Private — only attendees</SelectItem>
+                  <SelectItem value="public">Public - show details</SelectItem>
+                  <SelectItem value="busy">Busy - hide details</SelectItem>
+                  <SelectItem value="private">Private - only attendees</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -459,14 +458,14 @@ function EventDialog({ open, onClose, editing, onSubmit, submitting }) {
                 <label key={u._id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted">
                   <input type="checkbox" checked={form.attendees.includes(u._id)} onChange={() => toggleAttendee(u._id)} />
                   <span className="text-sm">{u.name}</span>
-                  <span className="text-[11px] text-muted-foreground">· {u.role}</span>
+                  <span className="text-[11px] text-muted-foreground">- {u.role}</span>
                 </label>
               ))}
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={submitting}>{submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create event'}</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? 'Saving...' : isEdit ? 'Save changes' : 'Create event'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -491,7 +490,7 @@ function defaults(editing) {
   };
 }
 
-// ─── Quick-book Appointment dialog ──────────────────────────────────────────
+// Quick-book appointment dialog
 function BookAppointmentDialog({ open, onClose, onBooked }) {
   const { toast } = useToast();
   const [doctorId, setDoctorId] = useState('');
@@ -574,7 +573,7 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
                 <SelectContent>
                   {doctors.map((d) => (
                     <SelectItem key={d._id} value={d._id}>
-                      {d.name || d.userDetails?.name || 'Doctor'} · {d.specialization}
+                      {d.name || d.userDetails?.name || 'Doctor'} - {d.specialization}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -586,7 +585,7 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
                 <SelectTrigger><SelectValue placeholder="Select patient" /></SelectTrigger>
                 <SelectContent>
                   {patients.map((p) => (
-                    <SelectItem key={p._id} value={p._id}>{p.name} · {p.patientId}</SelectItem>
+                    <SelectItem key={p._id} value={p._id}>{p.name} - {p.patientId}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -633,7 +632,7 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
                 </div>
               </div>
               {slotsQuery.isFetching ? (
-                <div className="text-xs text-muted-foreground py-2">Loading slots…</div>
+                <div className="text-xs text-muted-foreground py-2">Loading slots...</div>
               ) : reason404 ? (
                 <div className="text-xs text-muted-foreground py-2">{reason404}</div>
               ) : slots.length === 0 ? (
@@ -655,7 +654,7 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
                       const btn = (
                         <button key={s.startLabel} disabled={!s.available}
                           aria-disabled={!s.available}
-                          aria-label={s.available ? `Book ${s.startLabel}` : `${s.startLabel} — ${s.reasonLabel || 'unavailable'}`}
+                          aria-label={s.available ? `Book ${s.startLabel}` : `${s.startLabel} - ${s.reasonLabel || 'unavailable'}`}
                           onClick={() => { setPicked(s.startLabel); setBookError(null); }}
                           className={`rounded border px-2 py-1 text-xs transition-colors w-full ${isPicked ? 'border-primary bg-primary text-primary-foreground' : reasonClass}`}>
                           {s.startLabel}
@@ -701,7 +700,7 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
           <Button variant="outline" onClick={() => { onClose(); reset(); }}>Cancel</Button>
           <Button disabled={!doctorId || !patientId || !picked || bookMut.isPending}
             onClick={() => bookMut.mutate()}>
-            {bookMut.isPending ? 'Booking…' : 'Confirm booking'}
+            {bookMut.isPending ? 'Booking...' : 'Confirm booking'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -108,7 +108,7 @@ export default function PortalLogin({ portal }) {
 
           <div className="mt-6 flex items-center justify-center gap-1.5 text-[hsl(210,15%,45%)] text-xs">
             <Heart className="h-3 w-3" />
-            <span>Powered by Vital Health Hub</span>
+            <span>Powered by BIOMECHASOFT</span>
           </div>
         </CardContent>
       </Card>

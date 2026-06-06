@@ -114,6 +114,36 @@ const defaultAssignmentPolicies = {
   patient: { assignerRoles: [], assigneeRoles: [] },
 };
 const permissionRequestFeatures = ["view", "create", "edit", "delete"];
+const settingsTabTriggerClass = "h-9 shrink-0 gap-2 px-3 text-xs sm:text-sm";
+const settingsRowClass = "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between";
+const settingsPlainRowClass = "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between";
+
+function SettingsLoadingState() {
+  return (
+    <div className="mx-auto flex min-h-[420px] w-full max-w-5xl flex-col items-center justify-center gap-6 px-4 py-12">
+      <div className="relative flex h-16 w-16 items-center justify-center">
+        <div className="absolute inset-0 rounded-full border-4 border-primary/15" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+        <div className="absolute h-9 w-9 rounded-full bg-primary/10 motion-safe:animate-pulse" />
+        <Loader2 className="relative h-6 w-6 animate-spin text-primary" aria-hidden />
+      </div>
+      <div className="space-y-2 text-center">
+        <p className="text-sm font-medium text-foreground">Loading settings</p>
+        <p className="text-xs text-muted-foreground">Preparing controls, permissions, and preferences.</p>
+      </div>
+      <div className="grid w-full gap-3 sm:grid-cols-3" aria-hidden>
+        {[0, 1, 2].map((item) => (
+          <div key={item} className="space-y-3 rounded-lg border bg-card p-4">
+            <div className="h-3 w-2/3 rounded bg-muted motion-safe:animate-pulse" />
+            <div className="h-8 rounded bg-muted/70 motion-safe:animate-pulse" />
+            <div className="h-3 w-1/2 rounded bg-muted/60 motion-safe:animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const moduleIconMap = {
   dashboard: LayoutPanelTop,
   beds: Building2,
@@ -1095,11 +1125,7 @@ export default function Settings() {
   const allowedGmTabs = allowedTabsRes?.data;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SettingsLoadingState />;
   }
 
   const roleDisplayNames = {
@@ -1134,82 +1160,82 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="min-w-0 max-w-full space-y-6 overflow-hidden">
+      <div className="min-w-0">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Settings
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground sm:text-base">
           Manage hospital system configuration and preferences
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-none lg:flex">
-          <TabsTrigger value="profile" className="gap-2">
+      <Tabs defaultValue="profile" className="min-w-0 space-y-6">
+        <TabsList className="flex h-auto w-full max-w-full justify-start gap-1 overflow-x-auto rounded-lg p-1 [scrollbar-width:none] lg:flex-wrap lg:overflow-visible">
+          <TabsTrigger value="profile" className={settingsTabTriggerClass}>
             <User className="h-4 w-4" />
             Profile
           </TabsTrigger>
           {isAdmin && isTabAllowed('general') && (
-            <TabsTrigger value="general" className="gap-2">
+            <TabsTrigger value="general" className={settingsTabTriggerClass}>
               <Building2 className="h-4 w-4" />
               General
             </TabsTrigger>
           )}
           {isAdmin && isTabAllowed('users') && (
-            <TabsTrigger value="users" className="gap-2">
+            <TabsTrigger value="users" className={settingsTabTriggerClass}>
               <Users className="h-4 w-4" />
               Users
             </TabsTrigger>
           )}
           {isAdmin && isTabAllowed('security') && (
-            <TabsTrigger value="security" className="gap-2">
+            <TabsTrigger value="security" className={settingsTabTriggerClass}>
               <Shield className="h-4 w-4" />
               Security
             </TabsTrigger>
           )}
           {isAdmin && isTabAllowed('notifications') && (
-            <TabsTrigger value="notifications" className="gap-2">
+            <TabsTrigger value="notifications" className={settingsTabTriggerClass}>
               <Bell className="h-4 w-4" />
               Notifications
             </TabsTrigger>
           )}
           {isAdmin && isTabAllowed('modules') && (
-            <TabsTrigger value="modules" className="gap-2">
+            <TabsTrigger value="modules" className={settingsTabTriggerClass}>
               <Database className="h-4 w-4" />
               Modules
             </TabsTrigger>
           )}
           {isAdmin && isTabAllowed('data') && (
-            <TabsTrigger value="data" className="gap-2">
+            <TabsTrigger value="data" className={settingsTabTriggerClass}>
               <Database className="h-4 w-4" />
               Data
             </TabsTrigger>
           )}
           {canSeeVisualPermissionsTab && isTabAllowed('permissions') && (
-            <TabsTrigger value="permissions" className="gap-2">
+            <TabsTrigger value="permissions" className={settingsTabTriggerClass}>
               <Shield className="h-4 w-4" />
               Permissions
             </TabsTrigger>
           )}
           {isAdmin && (
-            <TabsTrigger value="approvals" className="gap-2">
+            <TabsTrigger value="approvals" className={settingsTabTriggerClass}>
               <ShieldCheck className="h-4 w-4" />
               Approvals
             </TabsTrigger>
           )}
-          <TabsTrigger value="sounds" className="gap-2">
+          <TabsTrigger value="sounds" className={settingsTabTriggerClass}>
             <Volume2 className="h-4 w-4" />
             Sounds
           </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="branding" className="gap-2">
+            <TabsTrigger value="branding" className={settingsTabTriggerClass}>
               <ImageIcon className="h-4 w-4" />
               Branding
             </TabsTrigger>
           )}
           {isAdmin && (
-            <TabsTrigger value="data-settings" className="gap-2">
+            <TabsTrigger value="data-settings" className={settingsTabTriggerClass}>
               <Database className="h-4 w-4" />
               Data Settings
             </TabsTrigger>
@@ -1326,7 +1352,7 @@ export default function Settings() {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={handleSaveProfile} disabled={saving}>
+                <Button className="w-full sm:w-auto" onClick={handleSaveProfile} disabled={saving}>
                   {saving ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -1482,7 +1508,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button onClick={handleSaveHospital} disabled={saving}>
+                    <Button className="w-full sm:w-auto" onClick={handleSaveHospital} disabled={saving}>
                       {saving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
@@ -1510,7 +1536,7 @@ export default function Settings() {
                       {Object.entries(userStats).map(([role, count]) => (
                         <div
                           key={role}
-                          className="flex items-center justify-between rounded-lg border p-4"
+                          className={settingsRowClass}
                         >
                           <div>
                             <p className="font-medium">{roleDisplayNames[role]}</p>
@@ -1526,9 +1552,9 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2">
-                    {canCreate("settings") && <Button variant="outline">Add Role</Button>}
-                    {canCreate("settings") && <Button onClick={() => setIsUserDialogOpen(true)}>Add User</Button>}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                    {canCreate("settings") && <Button className="w-full sm:w-auto" variant="outline">Add Role</Button>}
+                    {canCreate("settings") && <Button className="w-full sm:w-auto" onClick={() => setIsUserDialogOpen(true)}>Add User</Button>}
                   </div>
                 </CardContent>
               </Card>
@@ -1546,7 +1572,7 @@ export default function Settings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
+                  <div className={settingsPlainRowClass}>
                     <div className="space-y-0.5">
                       <Label>Two-Factor Authentication</Label>
                       <p className="text-sm text-muted-foreground">
@@ -1570,7 +1596,7 @@ export default function Settings() {
 
                   <Separator />
 
-                  <div className="flex items-center justify-between">
+                  <div className={settingsPlainRowClass}>
                     <div className="space-y-0.5">
                       <Label>Session Timeout</Label>
                       <p className="text-sm text-muted-foreground">
@@ -1586,7 +1612,7 @@ export default function Settings() {
                         }))
                       }
                     >
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1602,7 +1628,7 @@ export default function Settings() {
 
                   <Separator />
 
-                  <div className="flex items-center justify-between">
+                  <div className={settingsPlainRowClass}>
                     <div className="space-y-0.5">
                       <Label>Password Expiry</Label>
                       <p className="text-sm text-muted-foreground">
@@ -1618,7 +1644,7 @@ export default function Settings() {
                         }))
                       }
                     >
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1633,6 +1659,7 @@ export default function Settings() {
 
                   <div className="flex justify-end">
                     <Button
+                      className="w-full sm:w-auto"
                       onClick={handleSaveSecurity}
                       disabled={saving || user?.role !== "super_admin"}
                     >
@@ -1657,7 +1684,7 @@ export default function Settings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
+                  <div className={settingsPlainRowClass}>
                     <div className="space-y-0.5">
                       <Label>Email Notifications</Label>
                       <p className="text-sm text-muted-foreground">
@@ -1675,7 +1702,7 @@ export default function Settings() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className={settingsPlainRowClass}>
                     <div className="space-y-0.5">
                       <Label>SMS Alerts</Label>
                       <p className="text-sm text-muted-foreground">
@@ -1693,7 +1720,7 @@ export default function Settings() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className={settingsPlainRowClass}>
                     <div className="space-y-0.5">
                       <Label>Push Notifications</Label>
                       <p className="text-sm text-muted-foreground">
@@ -1727,7 +1754,7 @@ export default function Settings() {
                           return (
                             <label
                               key={`notif-${mod}`}
-                              className="flex items-center justify-between rounded-md border px-3 py-2"
+                              className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
                             >
                               <span className="text-sm">{moduleLabels[mod] || mod}</span>
                               <Switch
@@ -1746,7 +1773,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button onClick={handleSaveNotifications} disabled={saving}>
+                    <Button className="w-full sm:w-auto" onClick={handleSaveNotifications} disabled={saving}>
                       {saving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
@@ -1798,27 +1825,27 @@ export default function Settings() {
                         return (
                           <div key={`global-${moduleKey}`} className="rounded-lg border p-4 space-y-2">
                             <p className="text-sm font-semibold">{moduleOperationLabels[moduleKey]}</p>
-                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                            <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                               <span>Module Enabled</span>
                               <Switch checked={!!moduleConfig.enabled} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "enabled", checked)} />
                             </label>
-                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                            <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                               <span>Standalone Mode</span>
                               <Switch checked={!!moduleConfig.runIndependently} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "runIndependently", checked)} />
                             </label>
-                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                            <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                               <span>Integrated Mode</span>
                               <Switch checked={!!moduleConfig.integrateWithHospitalCore} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "integrateWithHospitalCore", checked)} />
                             </label>
-                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                            <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                               <span>Allow External Walk-ins</span>
                               <Switch checked={!!moduleConfig.allowExternalWalkIns} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "allowExternalWalkIns", checked)} />
                             </label>
-                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                            <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                               <span>Enable External Billing</span>
                               <Switch checked={!!moduleConfig.externalBillingEnabled} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "externalBillingEnabled", checked)} />
                             </label>
-                            <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                            <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                               <span>Track External Billing Separately</span>
                               <Switch checked={!!moduleConfig.trackExternalBillingSeparately} onCheckedChange={(checked) => updateGlobalModuleOperation(moduleKey, "trackExternalBillingSeparately", checked)} />
                             </label>
@@ -1851,7 +1878,7 @@ export default function Settings() {
                         </Select>
                       </div>
                       <div className="flex items-end">
-                        <Button variant="outline" onClick={handleRemoveUserOverride} disabled={selectedModuleOverrideUserId === "__none__"}>
+                        <Button className="w-full sm:w-auto" variant="outline" onClick={handleRemoveUserOverride} disabled={selectedModuleOverrideUserId === "__none__"}>
                           Remove User Override
                         </Button>
                       </div>
@@ -1866,27 +1893,27 @@ export default function Settings() {
                           return (
                             <div key={`override-${moduleKey}`} className="rounded-lg border p-4 space-y-2">
                               <p className="text-sm font-semibold">{moduleOperationLabels[moduleKey]}</p>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Module Enabled</span>
                                 <Switch checked={!!moduleConfig.enabled} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "enabled", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Standalone Mode</span>
                                 <Switch checked={!!moduleConfig.runIndependently} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "runIndependently", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Integrated Mode</span>
                                 <Switch checked={!!moduleConfig.integrateWithHospitalCore} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "integrateWithHospitalCore", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Allow External Walk-ins</span>
                                 <Switch checked={!!moduleConfig.allowExternalWalkIns} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "allowExternalWalkIns", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Enable External Billing</span>
                                 <Switch checked={!!moduleConfig.externalBillingEnabled} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "externalBillingEnabled", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Track External Billing Separately</span>
                                 <Switch checked={!!moduleConfig.trackExternalBillingSeparately} onCheckedChange={(checked) => updateUserModuleOperation(moduleKey, "trackExternalBillingSeparately", checked)} />
                               </label>
@@ -1902,7 +1929,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button onClick={handleSaveModuleOperations} disabled={saving}>
+                    <Button className="w-full sm:w-auto" onClick={handleSaveModuleOperations} disabled={saving}>
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       Save Module Settings
                     </Button>
@@ -1927,14 +1954,14 @@ export default function Settings() {
                   ) : (
                     <>
                       <div className="rounded-lg border p-4 space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <h3 className="font-medium flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" />Bulk Import (Excel / Google Sheet)</h3>
                             <p className="mt-1 text-sm text-muted-foreground">
                               Upload CSV exported from Excel/Google Sheets, or paste tabular data directly.
                             </p>
                           </div>
-                          <div className="w-52">
+                          <div className="w-full sm:w-52">
                             <Select value={selectedImportEntity} onValueChange={setSelectedImportEntity}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
@@ -1990,7 +2017,7 @@ export default function Settings() {
                         <p className="text-sm text-muted-foreground">Export master and operational datasets as CSV.</p>
                         <div className="flex flex-wrap gap-2">
                           <Select value={selectedExportEntity} onValueChange={setSelectedExportEntity}>
-                            <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="w-full sm:w-64"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {dataEntityOptions.map((item) => (
                                 <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>
@@ -2013,7 +2040,7 @@ export default function Settings() {
                       <div className="rounded-lg border p-4 space-y-4">
                         <h3 className="font-medium flex items-center gap-2"><CalendarClock className="h-4 w-4" />Auto Export Scheduler</h3>
                         <div className="grid gap-4 sm:grid-cols-2">
-                          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                          <div className={settingsRowClass}>
                             <Label>Enable Scheduler</Label>
                             <Switch
                               checked={!!dataManagementSettings.autoExport.enabled}
@@ -2081,7 +2108,7 @@ export default function Settings() {
                           <Label>Datasets</Label>
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                             {dataEntityOptions.map((item) => (
-                              <label key={`auto-${item.key}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                              <label key={`auto-${item.key}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
                                 <span>{item.label}</span>
                                 <Switch
                                   checked={dataManagementSettings.autoExport.entities.includes(item.key)}
@@ -2119,7 +2146,7 @@ export default function Settings() {
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex gap-2">
+                      <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
                         <AlertCircle className="h-4 w-4 mt-0.5" />
                         Only CSV/TXT parsing is supported directly. For Excel/Google Sheets, export/download as CSV, or paste sheet rows directly.
                       </div>
@@ -2159,12 +2186,12 @@ export default function Settings() {
                 </div>
 
                 <Tabs value={permissionSubtab} onValueChange={setPermissionSubtab} className="space-y-4">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="matrix" className="gap-2">
+                  <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-2">
+                    <TabsTrigger value="matrix" className={settingsTabTriggerClass}>
                       <ShieldCheck className="h-4 w-4" />
                       Access Matrix
                     </TabsTrigger>
-                    <TabsTrigger value="requests" className="gap-2">
+                    <TabsTrigger value="requests" className={settingsTabTriggerClass}>
                       <BellRing className="h-4 w-4" />
                       Requests & Notifications
                     </TabsTrigger>
@@ -2176,14 +2203,14 @@ export default function Settings() {
                         <UserCog className="h-4 w-4" />
                         Delegated Permission Managers
                       </Label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <Input
                           placeholder="manager@hospital.com"
                           value={managerEmailInput}
                           disabled={!canEditDelegation}
                           onChange={(e) => setManagerEmailInput(e.target.value)}
                         />
-                        <Button type="button" variant="outline" disabled={!canEditDelegation} onClick={handleAddPermissionManager}>
+                        <Button className="w-full sm:w-auto" type="button" variant="outline" disabled={!canEditDelegation} onClick={handleAddPermissionManager}>
                           Add
                         </Button>
                       </div>
@@ -2247,7 +2274,7 @@ export default function Settings() {
                         </div>
                         <p className="text-muted-foreground">
                           The following modules are disabled by the platform administrator (Grandmaster)
-                          and cannot be granted to any user — not even Super Admin. Permission controls
+                          and cannot be granted to any user, including Super Admin. Permission controls
                           for these modules are intentionally hidden below.
                         </p>
                         <ul className="flex flex-wrap gap-1.5">
@@ -2321,7 +2348,7 @@ export default function Settings() {
                         const Icon = moduleIconMap[mod.module] || Shield;
                         return (
                           <div key={mod.module} className="rounded-lg border p-4">
-                            <div className="mb-3 flex items-center justify-between">
+                            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <div className="flex items-center gap-2">
                                 <Icon className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm font-semibold">{moduleLabels[mod.module] || mod.module}</span>
@@ -2331,19 +2358,19 @@ export default function Settings() {
                               </Badge>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>View</span>
                                 <Switch checked={mod.canView} disabled={!canEditVisualPermissions || !permissionEmail} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canView", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Create</span>
                                 <Switch checked={mod.canCreate} disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canCreate", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Edit</span>
                                 <Switch checked={mod.canEdit} disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canEdit", checked)} />
                               </label>
-                              <label className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                              <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                 <span>Delete</span>
                                 <Switch checked={mod.canDelete} disabled={!canEditVisualPermissions || !permissionEmail || !mod.canView} onCheckedChange={(checked) => handlePermissionToggle(mod.module, "canDelete", checked)} />
                               </label>
@@ -2352,7 +2379,7 @@ export default function Settings() {
                               <p className="text-xs font-semibold uppercase text-muted-foreground">Advanced Restrictions</p>
                               <div className="grid gap-2 sm:grid-cols-2">
                                 {(moduleFeatureCatalog[mod.module] || []).map((feature) => (
-                                  <label key={`${mod.module}-${feature}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+                                  <label key={`${mod.module}-${feature}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
                                     <span>{featureLabels[feature] || feature}</span>
                                     <Switch
                                       checked={mod.restrictedFeatures.includes(feature)}
@@ -2380,7 +2407,7 @@ export default function Settings() {
                               <div className="space-y-2">
                                 <Label className="text-xs uppercase text-muted-foreground">Roles Who Can Assign</Label>
                                 {assignmentRoleOptions.map((role) => (
-                                  <div key={`${assignmentType}-assigner-${role}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                                  <div key={`${assignmentType}-assigner-${role}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
                                     <span>{role.replace(/_/g, " ")}</span>
                                     <Switch checked={(assignmentPolicies?.[assignmentType]?.assignerRoles || []).includes(role)} disabled={!canEditVisualPermissions} onCheckedChange={(checked) => toggleAssignmentPolicyRole(assignmentType, "assignerRoles", role, checked)} />
                                   </div>
@@ -2389,7 +2416,7 @@ export default function Settings() {
                               <div className="space-y-2">
                                 <Label className="text-xs uppercase text-muted-foreground">Roles Who Can Be Assigned</Label>
                                 {assignmentRoleOptions.map((role) => (
-                                  <div key={`${assignmentType}-assignee-${role}`} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                                  <div key={`${assignmentType}-assignee-${role}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
                                     <span>{role.replace(/_/g, " ")}</span>
                                     <Switch checked={(assignmentPolicies?.[assignmentType]?.assigneeRoles || []).includes(role)} disabled={!canEditVisualPermissions} onCheckedChange={(checked) => toggleAssignmentPolicyRole(assignmentType, "assigneeRoles", role, checked)} />
                                   </div>
@@ -2401,11 +2428,11 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={handleRemoveOverride} disabled={!canEditVisualPermissions || !permissionEmail}>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <Button className="w-full sm:w-auto" variant="outline" onClick={handleRemoveOverride} disabled={!canEditVisualPermissions || !permissionEmail}>
                         Remove Override
                       </Button>
-                      <Button onClick={handleSaveVisualPermissions} disabled={saving || !canEditVisualPermissions}>
+                      <Button className="w-full sm:w-auto" onClick={handleSaveVisualPermissions} disabled={saving || !canEditVisualPermissions}>
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Permissions
                       </Button>
@@ -2472,12 +2499,12 @@ export default function Settings() {
                               <p className="text-xs text-muted-foreground">Module: {req.module} | Feature: {req.feature}</p>
                               {req.reason && <p className="mt-1 text-xs text-muted-foreground">{req.reason}</p>}
                               {user?.role === "super_admin" && (
-                                <div className="mt-2 flex gap-2">
-                                  <Button size="sm" variant="outline" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "approved")}>
+                                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                  <Button className="w-full sm:w-auto" size="sm" variant="outline" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "approved")}>
                                     <Check className="mr-1 h-3 w-3" />
                                     Approve
                                   </Button>
-                                  <Button size="sm" variant="destructive" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "rejected")}>
+                                  <Button className="w-full sm:w-auto" size="sm" variant="destructive" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "rejected")}>
                                     <X className="mr-1 h-3 w-3" />
                                     Reject
                                   </Button>
@@ -2530,7 +2557,7 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className={settingsRowClass}>
                   <div className="space-y-1">
                     <p className="font-medium">Enable validation UI everywhere</p>
                     <p className="text-sm text-muted-foreground">
@@ -2569,7 +2596,7 @@ export default function Settings() {
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="space-y-4">
-                            <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+                            <div className="flex flex-col gap-3 rounded-md border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                               <div>
                                 <p className="text-sm font-medium">Show validation for this form</p>
                                 <p className="text-xs text-muted-foreground">
@@ -2585,7 +2612,7 @@ export default function Settings() {
 
                             <div className="grid gap-3 sm:grid-cols-2">
                               {formConfig.fields.map((field) => (
-                                <div key={`${formConfig.id}-${field.key}`} className="flex items-center justify-between rounded-md border px-3 py-2">
+                                <div key={`${formConfig.id}-${field.key}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                                   <div className="pr-3">
                                     <p className="text-sm font-medium">{field.label}</p>
                                     <p className="text-xs text-muted-foreground font-mono">{field.key}</p>
@@ -2605,12 +2632,13 @@ export default function Settings() {
                   </Accordion>
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground">
                     {validationPreferencesLoading ? "Loading current validation preferences..." : "Preferences are saved per user profile."}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                     <Button
+                      className="w-full sm:w-auto"
                       type="button"
                       variant="outline"
                       onClick={() => setValidationPreferencesDraft(normalizeValidationPreferences())}
@@ -2619,6 +2647,7 @@ export default function Settings() {
                       Reset
                     </Button>
                     <Button
+                      className="w-full sm:w-auto"
                       type="button"
                       onClick={handleSaveValidationPreferences}
                       disabled={savingValidationPreferences || validationPreferencesLoading}
@@ -2651,9 +2680,9 @@ export default function Settings() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="rules" className="space-y-4">
-                  <TabsList>
-                    <TabsTrigger value="rules">Rules & Inbox</TabsTrigger>
-                    <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
+                  <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:w-auto sm:grid-cols-2">
+                    <TabsTrigger value="rules" className={settingsTabTriggerClass}>Rules & Inbox</TabsTrigger>
+                    <TabsTrigger value="diagnostics" className={settingsTabTriggerClass}>Diagnostics</TabsTrigger>
                   </TabsList>
                   <TabsContent value="rules">
                     <ApprovalsManager isAdmin={isAdmin} />

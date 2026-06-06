@@ -38,7 +38,7 @@ const dateAt = (day, hhmm) => {
 const startOfDay = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
 const endOfDay   = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
 
-// ─── Recurrence expansion (cheap: caller provides window) ───────────────────
+// Recurrence expansion (cheap: caller provides window)
 function expandOccurrences(event, windowStart, windowEnd) {
   const r = event.recurrence;
   const baseStart = new Date(event.start);
@@ -86,7 +86,7 @@ function expandOccurrences(event, windowStart, windowEnd) {
   return occurrences;
 }
 
-// ─── List events visible to user across a window ───────────────────────────
+// List events visible to user across a window
 exports.listEvents = async (req, res, next) => {
   try {
     const { Event } = M(req);
@@ -139,7 +139,7 @@ exports.listEvents = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Create event ──────────────────────────────────────────────────────────
+// Create event
 exports.createEvent = async (req, res, next) => {
   try {
     const { Event, Notification } = M(req);
@@ -179,7 +179,7 @@ exports.createEvent = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Update event ──────────────────────────────────────────────────────────
+// Update event
 exports.updateEvent = async (req, res, next) => {
   try {
     const { Event, Notification } = M(req);
@@ -217,7 +217,7 @@ exports.updateEvent = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Delete (cancel) ───────────────────────────────────────────────────────
+// Delete (cancel)
 exports.deleteEvent = async (req, res, next) => {
   try {
     const { Event, Notification } = M(req);
@@ -246,7 +246,7 @@ exports.deleteEvent = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Respond to invite (accept/decline/tentative) ──────────────────────────
+// Respond to invite (accept/decline/tentative)
 exports.respondInvite = async (req, res, next) => {
   try {
     const { Event } = M(req);
@@ -265,7 +265,7 @@ exports.respondInvite = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Doctor slot generation for a given date ───────────────────────────────
+// Doctor slot generation for a given date
 exports.getDoctorSlots = async (req, res, next) => {
   try {
     const { Doctor, Event, Appointment } = M(req);
@@ -361,7 +361,7 @@ exports.getDoctorSlots = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Quick-book appointment from scheduler (creates Appointment + ScheduleEvent) ──
+// Quick-book appointment from scheduler (creates Appointment + ScheduleEvent)
 exports.bookAppointment = async (req, res, next) => {
   try {
     const { Doctor, Event, Appointment, Notification } = M(req);
@@ -384,7 +384,7 @@ exports.bookAppointment = async (req, res, next) => {
       throw new AppError('Cannot book a slot in the past', 400);
     }
 
-    // Conflict check — calendar events / blocks
+    // Conflict check - calendar events / blocks
     const conflict = await Event.findOne({
       status: { $ne: 'cancelled' },
       $or: [{ doctor: doctorId }, { 'attendees.user': doctor.user }],
@@ -399,7 +399,7 @@ exports.bookAppointment = async (req, res, next) => {
       );
     }
 
-    // Conflict check — overlapping appointments (not just same start)
+    // Conflict check - overlapping appointments (not just same start)
     const apptConflict = await Appointment.findOne({
       doctor: doctorId,
       status: { $nin: ['cancelled', 'no_show'] },
@@ -461,7 +461,7 @@ exports.bookAppointment = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ─── Block calendar (manual block, any duration) ───────────────────────────
+// Block calendar (manual block, any duration)
 exports.createBlock = async (req, res, next) => {
   try {
     const { Event } = M(req);
