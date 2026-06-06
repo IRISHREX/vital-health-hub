@@ -36,7 +36,7 @@ import { Loader2 } from "lucide-react";
 
 const doctorSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
-  email: z.string().email("Valid email required"),
+  email: z.string().email("Valid email required").optional().or(z.literal("")),
   phone: phoneSchema,
   specialization: z.string().min(1, "Specialization is required"),
   department: z.string().min(1, "Department is required"),
@@ -44,6 +44,8 @@ const doctorSchema = z.object({
   experience: z.coerce.number().min(0, "Experience must be positive"),
   consultationFee: z.coerce.number().min(0, "Fee must be positive"),
   availabilityStatus: z.enum(["available", "busy", "on_leave", "unavailable"]),
+  doctorType: z.enum(["hospital", "referral", "visiting", "consultant"]).default("hospital"),
+  tags: z.string().optional().or(z.literal("")),
 });
 
 export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
