@@ -39,6 +39,7 @@ export default function Doctors() {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
