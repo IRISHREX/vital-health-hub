@@ -292,29 +292,69 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="doctorType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Doctor Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="hospital">Hospital Doctor</SelectItem>
+                        <SelectItem value="referral">Referral Doctor</SelectItem>
+                        <SelectItem value="visiting">Visiting Doctor</SelectItem>
+                        <SelectItem value="consultant">Consultant</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="availabilityStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Availability Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="available">Available</SelectItem>
+                        <SelectItem value="busy">Busy</SelectItem>
+                        <SelectItem value="on_leave">On Leave</SelectItem>
+                        <SelectItem value="unavailable">Unavailable</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="availabilityStatus"
+              name="tags"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Availability Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="busy">Busy</SelectItem>
-                      <SelectItem value="on_leave">On Leave</SelectItem>
-                      <SelectItem value="unavailable">Unavailable</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Tags (comma separated)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., senior, panel, weekend" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleClose}>
