@@ -9,6 +9,13 @@ const doctorSchema = new mongoose.Schema({
   name: String,
   email: String,
   phone: String,
+  doctorType: {
+    type: String,
+    enum: ['hospital', 'referral', 'visiting', 'consultant'],
+    default: 'hospital',
+    index: true,
+  },
+  tags: [{ type: String }],
   doctorId: {
     type: String,
     unique: true,
