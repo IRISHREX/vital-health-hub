@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { createAppointment, updateAppointment } from "@/lib/appointments";
+import { createAppointment, updateAppointment, getAppointments } from "@/lib/appointments";
 import { getPatients } from "@/lib/patients";
 import { getDoctors } from "@/lib/doctors";
 import { getHospitalSettings } from "@/lib/settings";
@@ -36,10 +36,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import PatientAutocomplete, { patientLabel } from "@/components/shared/PatientAutocomplete";
 import DoctorAutocomplete, { doctorAutocompleteLabel } from "@/components/shared/DoctorAutocomplete";
+import PatientDialog from "@/components/dashboard/PatientDialog";
 
 const getTodayDateString = () => {
   const today = new Date();
@@ -47,13 +48,6 @@ const getTodayDateString = () => {
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const getCurrentTimeString = () => {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
 };
 
 const appointmentSchema = z.object({
@@ -70,37 +64,24 @@ const appointmentSchema = z.object({
       },
       "Appointment date cannot be in the past"
     ),
-  appointmentTime: z.string().min(1, "Time is required"),
-  reason: z.string().min(1, "Reason is required").max(200),
+  priority: z.enum(["normal", "urgent", "emergency"]).optional(),
+  fee: z.coerce.number().min(0, "Fee must be ≥ 0").optional(),
+  paymentMode: z.enum(["pending", "cash", "card", "upi", "net_banking", "cheque", "insurance"]).optional(),
+  referredByName: z.string().optional().or(z.literal("")),
+  referredByDoctorId: z.string().optional().or(z.literal("")),
+  reason: z.string().max(200).optional().or(z.literal("")),
   notes: z.string().optional(),
   type: z.enum(["opd", "follow_up", "consultation", "emergency", "telemedicine"]).optional(),
   status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
-}).refine(
-  (data) => {
-    const selectedDate = new Date(data.appointmentDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // If date is today, check that time is in the future
-    if (selectedDate.getTime() === today.getTime()) {
-      const currentTime = getCurrentTimeString();
-      return data.appointmentTime > currentTime;
-    }
-    // If date is in the future, time is always acceptable
-    return true;
-  },
-  {
-    message: "Appointment time cannot be in the past",
-    path: ["appointmentTime"],
-  }
-);
+});
 
 export default function AppointmentDialog({ isOpen, onClose, appointment, mode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const [newPatientOpen, setNewPatientOpen] = useState(false);
 
-  const { data: patientsData } = useQuery({
+  const { data: patientsData, refetch: refetchPatients } = useQuery({
     queryKey: ["patients"],
     queryFn: getPatients,
   });
@@ -115,8 +96,17 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     queryFn: () => getHospitalSettings(),
   });
 
+  // Estimate next serial no. for today
+  const { data: todaysApptsRes } = useQuery({
+    queryKey: ["appointments", "serial-today"],
+    queryFn: () => getAppointments({ date: getTodayDateString() }),
+    enabled: isOpen && mode === "create",
+  });
+  const nextSerial = (todaysApptsRes?.data?.appointments?.length || 0) + 1;
+
   const patients = patientsData?.data?.patients || [];
   const allDoctors = doctorsData?.data?.doctors || [];
+  const referralDoctors = allDoctors.filter((d) => d.doctorType === "referral");
   const isDoctorUser = user?.role === "doctor";
   const loggedInDoctor = useMemo(
     () =>
@@ -129,7 +119,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   );
   const doctors = isDoctorUser
     ? (loggedInDoctor ? [loggedInDoctor] : [])
-    : allDoctors.filter((d) => d.availabilityStatus === "available");
+    : allDoctors.filter((d) => (d.doctorType || "hospital") !== "referral" && d.availabilityStatus === "available");
 
   const form = useForm({
     resolver: zodResolver(appointmentSchema),
@@ -137,7 +127,11 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       patientId: "",
       doctorId: "",
       appointmentDate: "",
-      appointmentTime: "",
+      priority: "normal",
+      fee: 0,
+      paymentMode: "pending",
+      referredByName: "",
+      referredByDoctorId: "",
       reason: "",
       notes: "",
       type: "opd",
@@ -153,7 +147,11 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
         patientId: appointment.patient?._id || appointment.patientId || "",
         doctorId: editDoctorId,
         appointmentDate: dateTime ? dateTime.toISOString().split("T")[0] : "",
-        appointmentTime: dateTime ? dateTime.toTimeString().slice(0, 5) : "",
+        priority: appointment.priority || "normal",
+        fee: appointment.fee ?? 0,
+        paymentMode: appointment.paymentMode || "pending",
+        referredByName: appointment.referredBy?.name || "",
+        referredByDoctorId: appointment.referredBy?.doctor?._id || appointment.referredBy?.doctor || "",
         reason: appointment.reason || "",
         notes: appointment.notes || "",
         type: appointment.type || "opd",
@@ -163,8 +161,12 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       form.reset({
         patientId: "",
         doctorId: isDoctorUser ? (loggedInDoctor?._id || "") : "",
-        appointmentDate: "",
-        appointmentTime: "",
+        appointmentDate: getTodayDateString(),
+        priority: "normal",
+        fee: 0,
+        paymentMode: "pending",
+        referredByName: "",
+        referredByDoctorId: "",
         reason: "",
         notes: "",
         type: "opd",
@@ -173,26 +175,44 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     }
   }, [appointment, mode, form, isDoctorUser, loggedInDoctor?._id]);
 
+  // When doctor changes, prefill fee from doctor's consultationFee
+  const watchedDoctorId = form.watch("doctorId");
+  useEffect(() => {
+    if (mode === "create" && watchedDoctorId) {
+      const doc = allDoctors.find((d) => d._id === watchedDoctorId);
+      const docFee = doc?.consultationFee?.opd;
+      if (docFee && !form.getValues("fee")) {
+        form.setValue("fee", docFee);
+      }
+    }
+  }, [watchedDoctorId, allDoctors, mode, form]);
+
+  const buildPayload = (data) => {
+    const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
+    return {
+      patientId: data.patientId,
+      doctorId: selectedDoctorId,
+      doctor: selectedDoctorId,
+      appointmentDate: `${data.appointmentDate}T10:00:00`,
+      reason: data.reason || "",
+      notes: data.notes || "",
+      type: data.type || "opd",
+      status: data.status || "scheduled",
+      priority: data.priority || "normal",
+      fee: data.fee !== undefined ? Number(data.fee) : undefined,
+      paymentMode: data.paymentMode || "pending",
+      paymentStatus: data.paymentMode && data.paymentMode !== "pending" ? "paid" : "pending",
+      referredBy: (data.referredByName || data.referredByDoctorId)
+        ? { name: data.referredByName || "", doctor: data.referredByDoctorId || undefined }
+        : undefined,
+    };
+  };
+
   const createMutation = useMutation({
-    mutationFn: (data) => {
-      const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
-      const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
-      return createAppointment({
-        patientId: data.patientId,
-        // backend expects doctorId for creation but we also include doctor
-        doctorId: selectedDoctorId,
-        doctor: selectedDoctorId,
-        appointmentDate: combinedDateTime,
-        reason: data.reason,
-        notes: data.notes,
-        type: data.type || "opd",
-        status: data.status || "scheduled",
-      });
-    },
+    mutationFn: (data) => createAppointment(buildPayload(data)),
     onSuccess: (response, variables) => {
       toast({ title: "Success", description: "Appointment booked successfully." }); playSound('success');
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      // Auto-print branded receipt with token for the patient
       try {
         const created = response?.data?.appointment || response?.data || response;
         if (created) {
@@ -212,21 +232,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => {
-      const combinedDateTime = `${data.appointmentDate}T${data.appointmentTime}:00`;
-      const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
-      return updateAppointment(appointment._id, {
-        patientId: data.patientId,
-        // include doctor field so backend updates the reference correctly
-        doctorId: selectedDoctorId,
-        doctor: selectedDoctorId,
-        appointmentDate: combinedDateTime,
-        reason: data.reason,
-        notes: data.notes,
-        type: data.type || "opd",
-        status: data.status || "scheduled",
-      });
-    },
+    mutationFn: (data) => updateAppointment(appointment._id, buildPayload(data)),
     onSuccess: () => {
       toast({ title: "Success", description: "Appointment updated successfully." }); playSound('update');
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -260,190 +266,278 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     }
   };
 
+  const handleNewPatientClose = async () => {
+    setNewPatientOpen(false);
+    const fresh = await refetchPatients();
+    // Auto-select newest patient
+    const list = fresh?.data?.data?.patients || [];
+    if (list.length > 0) {
+      const newest = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      if (newest?._id) form.setValue("patientId", newest._id);
+    }
+  };
+
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Book Appointment" : "Edit Appointment"}</DialogTitle>
-          <DialogDescription>
-            {mode === "create" ? "Schedule a new appointment." : "Update appointment details."}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form} validationId="appointment_dialog">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="patientId"
-              render={({ field }) => {
-                const selected = patients.find((p) => p._id === field.value);
-                return (
-                  <FormItem>
-                    <FormLabel>Patient</FormLabel>
-                    <FormControl>
-                      <PatientAutocomplete
-                        value={field.value}
-                        selectedLabel={selected ? patientLabel(selected) : ""}
-                        onSelect={(p) => field.onChange(p?._id || "")}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+    <>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{mode === "create" ? "Book Appointment" : "Edit Appointment"}</DialogTitle>
+            <DialogDescription>
+              {mode === "create" ? `Serial No. #${nextSerial} (today)` : "Update appointment details."}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form} validationId="appointment_dialog">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-            <FormField
-              control={form.control}
-              name="doctorId"
-              render={({ field }) => {
-                const selected = doctors.find((d) => d._id === field.value);
-                return (
-                  <FormItem>
-                    <FormLabel>Doctor</FormLabel>
-                    <FormControl>
-                      <DoctorAutocomplete
-                        value={field.value}
-                        selectedLabel={selected ? doctorAutocompleteLabel(selected) : ""}
-                        onSelect={(d) => field.onChange(d?._id || "")}
-                        filterFn={(d) => isDoctorUser ? d._id === loggedInDoctor?._id : d.availabilityStatus === "available"}
-                        disabled={isDoctorUser}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+              {mode === "create" && (
+                <div className="rounded-md bg-muted/40 p-3 text-sm">
+                  <span className="text-muted-foreground">Serial No. (today): </span>
+                  <span className="font-semibold">#{nextSerial}</span>
+                </div>
+              )}
 
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="appointmentDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} min={getTodayDateString()} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="appointmentTime"
+                name="patientId"
                 render={({ field }) => {
-                  const isToday = form.watch("appointmentDate") === getTodayDateString();
+                  const selected = patients.find((p) => p._id === field.value);
                   return (
                     <FormItem>
-                      <FormLabel>Time</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Patient Name</FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setNewPatientOpen(true)}
+                        >
+                          <UserPlus className="mr-1 h-3 w-3" /> New Patient
+                        </Button>
+                      </div>
                       <FormControl>
-                        <Input type="time" {...field} min={isToday ? getCurrentTimeString() : undefined} />
+                        <PatientAutocomplete
+                          value={field.value}
+                          selectedLabel={selected ? patientLabel(selected) : ""}
+                          onSelect={(p) => field.onChange(p?._id || "")}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   );
                 }}
               />
-            </div>
 
-            <FormField
-              control={form.control}
-              name="reason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reason for Visit</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Regular Checkup" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="doctorId"
+                render={({ field }) => {
+                  const selected = doctors.find((d) => d._id === field.value);
+                  return (
+                    <FormItem>
+                      <FormLabel>Select Doctor</FormLabel>
+                      <FormControl>
+                        <DoctorAutocomplete
+                          value={field.value}
+                          selectedLabel={selected ? doctorAutocompleteLabel(selected) : ""}
+                          onSelect={(d) => field.onChange(d?._id || "")}
+                          filterFn={(d) => isDoctorUser ? d._id === loggedInDoctor?._id : (d.doctorType || "hospital") !== "referral" && d.availabilityStatus === "available"}
+                          disabled={isDoctorUser}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
 
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Additional notes..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {mode === "edit" && (
-              <>
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="type"
+                  name="appointmentDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Appointment Type</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || "opd"}>
+                      <FormLabel>Appointment Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} min={getTodayDateString()} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || "normal"}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
+                            <SelectValue placeholder="Select priority" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="opd">OPD</SelectItem>
-                          <SelectItem value="follow_up">Follow Up</SelectItem>
-                          <SelectItem value="consultation">Consultation</SelectItem>
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
                           <SelectItem value="emergency">Emergency</SelectItem>
-                          <SelectItem value="telemedicine">Telemedicine</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="status"
+                  name="fee"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || "scheduled"}>
+                      <FormLabel>Doctor Fees (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="paymentMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payment Mode</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || "pending"}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Select mode" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="scheduled">Scheduled</SelectItem>
-                          <SelectItem value="confirmed">Confirmed</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                          <SelectItem value="no_show">No Show</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="card">Card</SelectItem>
+                          <SelectItem value="upi">UPI</SelectItem>
+                          <SelectItem value="net_banking">Net Banking</SelectItem>
+                          <SelectItem value="cheque">Cheque</SelectItem>
+                          <SelectItem value="insurance">Insurance</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </>
-            )}
+              </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {mode === "create" ? "Book Appointment" : "Update Appointment"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "scheduled"}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="scheduled">Scheduled</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="no_show">No Show</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="referredByDoctorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Referred By (Doctor)</FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === "__none" ? "" : v)}
+                        value={field.value || "__none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select referral doctor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="__none">None</SelectItem>
+                          {referralDoctors.map((d) => (
+                            <SelectItem key={d._id} value={d._id}>
+                              {d.name} {d.specialization ? `(${d.specialization})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="referredByName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Referred By (Other)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Dr. Sharma / Self" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message / Notes</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Reason / message / notes..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {mode === "create" ? "Book Appointment" : "Update Appointment"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <PatientDialog
+        isOpen={newPatientOpen}
+        onClose={handleNewPatientClose}
+        patient={null}
+        mode="create"
+      />
+    </>
   );
 }

@@ -36,7 +36,7 @@ import { Loader2 } from "lucide-react";
 
 const doctorSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
-  email: z.string().email("Valid email required"),
+  email: z.string().email("Valid email required").optional().or(z.literal("")),
   phone: phoneSchema,
   specialization: z.string().min(1, "Specialization is required"),
   department: z.string().min(1, "Department is required"),
@@ -44,6 +44,8 @@ const doctorSchema = z.object({
   experience: z.coerce.number().min(0, "Experience must be positive"),
   consultationFee: z.coerce.number().min(0, "Fee must be positive"),
   availabilityStatus: z.enum(["available", "busy", "on_leave", "unavailable"]),
+  doctorType: z.enum(["hospital", "referral", "visiting", "consultant"]).default("hospital"),
+  tags: z.string().optional().or(z.literal("")),
 });
 
 export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
@@ -62,6 +64,8 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
       experience: 0,
       consultationFee: 500,
       availabilityStatus: "available",
+      doctorType: "hospital",
+      tags: "",
     },
   });
 
@@ -77,6 +81,8 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
         experience: doctor.experience || 0,
         consultationFee: doctor.consultationFee?.opd || 500,
         availabilityStatus: doctor.availabilityStatus || "available",
+        doctorType: doctor.doctorType || "hospital",
+        tags: Array.isArray(doctor.tags) ? doctor.tags.join(", ") : (doctor.tags || ""),
       });
     } else {
       form.reset({
@@ -89,6 +95,8 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
         experience: 0,
         consultationFee: 500,
         availabilityStatus: "available",
+        doctorType: "hospital",
+        tags: "",
       });
     }
   }, [doctor, mode, form]);
@@ -118,10 +126,14 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
   });
 
   const onSubmit = (values) => {
+    const payload = {
+      ...values,
+      tags: (values.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+    };
     if (mode === "create") {
-      createMutation.mutate(values);
+      createMutation.mutate(payload);
     } else {
-      updateMutation.mutate(values);
+      updateMutation.mutate(payload);
     }
   };
 
@@ -280,29 +292,69 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="doctorType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Doctor Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="hospital">Hospital Doctor</SelectItem>
+                        <SelectItem value="referral">Referral Doctor</SelectItem>
+                        <SelectItem value="visiting">Visiting Doctor</SelectItem>
+                        <SelectItem value="consultant">Consultant</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="availabilityStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Availability Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="available">Available</SelectItem>
+                        <SelectItem value="busy">Busy</SelectItem>
+                        <SelectItem value="on_leave">On Leave</SelectItem>
+                        <SelectItem value="unavailable">Unavailable</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="availabilityStatus"
+              name="tags"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Availability Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="busy">Busy</SelectItem>
-                      <SelectItem value="on_leave">On Leave</SelectItem>
-                      <SelectItem value="unavailable">Unavailable</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Tags (comma separated)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., senior, panel, weekend" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleClose}>

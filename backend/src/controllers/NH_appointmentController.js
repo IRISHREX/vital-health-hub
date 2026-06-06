@@ -193,7 +193,11 @@ exports.getAppointment = async (req, res, next) => {
 exports.createAppointment = async (req, res, next) => {
   try {
     const { Appointment, Doctor, Patient } = getModels(req);
-    const { patientId, doctorId, appointmentDate, appointmentTime, reason, notes, type, status, timeSlot } = req.body;
+    const {
+      patientId, doctorId, appointmentDate, appointmentTime,
+      reason, notes, type, status, timeSlot,
+      priority, fee, paymentMode, paymentStatus, referredBy,
+    } = req.body;
 
     let effectiveDoctorId = doctorId;
 
@@ -221,14 +225,13 @@ exports.createAppointment = async (req, res, next) => {
       throw new AppError('Doctor not found', 404);
     }
 
-    // Parse time slot - handle both old and new format
+    // Parse time slot — time is now optional, default to 10:00
     let parsedDate = new Date(appointmentDate);
     let timeSlotObj = timeSlot;
-    
-    if (!timeSlotObj && appointmentTime) {
-      // Convert appointmentTime to time slot format
-      const [hours, minutes] = appointmentTime.split(':');
-      parsedDate = new Date(appointmentDate);
+    const timeStr = appointmentTime || '10:00';
+
+    if (!timeSlotObj) {
+      const [hours, minutes] = timeStr.split(':');
       const endHours = parseInt(hours) + 1;
       timeSlotObj = {
         start: `${hours}:${minutes}`,
@@ -236,30 +239,38 @@ exports.createAppointment = async (req, res, next) => {
       };
     }
 
-    // Check for conflicting appointments
-    const conflicting = await Appointment.findOne({
-      doctor: effectiveDoctorId,
-      appointmentDate: {
-        $gte: new Date(parsedDate.toDateString()),
-        $lt: new Date(parsedDate.toDateString() + ' 23:59:59')
-      },
-      status: { $nin: ['cancelled', 'no_show'] }
-    });
+    // Compute final fee (allow user override, fallback to doctor's configured fee)
+    const computedFee = fee !== undefined && fee !== null && fee !== ''
+      ? Number(fee)
+      : (type === 'opd' ? doctor.consultationFee?.opd || 500 : doctor.consultationFee?.ipd || 1000);
 
-    if (conflicting && conflicting.timeSlot?.start === timeSlotObj?.start) {
-      throw new AppError('This time slot is already booked', 400);
+    // Normalize referredBy: accept string (name) or object
+    let referredByPayload;
+    if (referredBy) {
+      if (typeof referredBy === 'string') {
+        referredByPayload = { name: referredBy };
+      } else if (typeof referredBy === 'object') {
+        referredByPayload = {
+          name: referredBy.name || '',
+          ...(referredBy.doctor ? { doctor: referredBy.doctor } : {}),
+        };
+      }
     }
 
     const appointment = await Appointment.create({
       patient: patientId,
       doctor: effectiveDoctorId,
       appointmentDate: parsedDate,
-      timeSlot: timeSlotObj || { start: '10:00', end: '10:30' },
+      timeSlot: timeSlotObj,
       type: type || 'opd',
       reason: reason || '',
       notes: notes || '',
       status: status || 'scheduled',
-      fee: type === 'opd' ? doctor.consultationFee?.opd || 500 : doctor.consultationFee?.ipd || 1000,
+      priority: priority || 'normal',
+      fee: computedFee,
+      paymentMode: paymentMode || 'pending',
+      paymentStatus: paymentStatus || (paymentMode && paymentMode !== 'pending' ? 'paid' : 'pending'),
+      ...(referredByPayload ? { referredBy: referredByPayload } : {}),
       createdBy: req.user._id
     });
 
@@ -275,7 +286,7 @@ exports.createAppointment = async (req, res, next) => {
         patient,
         appointment: {
           date: parsedDate.toLocaleDateString(),
-          time: timeSlotObj?.start || appointmentTime,
+          time: timeSlotObj?.start || timeStr,
           type
         },
         doctor: doctor.name || doctor.user?.firstName

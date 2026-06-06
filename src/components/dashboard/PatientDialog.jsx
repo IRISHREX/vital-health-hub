@@ -94,17 +94,17 @@ const createPatientSchema = (dobMode) => {
 
   return z.object({
     firstName: z.string().min(1, "First name is required").max(50),
-    lastName: z.string().min(1, "Last name is required").max(50),
+    lastName: z.string().max(50).optional().or(z.literal("")),
     dateOfBirth: dobSchema,
     gender: z.enum(["male", "female", "other"]),
     contactNumber: phoneSchema,
-    email: z.string().email("Valid email required").optional(),
-    address: z.string().min(1, "Address is required").max(200),
+    email: z.string().email("Valid email required").optional().or(z.literal("")),
+    address: z.string().max(200).optional().or(z.literal("")),
     emergencyContact: z.object({
-      name: z.string().min(1, "Emergency contact name required"),
-      relationship: z.string().min(1, "Relationship required"),
-      phone: phoneSchema,
-    }),
+      name: z.string().optional().or(z.literal("")),
+      relationship: z.string().optional().or(z.literal("")),
+      phone: z.string().optional().or(z.literal("")),
+    }).optional(),
     bloodGroup: z.string().optional(),
     registrationType: z.enum(["opd", "ipd", "emergency"]),
     medicalHistory: z.string().optional(),
@@ -396,7 +396,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name</FormLabel>
+                    <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input placeholder="John" {...field} />
                     </FormControl>
@@ -437,7 +437,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender</FormLabel>
+                    <FormLabel>Gender <span className="text-destructive">*</span></FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -462,7 +462,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="contactNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact Number</FormLabel>
+                    <FormLabel>Contact Number <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input placeholder="+91 98765 43210" {...field} />
                     </FormControl>

@@ -68,9 +68,17 @@ export const printAppointmentReceipt = (apt, hospital) => {
         <td style="border:1px solid #d1d5db;padding:7px;background:#f3f4f6;font-weight:600;">Reason</td>
         <td style="border:1px solid #d1d5db;padding:7px;">${esc(apt.reason || "-")}</td>
       </tr>
+      <tr>
+        <td style="border:1px solid #d1d5db;padding:7px;background:#f3f4f6;font-weight:600;">Priority</td>
+        <td style="border:1px solid #d1d5db;padding:7px;text-transform:capitalize;">${esc(apt.priority || "normal")}</td>
+      </tr>
+      ${apt.referredBy?.name || apt.referredBy?.doctor ? `<tr>
+        <td style="border:1px solid #d1d5db;padding:7px;background:#f3f4f6;font-weight:600;">Referred By</td>
+        <td style="border:1px solid #d1d5db;padding:7px;">${esc(apt.referredBy?.name || (apt.referredBy?.doctor?.name) || "—")}</td>
+      </tr>` : ""}
       ${apt.fee != null ? `<tr>
         <td style="border:1px solid #d1d5db;padding:7px;background:#f3f4f6;font-weight:600;">Consultation Fee</td>
-        <td style="border:1px solid #d1d5db;padding:7px;">₹${esc(apt.fee)} <span style="color:#6b7280;">(${esc(apt.paymentStatus || "pending")})</span></td>
+        <td style="border:1px solid #d1d5db;padding:7px;">₹${esc(apt.fee)} <span style="color:#6b7280;">(${esc(apt.paymentMode && apt.paymentMode !== 'pending' ? apt.paymentMode : (apt.paymentStatus || 'pending'))})</span></td>
       </tr>` : ""}
     </table>
 

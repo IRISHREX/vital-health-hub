@@ -58,6 +58,15 @@ const appointmentSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'waived'],
     default: 'pending'
   },
+  paymentMode: {
+    type: String,
+    enum: ['cash', 'card', 'upi', 'net_banking', 'cheque', 'insurance', 'pending'],
+    default: 'pending'
+  },
+  referredBy: {
+    name: { type: String, default: '' },
+    doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
+  },
   cancelledReason: String,
   cancelledBy: {
     type: mongoose.Schema.Types.ObjectId,
