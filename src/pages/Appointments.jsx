@@ -200,10 +200,14 @@ export default function Appointments() {
     ? appointments.filter((apt) => {
         const patientName = getPatientName(apt.patient || apt.patientId).toLowerCase();
         const doctorName = getDoctorName(apt.doctor || apt.doctorId).toLowerCase();
-        return (
+        const matchesSearch = (
           patientName.includes(searchQuery.toLowerCase()) ||
           doctorName.includes(searchQuery.toLowerCase())
         );
+        const aptDate = apt.appointmentDate ? apt.appointmentDate.split("T")[0] : "";
+        const matchesFrom = !dateFrom || aptDate >= dateFrom;
+        const matchesTo = !dateTo || aptDate <= dateTo;
+        return matchesSearch && matchesFrom && matchesTo;
       })
     : [];
 
