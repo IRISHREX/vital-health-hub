@@ -147,7 +147,7 @@ exports.getDoctor = async (req, res, next) => {
 exports.createDoctor = async (req, res, next) => {
   try {
     const { Doctor } = getModels(req);
-    const { name, email, phone, specialization, department, qualification, experience, consultationFee, availabilityStatus } = req.body;
+    const { name, email, phone, specialization, department, qualification, experience, consultationFee, availabilityStatus, doctorType, tags } = req.body;
 
     // Validate required fields
     if (!name || !specialization || !department || !qualification) {
@@ -178,7 +178,9 @@ exports.createDoctor = async (req, res, next) => {
         opd: safeOpdFee,
         ipd: safeIpdFee
       },
-      availabilityStatus: availabilityStatus || 'available'
+      availabilityStatus: availabilityStatus || 'available',
+      doctorType: doctorType || 'hospital',
+      tags: Array.isArray(tags) ? tags : (tags ? String(tags).split(',').map(t => t.trim()).filter(Boolean) : []),
     });
 
     res.status(201).json({
