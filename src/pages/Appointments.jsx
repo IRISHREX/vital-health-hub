@@ -435,13 +435,15 @@ export default function Appointments() {
                       {new Date(apt.appointmentDate).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      {new Date(apt.appointmentDate).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      <Badge variant={apt.priority === "emergency" ? "destructive" : apt.priority === "urgent" ? "warning" : "outline"} className="capitalize">
+                        {apt.priority || "normal"}
+                      </Badge>
                     </TableCell>
+                    <TableCell>₹{Number(apt.fee || 0).toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{apt.reason}</Badge>
+                      <Badge variant={apt.paymentStatus === "paid" ? "success" : "outline"} className="capitalize">
+                        {apt.paymentMode && apt.paymentMode !== "pending" ? apt.paymentMode.replace("_", " ") : (apt.paymentStatus || "pending")}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {statusConfig[apt.status] && (
