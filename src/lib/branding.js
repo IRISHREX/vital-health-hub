@@ -52,6 +52,16 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
  */
 export const brandedHeaderHtml = (branding) => {
   const b = branding || {};
+
+  // Full-width header image (letterhead banner) takes precedence when enabled
+  if (b.useHeaderImage && b.headerImage) {
+    return `
+      <div class="brand-header" style="margin-bottom:14px;">
+        <img src="${escapeHtml(b.headerImage)}" alt="header" style="display:block;width:100%;max-height:160px;object-fit:contain;" />
+      </div>
+    `;
+  }
+
   const logoHtml = b.showLogo && b.logo
     ? `<img src="${escapeHtml(b.logo)}" alt="logo" style="max-height:60px;max-width:160px;object-fit:contain;" />`
     : "";
