@@ -76,6 +76,7 @@ const emptyOverride = () => ({
   logo: "", signature: "", stamp: "",
   signatoryName: "", signatoryDesignation: "",
   headerText: "", footerText: "",
+  headerImage: "", useHeaderImage: false,
 });
 
 export default function BrandingSettings() {
@@ -98,6 +99,8 @@ export default function BrandingSettings() {
       showLogo: b.showLogo !== false,
       showSignature: b.showSignature !== false,
       showStamp: b.showStamp !== false,
+      headerImage: b.headerImage || "",
+      useHeaderImage: !!b.useHeaderImage,
       modules: b.modules || {},
     };
   }, [hospitalRes?.data]);
@@ -183,6 +186,24 @@ export default function BrandingSettings() {
 
             <Separator />
 
+            <div className="space-y-3 rounded-md border p-4 bg-muted/20">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="text-sm font-medium">Pre-printed letterhead / header image</Label>
+                  <p className="text-[11px] text-muted-foreground">When enabled, this banner image replaces the default text header on all prints (and per-module overrides below).</p>
+                </div>
+                <Switch checked={!!form.useHeaderImage} onCheckedChange={(v) => update({ useHeaderImage: v })} />
+              </div>
+              <ImageField
+                label="Header image (banner)"
+                value={form.headerImage}
+                onChange={(v) => update({ headerImage: v })}
+                hint="Full-width PNG/JPG. Recommended 1600×320. Under 500KB."
+              />
+            </div>
+
+            <Separator />
+
             <div className="grid md:grid-cols-3 gap-4">
               <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <Label className="text-sm">Show logo on prints</Label>
@@ -198,6 +219,7 @@ export default function BrandingSettings() {
               </div>
             </div>
           </TabsContent>
+
 
           {MODULES.map((m) => {
             const ov = form.modules?.[m.key] || {};
@@ -239,6 +261,24 @@ export default function BrandingSettings() {
                     <Label>Footer Text (override)</Label>
                     <Textarea rows={2} value={ov.footerText || ""} onChange={(e) => updateModule(m.key, { footerText: e.target.value })} />
                   </div>
+                </div>
+                <div className="space-y-3 rounded-md border p-4 bg-muted/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label className="text-sm font-medium">Use pre-printed header image for {m.label}</Label>
+                      <p className="text-[11px] text-muted-foreground">Enable to replace the text header with a banner image just for this document type.</p>
+                    </div>
+                    <Switch
+                      checked={!!ov.useHeaderImage}
+                      onCheckedChange={(v) => updateModule(m.key, { useHeaderImage: v })}
+                    />
+                  </div>
+                  <ImageField
+                    label="Header image (override)"
+                    value={ov.headerImage || ""}
+                    onChange={(v) => updateModule(m.key, { headerImage: v })}
+                    hint="Leave empty to use the default header image. Full-width PNG/JPG under 500KB."
+                  />
                 </div>
               </TabsContent>
             );

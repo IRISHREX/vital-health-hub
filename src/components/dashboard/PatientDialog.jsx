@@ -92,12 +92,21 @@ const createPatientSchema = (dobMode) => {
       );
   }
 
+  const optionalPhone = z.string().optional().or(z.literal("")).refine(
+    (val) => {
+      if (!val) return true;
+      const digitsOnly = val.replace(/\D/g, "");
+      return digitsOnly.length === 10;
+    },
+    { message: "Phone number must contain exactly 10 digits" }
+  );
+
   return z.object({
     firstName: z.string().min(1, "First name is required").max(50),
     lastName: z.string().max(50).optional().or(z.literal("")),
     dateOfBirth: dobSchema,
-    gender: z.enum(["male", "female", "other"]),
-    contactNumber: phoneSchema,
+    gender: z.enum(["male", "female", "other"]).optional().or(z.literal("")),
+    contactNumber: optionalPhone,
     email: z.string().email("Valid email required").optional().or(z.literal("")),
     address: z.string().max(200).optional().or(z.literal("")),
     emergencyContact: z.object({
@@ -106,7 +115,7 @@ const createPatientSchema = (dobMode) => {
       phone: z.string().optional().or(z.literal("")),
     }).optional(),
     bloodGroup: z.string().optional(),
-    registrationType: z.enum(["opd", "ipd", "emergency"]),
+    registrationType: z.enum(["opd", "ipd", "emergency"]).optional(),
     medicalHistory: z.string().optional(),
     assignedDoctor: z.string().optional(),
     assignedBed: z.string().optional(),
@@ -437,7 +446,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Gender</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -462,7 +471,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="contactNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact Number <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Contact Number</FormLabel>
                     <FormControl>
                       <Input placeholder="+91 98765 43210" {...field} />
                     </FormControl>

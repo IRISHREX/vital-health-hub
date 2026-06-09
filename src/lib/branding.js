@@ -18,6 +18,11 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
   const b = (hospital && hospital.branding) || {};
   const mod = (b.modules && b.modules[moduleKey]) || {};
   const pick = (key, fallback = "") => (mod[key] ?? b[key] ?? fallback);
+  const pickBool = (key, fallback) => {
+    if (mod[key] !== undefined && mod[key] !== null) return Boolean(mod[key]);
+    if (b[key] !== undefined && b[key] !== null) return Boolean(b[key]);
+    return fallback;
+  };
 
   return {
     hospitalName: hospital.hospitalName || "Hospital",
@@ -34,6 +39,8 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
     signatoryDesignation: pick("signatoryDesignation", ""),
     headerText: pick("headerText", ""),
     footerText: pick("footerText", ""),
+    headerImage: pick("headerImage", ""),
+    useHeaderImage: pickBool("useHeaderImage", false),
     showLogo: b.showLogo !== false,
     showSignature: b.showSignature !== false,
     showStamp: b.showStamp !== false,
@@ -45,6 +52,16 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
  */
 export const brandedHeaderHtml = (branding) => {
   const b = branding || {};
+
+  // Full-width header image (letterhead banner) takes precedence when enabled
+  if (b.useHeaderImage && b.headerImage) {
+    return `
+      <div class="brand-header" style="margin-bottom:14px;">
+        <img src="${escapeHtml(b.headerImage)}" alt="header" style="display:block;width:100%;max-height:160px;object-fit:contain;" />
+      </div>
+    `;
+  }
+
   const logoHtml = b.showLogo && b.logo
     ? `<img src="${escapeHtml(b.logo)}" alt="logo" style="max-height:60px;max-width:160px;object-fit:contain;" />`
     : "";
@@ -157,6 +174,19 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
   const left = opts.left ?? 12;
   const right = opts.right ?? (doc.internal.pageSize.getWidth() - 12);
   let y = opts.top ?? 12;
+
+  // Full-width header image (letterhead banner) takes precedence when enabled
+  if (b.useHeaderImage && b.headerImage) {
+    try {
+      const width = right - left;
+      const height = opts.headerImageHeight ?? 32;
+      doc.addImage(b.headerImage, left, y, width, height);
+      return y + height + 4;
+    } catch {
+      // fall through to default text header
+    }
+  }
+
 
   let textX = left;
   let textAlign = "center";
