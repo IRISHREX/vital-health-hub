@@ -262,6 +262,24 @@ export default function BrandingSettings() {
                     <Textarea rows={2} value={ov.footerText || ""} onChange={(e) => updateModule(m.key, { footerText: e.target.value })} />
                   </div>
                 </div>
+                <div className="space-y-3 rounded-md border p-4 bg-muted/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label className="text-sm font-medium">Use pre-printed header image for {m.label}</Label>
+                      <p className="text-[11px] text-muted-foreground">Enable to replace the text header with a banner image just for this document type.</p>
+                    </div>
+                    <Switch
+                      checked={!!ov.useHeaderImage}
+                      onCheckedChange={(v) => updateModule(m.key, { useHeaderImage: v })}
+                    />
+                  </div>
+                  <ImageField
+                    label="Header image (override)"
+                    value={ov.headerImage || ""}
+                    onChange={(v) => updateModule(m.key, { headerImage: v })}
+                    hint="Leave empty to use the default header image. Full-width PNG/JPG under 500KB."
+                  />
+                </div>
               </TabsContent>
             );
           })}
