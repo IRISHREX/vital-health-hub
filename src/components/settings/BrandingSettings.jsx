@@ -76,6 +76,7 @@ const emptyOverride = () => ({
   logo: "", signature: "", stamp: "",
   signatoryName: "", signatoryDesignation: "",
   headerText: "", footerText: "",
+  headerImage: "", useHeaderImage: false,
 });
 
 export default function BrandingSettings() {
