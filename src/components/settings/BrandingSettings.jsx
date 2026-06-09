@@ -99,6 +99,8 @@ export default function BrandingSettings() {
       showLogo: b.showLogo !== false,
       showSignature: b.showSignature !== false,
       showStamp: b.showStamp !== false,
+      headerImage: b.headerImage || "",
+      useHeaderImage: !!b.useHeaderImage,
       modules: b.modules || {},
     };
   }, [hospitalRes?.data]);
