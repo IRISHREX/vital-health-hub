@@ -13,7 +13,6 @@ const patientSchema = new mongoose.Schema({
   },
   lastName: {
     type: String,
-    required: [true, 'Last name is required'],
     trim: true
   },
   email: {
@@ -22,17 +21,14 @@ const patientSchema = new mongoose.Schema({
     trim: true
   },
   phone: {
-    type: String,
-    required: [true, 'Phone number is required']
+    type: String
   },
   dateOfBirth: {
-    type: Date,
-    required: [true, 'Date of birth is required']
+    type: Date
   },
   gender: {
     type: String,
-    enum: ['male', 'female', 'other'],
-    required: true
+    enum: ['male', 'female', 'other', '', null]
   },
   bloodGroup: {
     type: String,
