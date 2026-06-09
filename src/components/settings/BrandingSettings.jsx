@@ -186,6 +186,24 @@ export default function BrandingSettings() {
 
             <Separator />
 
+            <div className="space-y-3 rounded-md border p-4 bg-muted/20">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="text-sm font-medium">Pre-printed letterhead / header image</Label>
+                  <p className="text-[11px] text-muted-foreground">When enabled, this banner image replaces the default text header on all prints (and per-module overrides below).</p>
+                </div>
+                <Switch checked={!!form.useHeaderImage} onCheckedChange={(v) => update({ useHeaderImage: v })} />
+              </div>
+              <ImageField
+                label="Header image (banner)"
+                value={form.headerImage}
+                onChange={(v) => update({ headerImage: v })}
+                hint="Full-width PNG/JPG. Recommended 1600×320. Under 500KB."
+              />
+            </div>
+
+            <Separator />
+
             <div className="grid md:grid-cols-3 gap-4">
               <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <Label className="text-sm">Show logo on prints</Label>
@@ -201,6 +219,7 @@ export default function BrandingSettings() {
               </div>
             </div>
           </TabsContent>
+
 
           {MODULES.map((m) => {
             const ov = form.modules?.[m.key] || {};
