@@ -18,6 +18,11 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
   const b = (hospital && hospital.branding) || {};
   const mod = (b.modules && b.modules[moduleKey]) || {};
   const pick = (key, fallback = "") => (mod[key] ?? b[key] ?? fallback);
+  const pickBool = (key, fallback) => {
+    if (mod[key] !== undefined && mod[key] !== null) return Boolean(mod[key]);
+    if (b[key] !== undefined && b[key] !== null) return Boolean(b[key]);
+    return fallback;
+  };
 
   return {
     hospitalName: hospital.hospitalName || "Hospital",
@@ -34,6 +39,8 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
     signatoryDesignation: pick("signatoryDesignation", ""),
     headerText: pick("headerText", ""),
     footerText: pick("footerText", ""),
+    headerImage: pick("headerImage", ""),
+    useHeaderImage: pickBool("useHeaderImage", false),
     showLogo: b.showLogo !== false,
     showSignature: b.showSignature !== false,
     showStamp: b.showStamp !== false,
