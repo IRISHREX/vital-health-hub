@@ -471,7 +471,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="contactNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact Number <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Contact Number</FormLabel>
                     <FormControl>
                       <Input placeholder="+91 98765 43210" {...field} />
                     </FormControl>
