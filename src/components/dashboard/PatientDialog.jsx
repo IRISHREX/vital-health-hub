@@ -446,7 +446,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Gender</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
