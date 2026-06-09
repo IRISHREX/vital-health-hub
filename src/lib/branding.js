@@ -175,6 +175,19 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
   const right = opts.right ?? (doc.internal.pageSize.getWidth() - 12);
   let y = opts.top ?? 12;
 
+  // Full-width header image (letterhead banner) takes precedence when enabled
+  if (b.useHeaderImage && b.headerImage) {
+    try {
+      const width = right - left;
+      const height = opts.headerImageHeight ?? 32;
+      doc.addImage(b.headerImage, left, y, width, height);
+      return y + height + 4;
+    } catch {
+      // fall through to default text header
+    }
+  }
+
+
   let textX = left;
   let textAlign = "center";
   let centerX = (left + right) / 2;
