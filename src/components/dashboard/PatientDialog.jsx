@@ -403,7 +403,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name</FormLabel>
+                    <FormLabel>Last Name <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input placeholder="Doe" {...field} />
                     </FormControl>
