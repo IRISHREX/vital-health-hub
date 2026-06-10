@@ -270,7 +270,7 @@ export default function Patients() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{`${patient.firstName} ${patient.lastName}`}</p>
+                          <p className="font-medium">{`${patient.firstName || ""} ${patient.lastName || ""}`.trim()}</p>
                           <p className="text-sm text-muted-foreground">
                             {patient.dateOfBirth ? `${new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()} yrs, ${patient.gender}` : patient.gender}
                           </p>
