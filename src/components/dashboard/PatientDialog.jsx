@@ -173,7 +173,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         firstName: patient.firstName || "",
         lastName: patient.lastName || "",
         dateOfBirth: patient.dateOfBirth?.split("T")[0] || "",
-        gender: (patient.gender || "male").toLowerCase(),
+        gender: (patient.gender || "").toLowerCase(),
         contactNumber: patient.phone || "",
         email: patient.email || "",
         address: patient.address?.street ? `${patient.address.street}, ${patient.address.city}` : patient.address || "",
