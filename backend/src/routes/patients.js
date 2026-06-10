@@ -18,10 +18,13 @@ router.post('/', [
   authenticate,
   authorize('receptionist', 'hospital_admin', 'super_admin'),
   body('firstName').trim().notEmpty().withMessage('First name is required'),
-  body('lastName').trim().notEmpty().withMessage('Last name is required'),
-  body('dateOfBirth').isISO8601().withMessage('Valid date of birth is required'),
-  body('gender').isIn(['male', 'female', 'other']).withMessage('Gender must be male, female, or other'),
-  body('phone').trim().notEmpty().withMessage('Phone number is required').custom(validatePhone),
+  body('lastName').optional({ checkFalsy: true }).trim(),
+  body('dateOfBirth').optional({ checkFalsy: true }).isISO8601().withMessage('Valid date of birth required if provided'),
+  body('gender').optional({ checkFalsy: true }).isIn(['male', 'female', 'other']).withMessage('Gender must be male, female, or other'),
+  body('phone').optional({ checkFalsy: true }).trim().custom((value) => {
+    if (!value) return true;
+    return validatePhone(value);
+  }),
   validate
 ], patientController.createPatient);
 

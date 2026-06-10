@@ -39,6 +39,7 @@ export default function Doctors() {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -109,12 +110,13 @@ export default function Doctors() {
 
   const filteredDoctors = useMemo(() => {
     return (doctors || []).filter(doctor => {
-      const matchesSearch = (doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) || doctor.specialization?.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch = (doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) || doctor.specialization?.toLowerCase().includes(searchQuery.toLowerCase()) || (doctor.tags || []).join(',').toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesDepartment = departmentFilter === "all" || doctor.department === departmentFilter;
       const matchesAvailability = availabilityFilter === "all" || (availabilityFilter === "available" ? doctor.availabilityStatus === "available" : doctor.availabilityStatus !== "available");
-      return matchesSearch && matchesDepartment && matchesAvailability;
+      const matchesType = typeFilter === "all" || (doctor.doctorType || "hospital") === typeFilter;
+      return matchesSearch && matchesDepartment && matchesAvailability && matchesType;
     });
-  }, [doctors, searchQuery, departmentFilter, availabilityFilter]);
+  }, [doctors, searchQuery, departmentFilter, availabilityFilter, typeFilter]);
 
   const stats = {
     total: doctors?.length || 0,
@@ -178,6 +180,16 @@ export default function Doctors() {
           <SelectContent>
             <SelectItem value="all">All Departments</SelectItem>
             {departments.map(dept => <SelectItem key={dept} value={dept}>{dept}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-[170px]"><SelectValue placeholder="Doctor Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="hospital">Hospital</SelectItem>
+            <SelectItem value="referral">Referral</SelectItem>
+            <SelectItem value="visiting">Visiting</SelectItem>
+            <SelectItem value="consultant">Consultant</SelectItem>
           </SelectContent>
         </Select>
         <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
@@ -316,9 +328,17 @@ export default function Doctors() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="font-semibold text-foreground truncate">{doctor.name}</h3>
                         <p className="text-xs text-primary">{doctor.specialization}</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          <Badge variant={doctor.doctorType === "referral" ? "secondary" : "outline"} className="text-[10px] capitalize">
+                            {doctor.doctorType || "hospital"}
+                          </Badge>
+                          {(doctor.tags || []).slice(0, 3).map((t) => (
+                            <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
+                          ))}
+                        </div>
                       </div>
                       <Button variant="ghost" size="sm" className="h-auto p-1" title="Toggle Availability" aria-label="Toggle doctor availability" onClick={() => {
                         const newStatus = doctor.availabilityStatus === "available" ? "unavailable" : "available";

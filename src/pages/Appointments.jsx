@@ -43,6 +43,8 @@ export default function Appointments() {
   const { user } = useAuth();
   const { canCreate } = useVisualAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -198,10 +200,14 @@ export default function Appointments() {
     ? appointments.filter((apt) => {
         const patientName = getPatientName(apt.patient || apt.patientId).toLowerCase();
         const doctorName = getDoctorName(apt.doctor || apt.doctorId).toLowerCase();
-        return (
+        const matchesSearch = (
           patientName.includes(searchQuery.toLowerCase()) ||
           doctorName.includes(searchQuery.toLowerCase())
         );
+        const aptDate = apt.appointmentDate ? apt.appointmentDate.split("T")[0] : "";
+        const matchesFrom = !dateFrom || aptDate >= dateFrom;
+        const matchesTo = !dateTo || aptDate <= dateTo;
+        return matchesSearch && matchesFrom && matchesTo;
       })
     : [];
 
@@ -363,8 +369,8 @@ export default function Appointments() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by patient or doctor name..."
@@ -373,6 +379,19 @@ export default function Appointments() {
             className="pl-10"
           />
         </div>
+        <div className="flex items-end gap-2">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">From</label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px]" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">To</label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px]" />
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>Clear</Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -380,11 +399,13 @@ export default function Appointments() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>S.No.</TableHead>
                 <TableHead>Patient</TableHead>
                 <TableHead>Doctor</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Reason</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Fee</TableHead>
+                <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -393,6 +414,7 @@ export default function Appointments() {
               {filteredAppointments.length > 0 ? (
                 filteredAppointments.map((apt) => (
                   <TableRow key={apt._id}>
+                    <TableCell className="font-mono text-xs">#{apt.tokenNumber ?? "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -413,13 +435,15 @@ export default function Appointments() {
                       {new Date(apt.appointmentDate).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      {new Date(apt.appointmentDate).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      <Badge variant={apt.priority === "emergency" ? "destructive" : apt.priority === "urgent" ? "warning" : "outline"} className="capitalize">
+                        {apt.priority || "normal"}
+                      </Badge>
                     </TableCell>
+                    <TableCell>₹{Number(apt.fee || 0).toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{apt.reason}</Badge>
+                      <Badge variant={apt.paymentStatus === "paid" ? "success" : "outline"} className="capitalize">
+                        {apt.paymentMode && apt.paymentMode !== "pending" ? apt.paymentMode.replace("_", " ") : (apt.paymentStatus || "pending")}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {statusConfig[apt.status] && (
@@ -445,7 +469,7 @@ export default function Appointments() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center">
+                  <TableCell colSpan={9} className="text-center">
                     No appointments found.
                   </TableCell>
                 </TableRow>

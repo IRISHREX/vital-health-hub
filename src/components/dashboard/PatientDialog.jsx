@@ -62,51 +62,44 @@ const getYesterdayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
-// Create schema based on DOB mode
+// Create schema — only firstName is mandatory by default
 const createPatientSchema = (dobMode) => {
-  let dobSchema = z.string().optional();
+  // DOB is always optional; if provided, must be in the past
+  const dobSchema = z.string().optional().or(z.literal("")).refine(
+    (date) => {
+      if (!date) return true;
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate < today;
+    },
+    "Date of birth cannot be today or in the future"
+  );
 
-  if (dobMode === DOB_OPTIONS.REQUIRED) {
-    dobSchema = z.string()
-      .min(1, "Date of birth is required")
-      .refine(
-        (date) => {
-          const selectedDate = new Date(date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return selectedDate < today;
-        },
-        "Date of birth cannot be today or in the future"
-      );
-  } else if (dobMode === DOB_OPTIONS.OPTIONAL) {
-    dobSchema = z.string()
-      .min(1, "Date of birth or age is required")
-      .refine(
-        (date) => {
-          const selectedDate = new Date(date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return selectedDate < today;
-        },
-        "Date of birth cannot be today or in the future"
-      );
-  }
+  const optionalPhone = z.string().optional().or(z.literal("")).refine(
+    (val) => {
+      if (!val) return true;
+      const digitsOnly = val.replace(/\D/g, "");
+      return digitsOnly.length === 10;
+    },
+    { message: "Phone number must contain exactly 10 digits" }
+  );
 
   return z.object({
     firstName: z.string().min(1, "First name is required").max(50),
-    lastName: z.string().min(1, "Last name is required").max(50),
+    lastName: z.string().max(50).optional().or(z.literal("")),
     dateOfBirth: dobSchema,
-    gender: z.enum(["male", "female", "other"]),
-    contactNumber: phoneSchema,
-    email: z.string().email("Valid email required").optional(),
-    address: z.string().min(1, "Address is required").max(200),
+    gender: z.enum(["male", "female", "other"]).optional().or(z.literal("")),
+    contactNumber: optionalPhone,
+    email: z.string().email("Valid email required").optional().or(z.literal("")),
+    address: z.string().max(200).optional().or(z.literal("")),
     emergencyContact: z.object({
-      name: z.string().min(1, "Emergency contact name required"),
-      relationship: z.string().min(1, "Relationship required"),
-      phone: phoneSchema,
-    }),
+      name: z.string().optional().or(z.literal("")),
+      relationship: z.string().optional().or(z.literal("")),
+      phone: z.string().optional().or(z.literal("")),
+    }).optional(),
     bloodGroup: z.string().optional(),
-    registrationType: z.enum(["opd", "ipd", "emergency"]),
+    registrationType: z.enum(["opd", "ipd", "emergency"]).optional(),
     medicalHistory: z.string().optional(),
     assignedDoctor: z.string().optional(),
     assignedBed: z.string().optional(),
@@ -151,7 +144,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
       firstName: "",
       lastName: "",
       dateOfBirth: "",
-      gender: "male",
+      gender: "",
       contactNumber: "",
       email: "",
       address: "",
@@ -180,7 +173,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         firstName: patient.firstName || "",
         lastName: patient.lastName || "",
         dateOfBirth: patient.dateOfBirth?.split("T")[0] || "",
-        gender: (patient.gender || "male").toLowerCase(),
+        gender: (patient.gender || "").toLowerCase(),
         contactNumber: patient.phone || "",
         email: patient.email || "",
         address: patient.address?.street ? `${patient.address.street}, ${patient.address.city}` : patient.address || "",
@@ -198,7 +191,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         firstName: "",
         lastName: "",
         dateOfBirth: "",
-        gender: "male",
+        gender: "",
         contactNumber: "",
         email: "",
         address: "",
@@ -226,12 +219,12 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
       
       const patientData = await createPatient({
         firstName: values.firstName,
-        lastName: values.lastName,
-        dateOfBirth: values.dateOfBirth,
-        gender: values.gender,
-        phone: values.contactNumber,
+        lastName: values.lastName || "",
+        dateOfBirth: values.dateOfBirth || undefined,
+        gender: values.gender || undefined,
+        phone: values.contactNumber || "",
         email: values.email || "",
-        address: values.address,
+        address: values.address || "",
         emergencyContact: values.emergencyContact,
         bloodGroup: values.bloodGroup || null,
         registrationType: values.registrationType,
@@ -244,6 +237,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
 
       if (patientData?.data?._id || patientData?._id) {
         const patientId = patientData?.data?._id || patientData?._id;
+        const fullName = `${values.firstName}${values.lastName ? ' ' + values.lastName : ''}`;
         const invoiceData = {
           patient: patientId,
           type: values.registrationType,
@@ -253,7 +247,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
           dueAmount: 0,
           dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           status: 'draft',
-          notes: `Invoice auto-created for ${values.firstName} ${values.lastName}`,
+          notes: `Invoice auto-created for ${fullName}`,
           generatedBy: user?.id || ""
         };
         await createInvoice(invoiceData);
@@ -396,7 +390,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name</FormLabel>
+                    <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
                       <Input placeholder="John" {...field} />
                     </FormControl>
@@ -409,7 +403,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name</FormLabel>
+                    <FormLabel>Last Name <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input placeholder="Doe" {...field} />
                     </FormControl>
@@ -425,7 +419,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                   value={form.watch("dateOfBirth")}
                   onChange={(dob) => form.setValue("dateOfBirth", dob || "")}
                   mode={dobMode}
-                  required={dobMode !== DOB_OPTIONS.NONE}
+                  required={false}
                   disabled={false}
                   error={form.formState.errors.dateOfBirth?.message || ""}
                   label="Date of Birth"
@@ -437,8 +431,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel>Gender <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select gender" />
@@ -462,7 +456,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="contactNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact Number</FormLabel>
+                    <FormLabel>Contact Number <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input placeholder="+91 98765 43210" {...field} />
                     </FormControl>
@@ -475,7 +469,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="john@example.com" {...field} />
                     </FormControl>
@@ -490,7 +484,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>Address <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                   <FormControl>
                     <Textarea placeholder="Full address..." {...field} />
                   </FormControl>

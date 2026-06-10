@@ -145,7 +145,11 @@ export default function DOBAgePicker({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Label>{label}</Label>
-        {required && <span className="text-destructive">*</span>}
+        {required ? (
+          <span className="text-destructive">*</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">(optional)</span>
+        )}
       </div>
 
       {mode === "required" ? dobBlock : (

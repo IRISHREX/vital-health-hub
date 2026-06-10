@@ -14,13 +14,15 @@ const getModels = (req) => ({
 exports.getDoctors = async (req, res, next) => {
   try {
     const { Doctor } = getModels(req);
-    const { department, specialization, availabilityStatus, search, page = 1, limit = 20 } = req.query;
+    const { department, specialization, availabilityStatus, doctorType, tag, search, page = 1, limit = 20 } = req.query;
     
     const query = {};
     
     if (department) query.department = department;
     if (specialization) query.specialization = specialization;
     if (availabilityStatus) query.availabilityStatus = availabilityStatus;
+    if (doctorType) query.doctorType = doctorType;
+    if (tag) query.tags = tag;
 
     let doctors = await Doctor.find(query)
       .populate('user', 'firstName lastName email phone avatar isActive')
@@ -145,7 +147,7 @@ exports.getDoctor = async (req, res, next) => {
 exports.createDoctor = async (req, res, next) => {
   try {
     const { Doctor } = getModels(req);
-    const { name, email, phone, specialization, department, qualification, experience, consultationFee, availabilityStatus } = req.body;
+    const { name, email, phone, specialization, department, qualification, experience, consultationFee, availabilityStatus, doctorType, tags } = req.body;
 
     // Validate required fields
     if (!name || !specialization || !department || !qualification) {
@@ -176,7 +178,9 @@ exports.createDoctor = async (req, res, next) => {
         opd: safeOpdFee,
         ipd: safeIpdFee
       },
-      availabilityStatus: availabilityStatus || 'available'
+      availabilityStatus: availabilityStatus || 'available',
+      doctorType: doctorType || 'hospital',
+      tags: Array.isArray(tags) ? tags : (tags ? String(tags).split(',').map(t => t.trim()).filter(Boolean) : []),
     });
 
     res.status(201).json({

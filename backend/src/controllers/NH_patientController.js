@@ -609,17 +609,17 @@ exports.createPatient = async (req, res, next) => {
       assignedDoctor, assignedBed 
     } = req.body;
 
-    // Validate required fields
-    if (!firstName || !lastName || !dateOfBirth || !gender || !phone) {
-      throw new AppError('Please provide all required fields', 400);
+    // Only firstName is mandatory; everything else is optional
+    if (!firstName) {
+      throw new AppError('First name is required', 400);
     }
 
     const patientData = {
       firstName,
-      lastName,
-      dateOfBirth,
-      gender: gender.toLowerCase(),
-      phone,
+      ...(lastName ? { lastName } : {}),
+      ...(dateOfBirth ? { dateOfBirth } : {}),
+      ...(gender ? { gender: String(gender).toLowerCase() } : {}),
+      ...(phone ? { phone } : {}),
       email,
       address,
       emergencyContact,

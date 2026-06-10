@@ -13,8 +13,8 @@ const patientSchema = new mongoose.Schema({
   },
   lastName: {
     type: String,
-    required: [true, 'Last name is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   email: {
     type: String,
@@ -22,17 +22,14 @@ const patientSchema = new mongoose.Schema({
     trim: true
   },
   phone: {
-    type: String,
-    required: [true, 'Phone number is required']
+    type: String
   },
   dateOfBirth: {
-    type: Date,
-    required: [true, 'Date of birth is required']
+    type: Date
   },
   gender: {
     type: String,
-    enum: ['male', 'female', 'other'],
-    required: true
+    enum: ['male', 'female', 'other', '', null]
   },
   bloodGroup: {
     type: String,
@@ -110,7 +107,7 @@ const patientSchema = new mongoose.Schema({
 
 // Virtual for full name
 patientSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
+  return `${this.firstName || ''}${this.lastName ? ' ' + this.lastName : ''}`.trim();
 });
 
 // Virtual for age
