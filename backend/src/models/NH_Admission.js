@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { getNextSequenceValue } = require('../utils/sequenceGenerator');
 
 const admissionSchema = new mongoose.Schema({
   admissionId: {
@@ -164,8 +165,7 @@ admissionSchema.pre('save', function(next) {
 // Auto-generate admission ID
 admissionSchema.pre('save', async function(next) {
   if (!this.admissionId) {
-    const count = await mongoose.model('Admission').countDocuments();
-    this.admissionId = `ADM${String(count + 1).padStart(6, '0')}`;
+    this.admissionId = await getNextSequenceValue('admissionId', 'ADM');
   }
   next();
 });
