@@ -13,7 +13,8 @@ const patientSchema = new mongoose.Schema({
   },
   lastName: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   email: {
     type: String,
