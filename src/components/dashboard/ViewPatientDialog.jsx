@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Download, FileText, Phone, Mail, MapPin, User, Heart, Pill, Shield, FileBarChart2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -42,8 +43,7 @@ const getPatientDisplayId = (patient) =>
   "";
 
 const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
-  const navigate = useNavigate();
-  if (!patient) return null;
+  const navigate = useNavigate();``
 
   const patientId = patient?._id || patient?.id;
   const { data: patientDetails } = useQuery({
@@ -192,6 +192,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
   };
 
   return (
+    !patient ? null : (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
@@ -753,6 +754,7 @@ const ViewPatientDialog = ({ isOpen, onClose, patient }) => {
         </div>
       </DialogContent>
     </Dialog>
+    )
   );
 };
 
