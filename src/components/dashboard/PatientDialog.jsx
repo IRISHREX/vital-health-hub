@@ -144,7 +144,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
       firstName: "",
       lastName: "",
       dateOfBirth: "",
-      gender: "male",
+      gender: "",
       contactNumber: "",
       email: "",
       address: "",
@@ -173,7 +173,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         firstName: patient.firstName || "",
         lastName: patient.lastName || "",
         dateOfBirth: patient.dateOfBirth?.split("T")[0] || "",
-        gender: (patient.gender || "male").toLowerCase(),
+        gender: (patient.gender || "").toLowerCase(),
         contactNumber: patient.phone || "",
         email: patient.email || "",
         address: patient.address?.street ? `${patient.address.street}, ${patient.address.city}` : patient.address || "",
@@ -191,7 +191,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         firstName: "",
         lastName: "",
         dateOfBirth: "",
-        gender: "male",
+        gender: "",
         contactNumber: "",
         email: "",
         address: "",
@@ -403,7 +403,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name</FormLabel>
+                    <FormLabel>Last Name <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input placeholder="Doe" {...field} />
                     </FormControl>
@@ -431,8 +431,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel>Gender <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select gender" />
@@ -456,7 +456,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="contactNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact Number</FormLabel>
+                    <FormLabel>Contact Number <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input placeholder="+91 98765 43210" {...field} />
                     </FormControl>
@@ -469,7 +469,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="john@example.com" {...field} />
                     </FormControl>
@@ -484,7 +484,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>Address <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                   <FormControl>
                     <Textarea placeholder="Full address..." {...field} />
                   </FormControl>
