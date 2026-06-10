@@ -191,7 +191,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         firstName: "",
         lastName: "",
         dateOfBirth: "",
-        gender: "male",
+        gender: "",
         contactNumber: "",
         email: "",
         address: "",
