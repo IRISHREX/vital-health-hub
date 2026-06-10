@@ -418,7 +418,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                   value={form.watch("dateOfBirth")}
                   onChange={(dob) => form.setValue("dateOfBirth", dob || "")}
                   mode={dobMode}
-                  required={dobMode !== DOB_OPTIONS.NONE}
+                  required={false}
                   disabled={false}
                   error={form.formState.errors.dateOfBirth?.message || ""}
                   label="Date of Birth"
