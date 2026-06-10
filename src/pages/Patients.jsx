@@ -86,7 +86,7 @@ export default function Patients() {
   };
 
   const handleDelete = async (patient) => {
-    if (!window.confirm(`Delete patient ${patient.firstName} ${patient.lastName}?`)) return;
+    if (!window.confirm(`Delete patient ${`${patient.firstName || ""} ${patient.lastName || ""}`.trim()}?`)) return;
     try {
       await deletePatient(patient._id);
       play("delete");
