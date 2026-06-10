@@ -62,35 +62,19 @@ const getYesterdayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
-// Create schema based on DOB mode
+// Create schema — only firstName is mandatory by default
 const createPatientSchema = (dobMode) => {
-  let dobSchema = z.string().optional();
-
-  if (dobMode === DOB_OPTIONS.REQUIRED) {
-    dobSchema = z.string()
-      .min(1, "Date of birth is required")
-      .refine(
-        (date) => {
-          const selectedDate = new Date(date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return selectedDate < today;
-        },
-        "Date of birth cannot be today or in the future"
-      );
-  } else if (dobMode === DOB_OPTIONS.OPTIONAL) {
-    dobSchema = z.string()
-      .min(1, "Date of birth or age is required")
-      .refine(
-        (date) => {
-          const selectedDate = new Date(date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return selectedDate < today;
-        },
-        "Date of birth cannot be today or in the future"
-      );
-  }
+  // DOB is always optional; if provided, must be in the past
+  const dobSchema = z.string().optional().or(z.literal("")).refine(
+    (date) => {
+      if (!date) return true;
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate < today;
+    },
+    "Date of birth cannot be today or in the future"
+  );
 
   const optionalPhone = z.string().optional().or(z.literal("")).refine(
     (val) => {
