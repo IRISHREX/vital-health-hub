@@ -469,7 +469,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="john@example.com" {...field} />
                     </FormControl>
