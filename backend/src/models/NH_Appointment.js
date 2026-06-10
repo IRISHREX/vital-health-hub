@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { getNextSequenceValue } = require('../utils/sequenceGenerator');
 
 const appointmentSchema = new mongoose.Schema({
   appointmentId: {
@@ -85,8 +86,7 @@ const appointmentSchema = new mongoose.Schema({
 // Run this before validation so required validators see the generated values
 appointmentSchema.pre('validate', async function(next) {
   if (!this.appointmentId) {
-    const count = await mongoose.model('Appointment').countDocuments();
-    this.appointmentId = `APT${String(count + 1).padStart(6, '0')}`;
+    this.appointmentId = await getNextSequenceValue('appointmentId', 'APT');
   }
   
   // Generate token number for the day (only if appointmentDate is present)
