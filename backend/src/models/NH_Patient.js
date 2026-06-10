@@ -13,7 +13,8 @@ const patientSchema = new mongoose.Schema({
   },
   lastName: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   email: {
     type: String,
@@ -106,7 +107,7 @@ const patientSchema = new mongoose.Schema({
 
 // Virtual for full name
 patientSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
+  return `${this.firstName || ''}${this.lastName ? ' ' + this.lastName : ''}`.trim();
 });
 
 // Virtual for age

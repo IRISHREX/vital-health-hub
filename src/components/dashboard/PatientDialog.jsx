@@ -62,35 +62,19 @@ const getYesterdayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
-// Create schema based on DOB mode
+// Create schema — only firstName is mandatory by default
 const createPatientSchema = (dobMode) => {
-  let dobSchema = z.string().optional();
-
-  if (dobMode === DOB_OPTIONS.REQUIRED) {
-    dobSchema = z.string()
-      .min(1, "Date of birth is required")
-      .refine(
-        (date) => {
-          const selectedDate = new Date(date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return selectedDate < today;
-        },
-        "Date of birth cannot be today or in the future"
-      );
-  } else if (dobMode === DOB_OPTIONS.OPTIONAL) {
-    dobSchema = z.string()
-      .min(1, "Date of birth or age is required")
-      .refine(
-        (date) => {
-          const selectedDate = new Date(date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          return selectedDate < today;
-        },
-        "Date of birth cannot be today or in the future"
-      );
-  }
+  // DOB is always optional; if provided, must be in the past
+  const dobSchema = z.string().optional().or(z.literal("")).refine(
+    (date) => {
+      if (!date) return true;
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate < today;
+    },
+    "Date of birth cannot be today or in the future"
+  );
 
   const optionalPhone = z.string().optional().or(z.literal("")).refine(
     (val) => {
@@ -235,12 +219,12 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
       
       const patientData = await createPatient({
         firstName: values.firstName,
-        lastName: values.lastName,
-        dateOfBirth: values.dateOfBirth,
-        gender: values.gender,
-        phone: values.contactNumber,
+        lastName: values.lastName || "",
+        dateOfBirth: values.dateOfBirth || undefined,
+        gender: values.gender || undefined,
+        phone: values.contactNumber || "",
         email: values.email || "",
-        address: values.address,
+        address: values.address || "",
         emergencyContact: values.emergencyContact,
         bloodGroup: values.bloodGroup || null,
         registrationType: values.registrationType,
@@ -253,6 +237,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
 
       if (patientData?.data?._id || patientData?._id) {
         const patientId = patientData?.data?._id || patientData?._id;
+        const fullName = `${values.firstName}${values.lastName ? ' ' + values.lastName : ''}`;
         const invoiceData = {
           patient: patientId,
           type: values.registrationType,
@@ -262,7 +247,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
           dueAmount: 0,
           dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           status: 'draft',
-          notes: `Invoice auto-created for ${values.firstName} ${values.lastName}`,
+          notes: `Invoice auto-created for ${fullName}`,
           generatedBy: user?.id || ""
         };
         await createInvoice(invoiceData);
@@ -434,7 +419,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                   value={form.watch("dateOfBirth")}
                   onChange={(dob) => form.setValue("dateOfBirth", dob || "")}
                   mode={dobMode}
-                  required={dobMode !== DOB_OPTIONS.NONE}
+                  required={false}
                   disabled={false}
                   error={form.formState.errors.dateOfBirth?.message || ""}
                   label="Date of Birth"
