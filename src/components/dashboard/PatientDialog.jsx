@@ -484,7 +484,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>Address <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
                   <FormControl>
                     <Textarea placeholder="Full address..." {...field} />
                   </FormControl>
