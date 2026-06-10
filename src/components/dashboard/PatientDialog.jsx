@@ -219,12 +219,12 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
       
       const patientData = await createPatient({
         firstName: values.firstName,
-        lastName: values.lastName,
-        dateOfBirth: values.dateOfBirth,
-        gender: values.gender,
-        phone: values.contactNumber,
+        lastName: values.lastName || "",
+        dateOfBirth: values.dateOfBirth || undefined,
+        gender: values.gender || undefined,
+        phone: values.contactNumber || "",
         email: values.email || "",
-        address: values.address,
+        address: values.address || "",
         emergencyContact: values.emergencyContact,
         bloodGroup: values.bloodGroup || null,
         registrationType: values.registrationType,
@@ -237,6 +237,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
 
       if (patientData?.data?._id || patientData?._id) {
         const patientId = patientData?.data?._id || patientData?._id;
+        const fullName = `${values.firstName}${values.lastName ? ' ' + values.lastName : ''}`;
         const invoiceData = {
           patient: patientId,
           type: values.registrationType,
@@ -246,7 +247,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
           dueAmount: 0,
           dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           status: 'draft',
-          notes: `Invoice auto-created for ${values.firstName} ${values.lastName}`,
+          notes: `Invoice auto-created for ${fullName}`,
           generatedBy: user?.id || ""
         };
         await createInvoice(invoiceData);
