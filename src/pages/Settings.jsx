@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SettingInfo from "@/components/settings/SettingInfo";
 import {
   Select,
   SelectContent,
@@ -1251,7 +1252,7 @@ export default function Settings() {
         <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>My Profile</CardTitle>
+              <CardTitle className="flex items-center gap-2">My Profile<SettingInfo title="My Profile" purpose="Your personal account details, display name, avatar, contact info and theme preference. Changes here only affect your login." precaution="Email is your login identifier — update with care; you may be signed out." /></CardTitle>
               <CardDescription>
                 Update your personal information and avatar
               </CardDescription>
@@ -1370,7 +1371,7 @@ export default function Settings() {
             <TabsContent value="general">
               <Card>
                 <CardHeader>
-                  <CardTitle>Hospital Information</CardTitle>
+                  <CardTitle className="flex items-center gap-2">Hospital Information<SettingInfo title="Hospital Information" purpose="Organization name, address, phone, registration numbers and timings printed on invoices, prescriptions and reports." precaution="Updating these values changes every printed document organization-wide; verify spelling and tax/registration IDs before saving." /></CardTitle>
                   <CardDescription>
                     Basic information about your hospital
                   </CardDescription>
@@ -1524,7 +1525,7 @@ export default function Settings() {
             <TabsContent value="users">
               <Card>
                 <CardHeader>
-                  <CardTitle>User Management</CardTitle>
+                  <CardTitle className="flex items-center gap-2">User Management<SettingInfo title="User Management" purpose="Create, edit and deactivate staff accounts. Assign RBAC roles (doctor, nurse, receptionist, billing, admin) that determine what each user can access." precaution="Role changes apply on the user's next login. Deactivating a user revokes access immediately but does not delete their historical records." /></CardTitle>
                   <CardDescription>
                     Manage user roles and permissions
                   </CardDescription>
@@ -1566,7 +1567,7 @@ export default function Settings() {
             <TabsContent value="security">
               <Card>
                 <CardHeader>
-                  <CardTitle>Security Settings</CardTitle>
+                  <CardTitle className="flex items-center gap-2">Security Settings<SettingInfo title="Security Settings" purpose="Password policy, session timeout, two-factor authentication and audit logging controls for the organization." precaution="Stricter policies (short session timeout, forced 2FA) can lock out users without configured devices — communicate changes to staff first." /></CardTitle>
                   <CardDescription>
                     Configure authentication and security options
                   </CardDescription>
@@ -1678,7 +1679,7 @@ export default function Settings() {
             <TabsContent value="notifications">
               <Card>
                 <CardHeader>
-                  <CardTitle>Notification Settings</CardTitle>
+                  <CardTitle className="flex items-center gap-2">Notification Settings<SettingInfo title="Notification Settings" purpose="Toggle in-app, email and SMS alerts per event type (bed availability, appointments, invoices, schedule changes). Polled every 30 s." precaution="Disabling critical channels (e.g. payment overdue) may cause missed follow-ups. Email/SMS require working SMTP / gateway credentials." /></CardTitle>
                   <CardDescription>
                     Configure system-wide notification preferences
                   </CardDescription>
@@ -1789,7 +1790,7 @@ export default function Settings() {
             <TabsContent value="modules">
               <Card>
                 <CardHeader>
-                  <CardTitle>Module Operations</CardTitle>
+                  <CardTitle className="flex items-center gap-2">Module Operations<SettingInfo title="Module Operations" purpose="Per-module switches: deployment mode (integrated vs standalone), walk-in patient support and how each module posts to the central billing ledger." precaution="Switching a module between integrated and standalone changes data routing and may hide existing records from the regular workflow. Coordinate with affected departments." /></CardTitle>
                   <CardDescription>
                     Configure Pathology, Radiology, and Pharmacy for integrated or standalone workflows, including per-user external walk-in controls.
                   </CardDescription>
@@ -1941,7 +1942,7 @@ export default function Settings() {
             <TabsContent value="data">
               <Card>
                 <CardHeader>
-                  <CardTitle>Data Management</CardTitle>
+                  <CardTitle className="flex items-center gap-2">Data Management<SettingInfo title="Data Management" purpose="Bulk import (CSV) and export of patients, doctors, services, etc. Configure scheduled auto-exports for backup." precaution="Imports are append/overwrite — always download a template first and back up before a large import. Auto-exports may include PHI; store the destination securely." /></CardTitle>
                   <CardDescription>
                     Backup, export, and manage hospital data
                   </CardDescription>
@@ -2162,7 +2163,7 @@ export default function Settings() {
           <TabsContent value="permissions">
             <Card>
               <CardHeader>
-                <CardTitle>Visual Access Permissions</CardTitle>
+                <CardTitle className="flex items-center gap-2">Visual Access Permissions<SettingInfo title="Visual Access Permissions" purpose="Per-user, per-module overrides layered on top of the RBAC matrix. Grant or revoke view/create/edit/delete and handle access requests." precaution="These overrides cannot exceed what the Grandmaster has enabled for the organization. Removing access for the currently signed-in admin can lock you out." /></CardTitle>
                 <CardDescription>
                   Manage module visibility, action restrictions, and permission workflow.
                 </CardDescription>
@@ -2551,7 +2552,7 @@ export default function Settings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Validation UI</CardTitle>
+                <CardTitle className="flex items-center gap-2">Validation UI<SettingInfo title="Validation UI" purpose="Choose how form validation appears (inline messages vs toasts) and which non-critical fields are mandatory across forms." precaution="Making fields optional that downstream reports depend on (e.g. patient DOB for age-band statistics) may produce incomplete analytics." /></CardTitle>
                 <CardDescription>
                   Control inline validation feedback globally, per form, and per field. Validation rules still run even when the UI is hidden.
                 </CardDescription>
@@ -2673,6 +2674,7 @@ export default function Settings() {
                 <CardTitle className="flex items-center gap-2">
                   <ShieldCheck className="h-5 w-5" />
                   Approval Workflows
+                  <SettingInfo title="Approval Workflows" purpose="Define gates between any two processes: choose module + action, pick an approver (email or role), attach a custom form and an SLA with escalation." precaution="Hard-blocking rules will stop the underlying action until approved. Always set an SLA and an escalation target to avoid stuck requests." />
                 </CardTitle>
                 <CardDescription>
                   Define dynamic approval gates between any two processes. Configure approvers, custom forms, and SLA escalation.
