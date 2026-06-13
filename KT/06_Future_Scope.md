@@ -1,38 +1,37 @@
 # Future Scope & Roadmap
 ## Vital Health Hub Platform
 
-**Version:** 2.0  
-**Date:** 2026-03-06
+**Version:** 2.1  
+**Date:** 2026-06-13
+
+---
+
+## 0. Recently Shipped (was P0)
+
+- ✅ **Tenant-Aware Login** — `GM_UserOrgMapping`, tenant resolver middleware,
+  per-tenant model resolution via `getModel(req, ...)` across all NH controllers.
+- ✅ **Module Filtering on Frontend** — `useVisualAuth` intersects RBAC with
+  `organization.enabledModules`; sidebar and routes hide disabled modules.
+- ✅ **Standalone Portals** — `/lab-portal`, `/pharmacy-portal`, `/radiology-portal`
+  with dedicated login, sidebar, and `portalContext` tagging on records.
+- ✅ **Scheduler** — Global calendar, doctor slot API, conflict detection,
+  invitations with accept/reject.
+- ✅ **Approvals** — Rule engine, ApprovalGate, ApprovalsManager, SLA, escalation.
+- ✅ **Service Catalog** — Master + RoomTypeService rules for included vs billable.
+- ✅ **Audit Logging** — `GM_AuditLog` for Grandmaster sensitive actions.
+- ✅ **Settings Info Popovers** — `SettingInfo` across every Settings section.
 
 ---
 
 ## 1. Critical / P0 — Blocking Items
 
-### 1.1 Tenant-Aware Login Flow
-**Status:** Not Implemented  
-**Impact:** Multi-tenancy is non-functional without this
-
-- Implement `GM_UserOrgMapping` collection
-- Update `NH_authController.login()` to resolve tenant from email
-- Update Passport JWT strategy to be tenant-aware
-- Add `attachTenantModels` middleware to all NH routes
-- Refactor all NH controllers to use `req.tenantModels` instead of direct model imports
-- See `04_Tenant_Aware_Login_Analysis.md` for full design
-
-### 1.2 Subscription Enforcement
+### 1.1 Subscription Enforcement
 **Status:** Schema exists, enforcement missing
 
 - Middleware to check subscription validity on every authenticated request
 - Block access to modules not included in the subscription plan
 - Grace period handling with user-facing warnings
 - Auto-expire subscriptions via cron job
-
-### 1.3 Module Filtering on Frontend
-**Status:** Not Implemented
-
-- Sidebar must filter navigation based on `organization.enabledModules`
-- Intersection of RBAC permissions AND org-enabled modules
-- Hide routes for disabled modules
 
 ---
 

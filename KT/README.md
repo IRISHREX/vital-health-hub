@@ -10,11 +10,13 @@
 | 01 | [SRS — Software Requirements Specification](./01_SRS_Software_Requirements_Specification.md) | Complete functional & non-functional requirements, API endpoints, data models |
 | 02 | [Architecture Document](./02_Architecture_Document.md) | System architecture, multi-tenancy strategy, auth design, deployment topology |
 | 03 | [Data Flow Diagrams](./03_Data_Flow_Diagrams.md) | Level 0-2 DFDs covering all major subsystems and data stores |
-| 04 | [Tenant-Aware Login Analysis](./04_Tenant_Aware_Login_Analysis.md) | Gap analysis of the current login flow, proposed solution, impact assessment |
+| 04 | [Tenant-Aware Login Analysis](./04_Tenant_Aware_Login_Analysis.md) | Gap analysis of the legacy login flow and the GM_UserOrgMapping solution (now shipped) |
 | 05 | [Flow Diagrams](./05_Flow_Diagrams.md) | Operational flows: onboarding, login, admission, RBAC, subscription lifecycle |
 | 06 | [Future Scope & Roadmap](./06_Future_Scope.md) | Prioritized roadmap (P0-P3), technical debt, scalability considerations |
-| 07 | [Module Functionality Reference](./07_Module_Functionality_Reference.md) | Detailed per-module capability guide for both Grandmaster and Hospital portals |
+| 07 | [Module Functionality Reference](./07_Module_Functionality_Reference.md) | Detailed per-module capability guide for Grandmaster, Hospital, and Standalone portals |
 | 08 | [Unit Test Case Catalog](./08_Unit_Test_Cases.md) | Backend-focused unit test catalog and module-wise coverage distribution |
+| 09 | [E2E Test Scenarios](./09_E2E_Test_Scenarios.md) | 46 end-to-end scenarios for notifications, approvals, and scheduler |
+| 10 | [Module Scenarios — Standalone, Hybrid & Integrated](./10_Module_Scenarios_Standalone_Hybrid_Integrated.md) | Per-module operational playbook across the three deployment modes |
 
 ---
 
@@ -36,9 +38,11 @@ Database (MongoDB Atlas)
   └── ...                     → N tenant databases
 ```
 
-## ⚠️ Critical Gap
+## ✅ Tenant-Aware Login
 
-**The tenant-aware login flow is not yet implemented.** Hospital users created during onboarding (stored in tenant databases) cannot log in via `/login`. See document #04 for the full analysis and proposed solution.
+The `GM_UserOrgMapping` collection and tenant resolver are live — hospital
+users created during onboarding can now log in via `/login` and are routed
+to the correct tenant database. See document #04 for design history.
 
 ## 🔑 Default Credentials
 

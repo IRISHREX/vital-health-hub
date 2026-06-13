@@ -1,8 +1,8 @@
 # Module Functionality Reference
 ## Vital Health Hub — Complete Module Guide
 
-**Version:** 2.0  
-**Date:** 2026-03-06
+**Version:** 2.1  
+**Date:** 2026-06-13
 
 ---
 
@@ -147,34 +147,78 @@
 - **Visual Access:** Per-user module feature restrictions
 - **Module Operations:** Configure module-specific settings
 - **Facility Settings:** Hospital-level configuration
+- **Validation Preferences:** DOB/Age requirements, phone format, name fields
+- **Approvals:** Rule editor, SLA, soft/hard gates, escalation
+- **Branding / Sound / Theme:** Logo, palette, UI sound feedback, light/dark/system
+- **(i) Info popovers:** Every section ships a `SettingInfo` popover with purpose + precaution copy
+
+### 2.19 Scheduler (`/scheduler`)
+- Global calendar across doctors, OT rooms, equipment
+- Doctor slot endpoint (10/20/30-minute granularity) with atomic conflict checks
+- Invitations with accept / reject and response notifications
+- Recurring blocks for breaks, leaves, and surgeries
+
+### 2.20 Service Catalog (`/service-catalog`)
+- Master list of billable services with room-type rules (included vs billable)
+- Linked to admission, OT, lab, radiology, pharmacy charge generation
 
 ---
 
-## 3. Cross-Cutting Concerns
+## 3. Standalone Portals
 
-### 3.1 Authentication
-- Email/password login
-- JWT-based sessions (7-day expiry)
-- Password reset with email tokens
-- Profile update
+Each portal is a dedicated login + sidebar surface backed by the same
+tenant database, scoped via `PortalContext` and `portalContext` tags on
+records.
 
-### 3.2 Authorization (RBAC)
-- 7 roles × 18 modules × 4 permissions = 504 permission combinations
-- Role hierarchy with inheritance
-- Visual access override system
-- Personal permission overrides
+### 3.1 Lab Portal (`/lab-portal`)
+- Login as `pathologist` / `lab_technician`
+- Walk-in patient form on every order, on-the-spot invoicing
+- Catalog management, sample queue, report generation, PDF export
 
-### 3.3 Theme Support
-- Light/Dark mode toggle
-- Persistent theme preference
-- shadcn/ui design system with semantic tokens
+### 3.2 Pharmacy Portal (`/pharmacy-portal`)
+- Login as `pharmacist`
+- OTC dispensing with external prescription capture, stock decrement
+- Receipt printing, daily reconciliation reports
 
-### 3.4 Responsive Design
-- Mobile-responsive sidebar
-- Touch-friendly UI components
-- Adaptive layouts
+### 3.3 Radiology Portal (`/radiology-portal`)
+- Login as `radiologist` / `radiology_technician`
+- Walk-in booking, modality scheduling, reporting workflow
+- PDF report dispatch with hospital branding
 
-### 3.5 PDF Generation
-- Lab reports, radiology reports, prescriptions
-- Uses jsPDF + jspdf-autotable
-- Branded headers with hospital info
+For a deep-dive into how each module behaves across Standalone, Hybrid,
+and Integrated NH modes, see `10_Module_Scenarios_Standalone_Hybrid_Integrated.md`.
+
+---
+
+## 4. Cross-Cutting Concerns
+
+### 4.1 Authentication
+- Email/password login, tenant-aware via `GM_UserOrgMapping`
+- JWT-based sessions (7-day expiry), `isGrandmaster` flag for platform users
+- Password reset with email tokens, profile update
+
+### 4.2 Authorization (RBAC)
+- 9 roles × 20 modules × 4 permissions, layered with Personal Permissions
+- Module access gated by `useVisualAuth` against organisation-enabled modules
+- Approval rules can override default permissions for sensitive actions
+
+### 4.3 Notifications
+- 30-second polling + Socket.io live push
+- Bed availability, appointment reminders, invoice generation, report ready,
+  handover request/response, approval pending, SLA breach, platform notices
+
+### 4.4 Theme & Branding
+- Light/Dark/System persisted in MongoDB profile + localStorage
+- Per-org branding (logo, colours) injected at runtime
+- Sound feedback via Web Audio API (`useSound`)
+
+### 4.5 Responsive Design
+- Mobile-responsive sidebar, Widget Home grid (Ctrl+K), touch-friendly UI
+
+### 4.6 PDF Generation
+- Lab reports, radiology reports, prescriptions, invoices, discharge summaries
+- jsPDF + jspdf-autotable with branded headers
+
+### 4.7 Multi-tenancy
+- One MongoDB database per tenant (`nh_tenant_*`)
+- Connection pooled via `tenantManager`; models resolved via `getModel(req, ...)`
