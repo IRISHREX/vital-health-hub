@@ -36,9 +36,8 @@ export function DashboardLayout() {
   }, [widgetOverlayOpen, setWidgetOverlayOpen]);
 
   useEffect(() => {
-    checkHealth().catch((error) => {
-      console.error("API health check failed:", error);
-    });
+    // checkHealth() now resolves with { ok:false } on failure, so no catch needed.
+    checkHealth();
   }, []);
 
   const showWidgetHome = mode === "widget" && isHome;
