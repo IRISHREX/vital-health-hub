@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
+import { useRowActionsStyle } from "@/hooks/useRowActionsStyle";
 
 /**
  * Radial fan-out row actions menu.
