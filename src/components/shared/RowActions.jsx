@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
+import { useRowActionsStyle } from "@/hooks/useRowActionsStyle";
 
 /**
  * Radial fan-out row actions menu.
@@ -31,6 +32,7 @@ const VARIANT_CLASSES = {
 const DEG = Math.PI / 180;
 
 function RowActions({ actions = [], align = "end", radius = 56, arc = 140, className }) {
+  const [style] = useRowActionsStyle();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -68,6 +70,46 @@ function RowActions({ actions = [], align = "end", radius = 56, arc = 140, class
   }, [open, close]);
 
   if (visible.length === 0) return null;
+
+  if (style === "inline") {
+    return (
+      <div
+        className={cn(
+          "inline-flex flex-wrap items-center gap-1",
+          align === "end" ? "justify-end" : "justify-start",
+          className,
+        )}
+      >
+        {visible.map((a, i) => {
+          const Icon = a.icon;
+          return (
+            <IconTooltip key={`${a.label}-${i}`} label={a.label} side="top">
+              <button
+                type="button"
+                aria-label={a.label}
+                disabled={a.disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  a.onClick?.(e);
+                }}
+                className={cn(
+                  "inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "disabled:cursor-not-allowed disabled:opacity-40",
+                  VARIANT_CLASSES[a.variant] || VARIANT_CLASSES.default,
+                )}
+              >
+                {Icon ? <Icon className="h-4 w-4" /> : null}
+                <span className="sr-only">{a.label}</span>
+              </button>
+            </IconTooltip>
+          );
+        })}
+      </div>
+    );
+  }
+
+
 
   return (
     <div

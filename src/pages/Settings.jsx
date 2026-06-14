@@ -99,6 +99,7 @@ import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
 import SoundSettings from "@/components/settings/SoundSettings";
+import { useRowActionsStyle } from "@/hooks/useRowActionsStyle";
 import DOBAgeSetting from "@/components/settings/DOBAgeSetting";
 import BrandingSettings from "@/components/settings/BrandingSettings";
 import { normalizeValidationPreferences, validationFormRegistry } from "@/lib/validationPreferences";
@@ -253,6 +254,7 @@ export default function Settings() {
   const { user, logout } = useAuth();
   const { canManageVisualPermissions, canCreate, isModuleEnabled, enabledModules } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const [rowActionsStyle, setRowActionsStyle] = useRowActionsStyle();
   const {
     preferences: validationPreferences,
     savePreferences: saveValidationPreferences,
@@ -2542,9 +2544,58 @@ export default function Settings() {
           </TabsContent>
         )}
 
-        <TabsContent value="sounds">
+        <TabsContent value="sounds" className="space-y-6">
           <SoundSettings />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Row Action Style
+                <SettingInfo
+                  title="Row Action Style"
+                  purpose="Choose how per-row actions (View, Edit, Delete, Print, etc.) are presented across tables in the app."
+                  precaution="'Inline' shows every action button in the row — better discoverability but uses more horizontal space on dense tables and small screens. 'Fan menu' keeps a single ⋯ button that expands radially."
+                />
+              </CardTitle>
+              <CardDescription>
+                Applies to every list/table row action menu. Saved to this browser.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setRowActionsStyle("fan")}
+                  className={`rounded-lg border p-4 text-left transition-colors ${
+                    rowActionsStyle === "fan"
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                      : "border-border hover:bg-accent"
+                  }`}
+                >
+                  <p className="font-medium">Fan menu (⋯)</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Single button that fans out actions radially on click. Compact.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRowActionsStyle("inline")}
+                  className={`rounded-lg border p-4 text-left transition-colors ${
+                    rowActionsStyle === "inline"
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                      : "border-border hover:bg-accent"
+                  }`}
+                >
+                  <p className="font-medium">Inline buttons</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    All action icons (View, Edit, Delete, Print…) visible directly in the row.
+                  </p>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
+
 
         {isAdmin && (
           <TabsContent value="data-settings" className="space-y-6">
