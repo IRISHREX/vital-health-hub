@@ -254,6 +254,7 @@ export default function Settings() {
   const { user, logout } = useAuth();
   const { canManageVisualPermissions, canCreate, isModuleEnabled, enabledModules } = useVisualAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const [rowActionsStyle, setRowActionsStyle] = useRowActionsStyle();
   const {
     preferences: validationPreferences,
     savePreferences: saveValidationPreferences,
