@@ -99,6 +99,7 @@ import { moduleLabels, rbacModules } from "@/lib/rbac";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { moduleFeatureCatalog, featureLabels } from "@/lib/advanced-permissions";
 import SoundSettings from "@/components/settings/SoundSettings";
+import { useRowActionsStyle } from "@/hooks/useRowActionsStyle";
 import DOBAgeSetting from "@/components/settings/DOBAgeSetting";
 import BrandingSettings from "@/components/settings/BrandingSettings";
 import { normalizeValidationPreferences, validationFormRegistry } from "@/lib/validationPreferences";
