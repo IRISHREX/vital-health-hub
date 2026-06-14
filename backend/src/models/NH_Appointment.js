@@ -85,24 +85,63 @@ const appointmentSchema = new mongoose.Schema({
 // Auto-generate appointment ID and token
 // Run this before validation so required validators see the generated values
 appointmentSchema.pre('validate', async function(next) {
-  if (!this.appointmentId) {
-    this.appointmentId = await getNextSequenceValue('appointmentId', 'APT');
+  try {
+    if (!this.appointmentId) {
+      this.appointmentId = await getNextSequenceValue('appointmentId', 'APT');
+    }
+
+    // Generate a per-doctor per-date token number.
+    // - Scoped by doctor + calendar date (YYYY-MM-DD) so tokens reset daily per doctor.
+    // - Uses an atomic counter to avoid race conditions on concurrent bookings.
+    // - Falls back to (max token + 1) for the (doctor, date) window if the counter
+    //   is behind (e.g. legacy data inserted before this logic existed).
+    if (!this.tokenNumber && this.appointmentDate && this.doctor) {
+      const d = new Date(this.appointmentDate);
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const counterKey = `appointmentToken:${this.doctor}:${dateKey}`;
+
+      const Counter = mongoose.model('Counter');
+      const Appointment = mongoose.model('Appointment');
+
+      const startOfDay = new Date(d); startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(d); endOfDay.setHours(23, 59, 59, 999);
+
+      // Find the highest existing active token for this doctor+date (excluding
+      // cancelled/no_show so reclaimed slots don't leave gaps growing forever,
+      // but we still take the max to never collide with an existing record).
+      const highest = await Appointment.findOne({
+        doctor: this.doctor,
+        appointmentDate: { $gte: startOfDay, $lte: endOfDay },
+      })
+        .sort({ tokenNumber: -1 })
+        .select('tokenNumber')
+        .lean();
+      const existingMax = highest?.tokenNumber || 0;
+
+      // Atomically increment the per-(doctor,date) counter
+      const counter = await Counter.findByIdAndUpdate(
+        counterKey,
+        { $inc: { sequence_value: 1 } },
+        { new: true, upsert: true }
+      );
+
+      // Reconcile: if counter is behind real data, bump it forward atomically.
+      let token = counter.sequence_value;
+      if (token <= existingMax) {
+        const reconciled = await Counter.findByIdAndUpdate(
+          counterKey,
+          { $set: { sequence_value: existingMax + 1 } },
+          { new: true }
+        );
+        token = reconciled.sequence_value;
+      }
+
+      this.tokenNumber = token;
+    }
+    next();
+  } catch (err) {
+    next(err);
   }
-  
-  // Generate token number for the day (only if appointmentDate is present)
-  if (!this.tokenNumber && this.appointmentDate) {
-    const startOfDay = new Date(this.appointmentDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(this.appointmentDate);
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    const todayCount = await mongoose.model('Appointment').countDocuments({
-      doctor: this.doctor,
-      appointmentDate: { $gte: startOfDay, $lte: endOfDay }
-    });
-    this.tokenNumber = todayCount + 1;
-  }
-  next();
 });
 
 // Indexes for efficient queries
