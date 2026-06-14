@@ -32,6 +32,7 @@ const VARIANT_CLASSES = {
 const DEG = Math.PI / 180;
 
 function RowActions({ actions = [], align = "end", radius = 56, arc = 140, className }) {
+  const [style] = useRowActionsStyle();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
