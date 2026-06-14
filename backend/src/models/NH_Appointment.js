@@ -100,8 +100,13 @@ appointmentSchema.pre('validate', async function(next) {
       const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const counterKey = `appointmentToken:${this.doctor}:${dateKey}`;
 
-      const Counter = mongoose.model('Counter');
-      const Appointment = mongoose.model('Appointment');
+      // IMPORTANT: use the same connection this document is bound to so that
+      // multi-tenant deployments hit the correct tenant DB (not the default
+      // mongoose connection).
+      const conn = this.constructor.db;
+      const CounterModel = require('./Counter');
+      const Counter = conn.models.Counter || conn.model('Counter', CounterModel.schema);
+      const Appointment = this.constructor;
 
       const startOfDay = new Date(d); startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(d); endOfDay.setHours(23, 59, 59, 999);

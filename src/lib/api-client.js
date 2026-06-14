@@ -69,16 +69,28 @@ export const apiClient = {
     };
 
     const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-    const raw = await response.json();
-    
+
+    // Guard against non-JSON responses (e.g. SPA index.html served when the
+    // backend isn't reachable). Surface a clean error instead of the cryptic
+    // "Unexpected token '<'" from JSON.parse.
+    const contentType = response.headers.get('content-type') || '';
+    let raw;
+    if (contentType.includes('application/json')) {
+      raw = await response.json();
+    } else {
+      const text = await response.text();
+      if (!response.ok) {
+        throw new Error(`API ${response.status} (${endpoint}): non-JSON response`);
+      }
+      throw new Error(`Expected JSON from ${endpoint} but received ${contentType || 'unknown'}`);
+    }
+
     if (!response.ok) {
       throw new Error(raw.message || 'API Error');
     }
 
-    // Normalize: backend may return { success, data, ... } or plain object/array
-    // Always return the inner data when wrapped, or raw otherwise
     if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'success' in raw && 'data' in raw) {
-      return raw; // Already structured: { success, data, message?, meta? }
+      return raw;
     }
 
     return raw;
