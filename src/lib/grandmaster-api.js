@@ -45,8 +45,13 @@ export const getGmToken = () => localStorage.getItem('gm_token');
 export const setGmToken = (token) => localStorage.setItem('gm_token', token);
 export const removeGmToken = () => localStorage.removeItem('gm_token');
 export const getGmUser = () => {
-  const u = localStorage.getItem('gm_user');
-  return u ? JSON.parse(u) : null;
+  try {
+    const u = localStorage.getItem('gm_user');
+    return u ? JSON.parse(u) : null;
+  } catch {
+    try { localStorage.removeItem('gm_user'); } catch {}
+    return null;
+  }
 };
 export const setGmUser = (user) => localStorage.setItem('gm_user', JSON.stringify(user));
 export const removeGmUser = () => localStorage.removeItem('gm_user');
