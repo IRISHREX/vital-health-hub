@@ -7,7 +7,8 @@ export default function ImpersonationBanner() {
   const raw = localStorage.getItem('gm_impersonation');
   if (!raw) return null;
 
-  const info = JSON.parse(raw);
+  let info = null;
+  try { info = JSON.parse(raw); } catch { info = null; }
   if (!info?.active || !visible) return null;
 
   const exitImpersonation = () => {

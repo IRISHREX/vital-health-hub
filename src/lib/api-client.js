@@ -48,13 +48,23 @@ export const setOrgSlug = (slug) => {
 };
 export const removeOrgSlug = () => localStorage.removeItem(ORG_SLUG_KEY);
 
-// User object management
+// User object management. Resilient to corrupt JSON in localStorage so a
+// bad write can never crash the app at boot.
 export const getUser = () => {
+  try {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+  } catch {
+    try { localStorage.removeItem('user'); } catch {}
+    return null;
+  }
 };
-export const setUser = (user) => localStorage.setItem('user', JSON.stringify(user));
-export const removeUser = () => localStorage.removeItem('user');
+export const setUser = (user) => {
+  try { localStorage.setItem('user', JSON.stringify(user)); } catch {}
+};
+export const removeUser = () => {
+  try { localStorage.removeItem('user'); } catch {}
+};
 
 // API client with auth
 export const apiClient = {
@@ -68,29 +78,49 @@ export const apiClient = {
       ...options.headers,
     };
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    let response;
+    try {
+      response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    } catch (networkErr) {
+      const err = new Error(`Network error reaching ${endpoint}: ${networkErr?.message || networkErr}`);
+      err.cause = networkErr;
+      err.isNetworkError = true;
+      throw err;
+    }
+
+    // 204 No Content / empty body
+    if (response.status === 204) {
+      if (!response.ok) throw new Error(`API ${response.status} (${endpoint})`);
+      return null;
+    }
 
     // Guard against non-JSON responses (e.g. SPA index.html served when the
     // backend isn't reachable). Surface a clean error instead of the cryptic
     // "Unexpected token '<'" from JSON.parse.
     const contentType = response.headers.get('content-type') || '';
-    let raw;
-    if (contentType.includes('application/json')) {
-      raw = await response.json();
+    const isJson = contentType.includes('application/json');
+    let raw = null;
+    if (isJson) {
+      try {
+        raw = await response.json();
+      } catch {
+        raw = null;
+      }
     } else {
-      const text = await response.text();
+      // Drain the body so the connection can close.
+      try { await response.text(); } catch {}
       if (!response.ok) {
-        throw new Error(`API ${response.status} (${endpoint}): non-JSON response`);
+        throw new Error(`API ${response.status} (${endpoint})`);
       }
       throw new Error(`Expected JSON from ${endpoint} but received ${contentType || 'unknown'}`);
     }
 
     if (!response.ok) {
-      throw new Error(raw.message || 'API Error');
-    }
-
-    if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'success' in raw && 'data' in raw) {
-      return raw;
+      const msg = (raw && (raw.message || raw.error)) || `API ${response.status} (${endpoint})`;
+      const err = new Error(msg);
+      err.status = response.status;
+      err.data = raw;
+      throw err;
     }
 
     return raw;
