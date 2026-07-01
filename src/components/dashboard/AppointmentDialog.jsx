@@ -227,8 +227,11 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
         if (created) {
           const patientObj = patients.find((p) => p._id === variables?.patientId) || created.patient;
           const doctorObj = allDoctors.find((d) => d._id === (variables?.doctorId)) || created.doctor;
+          // Merge so phone/patientId from list fills any gaps in the newly-created payload
+          const mergedPatient = { ...(patientObj || {}), ...(created.patient || {}) };
+          const mergedDoctor = { ...(doctorObj || {}), ...(created.doctor || {}) };
           printAppointmentReceipt(
-            { ...created, patient: created.patient || patientObj, doctor: created.doctor || doctorObj },
+            { ...created, patient: mergedPatient, doctor: mergedDoctor },
             hospitalRes?.data || {}
           );
         }
