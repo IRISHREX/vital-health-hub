@@ -43,12 +43,6 @@ export default function DOBAgePicker({
     }
   }, [value]);
 
-  const parts = useMemo(() => {
-    if (!dobValue) return { y: "", m: "", d: "" };
-    const [y, m, d] = dobValue.split("-");
-    return { y: y || "", m: m || "", d: d || "" };
-  }, [dobValue]);
-
   const commit = (iso) => {
     setDobValue(iso || "");
     if (iso) {
@@ -80,23 +74,6 @@ export default function DOBAgePicker({
     commit(calculateDOBFromAge(val));
   };
 
-  const handlePartChange = (key, raw) => {
-    const next = { ...parts, [key]: raw.replace(/\D/g, "") };
-    if (!next.y && !next.m && !next.d) return commit(null);
-    const y = next.y.padStart(4, "0");
-    const m = String(Math.min(12, Math.max(1, Number(next.m) || 1))).padStart(2, "0");
-    const dMax = new Date(Number(y), Number(m), 0).getDate();
-    const d = String(Math.min(dMax, Math.max(1, Number(next.d) || 1))).padStart(2, "0");
-    if (next.y.length < 4) {
-      setDobValue(`${next.y}-${next.m}-${next.d}`);
-      return;
-    }
-    const iso = `${y}-${m}-${d}`;
-    const v = validateDOB(iso);
-    setDobError(v.isValid ? "" : v.error);
-    if (v.isValid) commit(iso);
-    else setDobValue(iso);
-  };
 
   const displayError = error || dobError || ageError;
   if (mode === "none") return null;
