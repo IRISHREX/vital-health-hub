@@ -177,6 +177,7 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
 
   // When doctor changes, prefill fee from doctor's consultationFee
   const watchedDoctorId = form.watch("doctorId");
+  const watchedPaymentMode = form.watch("paymentMode");
   useEffect(() => {
     if (mode === "create" && watchedDoctorId) {
       const doc = allDoctors.find((d) => d._id === watchedDoctorId);
@@ -186,6 +187,14 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
       }
     }
   }, [watchedDoctorId, allDoctors, mode, form]);
+
+  // Auto-confirm status when payment mode is set to a non-pending mode
+  useEffect(() => {
+    if (watchedPaymentMode && watchedPaymentMode !== "pending") {
+      const current = form.getValues("status");
+      if (current === "scheduled") form.setValue("status", "confirmed");
+    }
+  }, [watchedPaymentMode, form]);
 
   const buildPayload = (data) => {
     const selectedDoctorId = isDoctorUser ? loggedInDoctor?._id : data.doctorId;
