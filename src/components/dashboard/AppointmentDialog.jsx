@@ -66,13 +66,13 @@ const appointmentSchema = z.object({
     ),
   priority: z.enum(["normal", "urgent", "emergency"]).optional(),
   fee: z.coerce.number().min(0, "Fee must be ≥ 0").optional(),
-  paymentMode: z.enum(["pending", "cash", "card", "upi", "net_banking", "cheque", "insurance"]).optional(),
+  paymentMode: z.enum(["pending", "cash", "card", "upi", "net_banking"]).optional(),
   referredByName: z.string().optional().or(z.literal("")),
   referredByDoctorId: z.string().optional().or(z.literal("")),
   reason: z.string().max(200).optional().or(z.literal("")),
   notes: z.string().optional(),
   type: z.enum(["opd", "follow_up", "consultation", "emergency", "telemedicine"]).optional(),
-  status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
+  status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "refunded"]).optional(),
 });
 
 export default function AppointmentDialog({ isOpen, onClose, appointment, mode }) {
