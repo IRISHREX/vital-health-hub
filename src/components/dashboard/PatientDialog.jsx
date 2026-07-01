@@ -164,10 +164,26 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     },
   });
 
+  const emptyDefaults = {
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    gender: "",
+    contactNumber: "",
+    email: "",
+    address: "",
+    emergencyContact: { name: "", relationship: "", phone: "" },
+    bloodGroup: "",
+    registrationType: "opd",
+    medicalHistory: "",
+    assignedDoctor: "",
+    assignedBed: "",
+    assignedNurses: [],
+    primaryNurse: "",
+  };
+
   useEffect(() => {
-    // Reset form values only when the selected patient (by id) or mode actually changes.
-    // Using `patient?._id` avoids resetting on every render when the parent passes a new
-    // object reference but the patient identity hasn't changed.
+    if (!isOpen) return; // reset only when opening
     if (patient && mode === "edit") {
       form.reset({
         firstName: patient.firstName || "",
@@ -187,29 +203,9 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
         primaryNurse: patient.primaryNurse?._id || patient.primaryNurse || "",
       });
     } else {
-      form.reset({
-        firstName: "",
-        lastName: "",
-        dateOfBirth: "",
-        gender: "",
-        contactNumber: "",
-        email: "",
-        address: "",
-        emergencyContact: {
-          name: "",
-          relationship: "",
-          phone: "",
-        },
-        bloodGroup: "",
-        registrationType: "opd",
-        medicalHistory: "",
-        assignedDoctor: "",
-        assignedBed: "",
-        assignedNurses: [],
-        primaryNurse: "",
-      });
+      form.reset(emptyDefaults);
     }
-  }, [patient?._id, mode]);
+  }, [patient?._id, mode, isOpen]);
 
   const createMutation = useMutation({
     mutationFn: async (values) => {
@@ -362,6 +358,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
   };
 
   const handleClose = () => {
+    form.reset(emptyDefaults);
     onClose();
   };
 

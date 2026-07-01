@@ -274,7 +274,7 @@ exports.createAppointment = async (req, res, next) => {
       createdBy: req.user._id
     });
 
-    await appointment.populate('patient', 'firstName lastName email');
+    await appointment.populate('patient', 'firstName lastName email phone patientId');
     await appointment.populate({
       path: 'doctor',
       populate: { path: 'user', select: 'firstName lastName' }

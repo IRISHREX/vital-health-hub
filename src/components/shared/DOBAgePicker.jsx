@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,12 +43,6 @@ export default function DOBAgePicker({
     }
   }, [value]);
 
-  const parts = useMemo(() => {
-    if (!dobValue) return { y: "", m: "", d: "" };
-    const [y, m, d] = dobValue.split("-");
-    return { y: y || "", m: m || "", d: d || "" };
-  }, [dobValue]);
-
   const commit = (iso) => {
     setDobValue(iso || "");
     if (iso) {
@@ -80,49 +74,10 @@ export default function DOBAgePicker({
     commit(calculateDOBFromAge(val));
   };
 
-  const handlePartChange = (key, raw) => {
-    const next = { ...parts, [key]: raw.replace(/\D/g, "") };
-    if (!next.y && !next.m && !next.d) return commit(null);
-    const y = next.y.padStart(4, "0");
-    const m = String(Math.min(12, Math.max(1, Number(next.m) || 1))).padStart(2, "0");
-    const dMax = new Date(Number(y), Number(m), 0).getDate();
-    const d = String(Math.min(dMax, Math.max(1, Number(next.d) || 1))).padStart(2, "0");
-    if (next.y.length < 4) {
-      setDobValue(`${next.y}-${next.m}-${next.d}`);
-      return;
-    }
-    const iso = `${y}-${m}-${d}`;
-    const v = validateDOB(iso);
-    setDobError(v.isValid ? "" : v.error);
-    if (v.isValid) commit(iso);
-    else setDobValue(iso);
-  };
 
   const displayError = error || dobError || ageError;
   if (mode === "none") return null;
 
-  const ymdInputs = (
-    <div className="grid grid-cols-3 gap-2">
-      <div>
-        <Label className="text-xs text-muted-foreground">Year</Label>
-        <Input type="number" placeholder="YYYY" min="1900" max={new Date().getFullYear()}
-          value={parts.y} disabled={disabled}
-          onChange={(e) => handlePartChange("y", e.target.value)} />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Month</Label>
-        <Input type="number" placeholder="MM" min="1" max="12"
-          value={parts.m} disabled={disabled}
-          onChange={(e) => handlePartChange("m", e.target.value)} />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Day</Label>
-        <Input type="number" placeholder="DD" min="1" max="31"
-          value={parts.d} disabled={disabled}
-          onChange={(e) => handlePartChange("d", e.target.value)} />
-      </div>
-    </div>
-  );
 
   const dobBlock = (
     <div className="space-y-2">
@@ -134,7 +89,6 @@ export default function DOBAgePicker({
         className={dobError ? "border-destructive focus-visible:ring-destructive/20" : ""}
         max={new Date().toISOString().split("T")[0]}
       />
-      {ymdInputs}
       {showAge && dobValue && !dobError && (
         <div className="text-sm text-muted-foreground">Age: {getAgeDisplay(dobValue)}</div>
       )}
