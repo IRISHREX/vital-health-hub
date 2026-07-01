@@ -101,28 +101,6 @@ export default function DOBAgePicker({
   const displayError = error || dobError || ageError;
   if (mode === "none") return null;
 
-  const ymdInputs = (
-    <div className="grid grid-cols-3 gap-2">
-      <div>
-        <Label className="text-xs text-muted-foreground">Year</Label>
-        <Input type="number" placeholder="YYYY" min="1900" max={new Date().getFullYear()}
-          value={parts.y} disabled={disabled}
-          onChange={(e) => handlePartChange("y", e.target.value)} />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Month</Label>
-        <Input type="number" placeholder="MM" min="1" max="12"
-          value={parts.m} disabled={disabled}
-          onChange={(e) => handlePartChange("m", e.target.value)} />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Day</Label>
-        <Input type="number" placeholder="DD" min="1" max="31"
-          value={parts.d} disabled={disabled}
-          onChange={(e) => handlePartChange("d", e.target.value)} />
-      </div>
-    </div>
-  );
 
   const dobBlock = (
     <div className="space-y-2">
