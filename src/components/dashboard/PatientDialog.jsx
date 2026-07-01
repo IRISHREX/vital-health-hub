@@ -358,6 +358,7 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
   };
 
   const handleClose = () => {
+    form.reset(emptyDefaults);
     onClose();
   };
 
