@@ -366,43 +366,19 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                 }}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="appointmentDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Appointment Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} min={getTodayDateString()} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || "normal"}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                          <SelectItem value="emergency">Emergency</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="appointmentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Appointment Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} min={getTodayDateString()} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -436,8 +412,6 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                           <SelectItem value="card">Card</SelectItem>
                           <SelectItem value="upi">UPI</SelectItem>
                           <SelectItem value="net_banking">Net Banking</SelectItem>
-                          <SelectItem value="cheque">Cheque</SelectItem>
-                          <SelectItem value="insurance">Insurance</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -449,28 +423,55 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
               <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "scheduled"}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="scheduled">Scheduled</SelectItem>
-                        <SelectItem value="confirmed">Confirmed</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                        <SelectItem value="no_show">No Show</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const current = field.value || "scheduled";
+                  // Allowed forward transitions:
+                  //   scheduled → confirmed → cancelled → refunded
+                  //   scheduled → cancelled
+                  //   confirmed → refunded
+                  const allowedByCurrent = {
+                    scheduled: ["scheduled", "confirmed", "cancelled"],
+                    confirmed: ["confirmed", "cancelled", "refunded"],
+                    cancelled: ["cancelled", "refunded"],
+                    refunded: ["refunded"],
+                    in_progress: ["in_progress", "cancelled", "refunded"],
+                    completed: ["completed"],
+                    no_show: ["no_show"],
+                  };
+                  const options =
+                    mode === "create"
+                      ? ["scheduled", "confirmed"]
+                      : (allowedByCurrent[current] || ["scheduled", "confirmed", "cancelled", "refunded"]);
+                  const label = {
+                    scheduled: "Scheduled",
+                    confirmed: "Confirmed",
+                    cancelled: "Cancelled",
+                    refunded: "Refunded",
+                    in_progress: "In Progress",
+                    completed: "Completed",
+                    no_show: "No Show",
+                  };
+                  return (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={current}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {options.map((s) => (
+                            <SelectItem key={s} value={s}>{label[s] || s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
+
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
