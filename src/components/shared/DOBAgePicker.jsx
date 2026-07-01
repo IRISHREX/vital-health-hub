@@ -134,7 +134,6 @@ export default function DOBAgePicker({
         className={dobError ? "border-destructive focus-visible:ring-destructive/20" : ""}
         max={new Date().toISOString().split("T")[0]}
       />
-      {ymdInputs}
       {showAge && dobValue && !dobError && (
         <div className="text-sm text-muted-foreground">Age: {getAgeDisplay(dobValue)}</div>
       )}
