@@ -98,6 +98,7 @@ export default function PrescriptionPreview() {
   const hospitalSettings = useMemo(() => {
     const raw = hospitalRes?.data || {};
     return {
+      ...raw,
       hospitalName: raw.hospitalName || defaultHospital.hospitalName,
       registrationNumber: raw.registrationNumber || defaultHospital.registrationNumber,
       address: raw.address || defaultHospital.address,
@@ -106,6 +107,10 @@ export default function PrescriptionPreview() {
       website: raw.website || defaultHospital.website,
     };
   }, [hospitalRes?.data]);
+  const branding = useMemo(
+    () => resolveBranding(hospitalRes?.data || {}, "prescription"),
+    [hospitalRes?.data]
+  );
   const shareableRoles = ["doctor", "nurse", "head_nurse", "billing_staff", "hospital_admin", "super_admin"];
 
   const filteredUsers = useMemo(() => {
