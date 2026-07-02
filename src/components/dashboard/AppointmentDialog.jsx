@@ -455,10 +455,16 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                     completed: ["completed"],
                     no_show: ["no_show"],
                   };
-                  const options =
+                  // If payment is pending, only allow cancellation (no refund possible without a payment).
+                  // Refund is only meaningful once a payment mode has been set.
+                  const isPaymentPending = !watchedPaymentMode || watchedPaymentMode === "pending";
+                  let options =
                     mode === "create"
                       ? ["scheduled", "confirmed"]
                       : (allowedByCurrent[current] || ["scheduled", "confirmed", "cancelled", "refunded"]);
+                  if (isPaymentPending) {
+                    options = options.filter((s) => s !== "refunded");
+                  }
                   const label = {
                     scheduled: "Scheduled",
                     confirmed: "Confirmed",
