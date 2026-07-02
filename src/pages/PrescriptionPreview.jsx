@@ -547,8 +547,40 @@ export default function PrescriptionPreview() {
               )}
 
               {showFooter && (
-                <div className="mt-5 border-t pt-3 text-xs text-muted-foreground">
-                  {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ") || "For queries, contact hospital front desk."}
+                <div className="mt-5 border-t pt-3">
+                  <div className="flex justify-between items-end gap-4">
+                    <div>
+                      {branding.showStamp && branding.stamp && (
+                        <img
+                          src={branding.stamp}
+                          alt="stamp"
+                          style={{ maxHeight: 80, maxWidth: 120, objectFit: "contain", opacity: 0.85 }}
+                        />
+                      )}
+                    </div>
+                    {(branding.showSignature && branding.signature) || branding.signatoryName ? (
+                      <div className="text-right text-xs">
+                        {branding.showSignature && branding.signature && (
+                          <img
+                            src={branding.signature}
+                            alt="signature"
+                            style={{ maxHeight: 50, maxWidth: 160, objectFit: "contain", display: "block", marginLeft: "auto", marginBottom: 4 }}
+                          />
+                        )}
+                        <div className="border-t pt-1 inline-block min-w-[160px]">
+                          <div className="font-semibold">{branding.signatoryName || "Authorised Signatory"}</div>
+                          {branding.signatoryDesignation && (
+                            <div className="text-muted-foreground">{branding.signatoryDesignation}</div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-muted-foreground text-center mt-2 border-t pt-2">
+                    {branding.footerText ||
+                      ([hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ") ||
+                        "For queries, contact hospital front desk.")}
+                  </div>
                 </div>
               )}
           </div>
