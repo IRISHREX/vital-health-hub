@@ -14,6 +14,7 @@ import { getPrescription, sharePrescription } from "@/lib/pharmacy";
 import { getUsers } from "@/lib/users";
 import { getHospitalSettings } from "@/lib/settings";
 import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
+import { resolveBranding } from "@/lib/branding";
 import {
   Download,
   Printer,
@@ -97,6 +98,7 @@ export default function PrescriptionPreview() {
   const hospitalSettings = useMemo(() => {
     const raw = hospitalRes?.data || {};
     return {
+      ...raw,
       hospitalName: raw.hospitalName || defaultHospital.hospitalName,
       registrationNumber: raw.registrationNumber || defaultHospital.registrationNumber,
       address: raw.address || defaultHospital.address,
@@ -105,6 +107,10 @@ export default function PrescriptionPreview() {
       website: raw.website || defaultHospital.website,
     };
   }, [hospitalRes?.data]);
+  const branding = useMemo(
+    () => resolveBranding(hospitalRes?.data || {}, "prescription"),
+    [hospitalRes?.data]
+  );
   const shareableRoles = ["doctor", "nurse", "head_nurse", "billing_staff", "hospital_admin", "super_admin"];
 
   const filteredUsers = useMemo(() => {
@@ -416,20 +422,41 @@ export default function PrescriptionPreview() {
             style={previewTypographyStyle}
           >
               {showHeader && (
-                <div className="border-b pb-3 mb-4" style={{ borderColor: textColor }}>
-                  <h2 className="text-xl font-bold" style={{ color: textColor }}>{hospitalSettings.hospitalName}</h2>
-                  {hospitalSettings.registrationNumber && (
-                    <p className="text-sm">Reg No: {hospitalSettings.registrationNumber}</p>
-                  )}
-                  {hospitalSettings.address && <p className="text-sm">{hospitalSettings.address}</p>}
-                  {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
-                    <p className="text-sm">
-                      {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}
-                    </p>
-                  )}
-                  <p className="text-sm font-semibold mt-1">Prescription (Rx)</p>
-                  <p className="text-sm">Generated: {createdAt}</p>
-                </div>
+                branding.useHeaderImage && branding.headerImage ? (
+                  <div className="border-b pb-3 mb-4" style={{ borderColor: textColor }}>
+                    <img
+                      src={branding.headerImage}
+                      alt="header"
+                      style={{ display: "block", width: "100%", maxHeight: 160, objectFit: "contain" }}
+                    />
+                    <p className="text-sm font-semibold mt-2">Prescription (Rx)</p>
+                    <p className="text-sm">Generated: {createdAt}</p>
+                  </div>
+                ) : (
+                  <div className="border-b pb-3 mb-4 flex items-start gap-3" style={{ borderColor: textColor }}>
+                    {branding.showLogo && branding.logo && (
+                      <img
+                        src={branding.logo}
+                        alt="logo"
+                        style={{ maxHeight: 60, maxWidth: 120, objectFit: "contain" }}
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold" style={{ color: textColor }}>{hospitalSettings.hospitalName}</h2>
+                      {hospitalSettings.registrationNumber && (
+                        <p className="text-sm">Reg No: {hospitalSettings.registrationNumber}</p>
+                      )}
+                      {hospitalSettings.address && <p className="text-sm">{hospitalSettings.address}</p>}
+                      {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
+                        <p className="text-sm">
+                          {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}
+                        </p>
+                      )}
+                      <p className="text-sm font-semibold mt-1">Prescription (Rx)</p>
+                      <p className="text-sm">Generated: {createdAt}</p>
+                    </div>
+                  </div>
+                )
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
@@ -520,8 +547,40 @@ export default function PrescriptionPreview() {
               )}
 
               {showFooter && (
-                <div className="mt-5 border-t pt-3 text-xs text-muted-foreground">
-                  {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ") || "For queries, contact hospital front desk."}
+                <div className="mt-5 border-t pt-3">
+                  <div className="flex justify-between items-end gap-4">
+                    <div>
+                      {branding.showStamp && branding.stamp && (
+                        <img
+                          src={branding.stamp}
+                          alt="stamp"
+                          style={{ maxHeight: 80, maxWidth: 120, objectFit: "contain", opacity: 0.85 }}
+                        />
+                      )}
+                    </div>
+                    {(branding.showSignature && branding.signature) || branding.signatoryName ? (
+                      <div className="text-right text-xs">
+                        {branding.showSignature && branding.signature && (
+                          <img
+                            src={branding.signature}
+                            alt="signature"
+                            style={{ maxHeight: 50, maxWidth: 160, objectFit: "contain", display: "block", marginLeft: "auto", marginBottom: 4 }}
+                          />
+                        )}
+                        <div className="border-t pt-1 inline-block min-w-[160px]">
+                          <div className="font-semibold">{branding.signatoryName || "Authorised Signatory"}</div>
+                          {branding.signatoryDesignation && (
+                            <div className="text-muted-foreground">{branding.signatoryDesignation}</div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-muted-foreground text-center mt-2 border-t pt-2">
+                    {branding.footerText ||
+                      ([hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ") ||
+                        "For queries, contact hospital front desk.")}
+                  </div>
                 </div>
               )}
           </div>

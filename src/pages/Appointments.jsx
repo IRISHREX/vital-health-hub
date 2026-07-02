@@ -32,11 +32,12 @@ import { useQuery } from "@tanstack/react-query";
 
 const statusConfig = {
   scheduled: { label: "Pending", variant: "info" },
-  confirmed: { label: "Pending", variant: "info" },
-  in_progress: { label: "Pending", variant: "info" },
+  confirmed: { label: "Confirmed", variant: "success" },
+  in_progress: { label: "In Progress", variant: "info" },
   completed: { label: "Completed", variant: "success" },
   cancelled: { label: "Cancelled", variant: "destructive" },
   no_show: { label: "No Show", variant: "destructive" },
+  refunded: { label: "Refunded", variant: "warning" },
 };
 
 export default function Appointments() {
