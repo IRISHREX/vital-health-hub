@@ -397,26 +397,43 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                 <FormField
                   control={form.control}
                   name="paymentMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Payment Mode</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || "pending"}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select mode" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="card">Card</SelectItem>
-                          <SelectItem value="upi">UPI</SelectItem>
-                          <SelectItem value="net_banking">Net Banking</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    // Once payment has been recorded (non-pending) on an existing appointment,
+                    // lock the payment mode so it can't be reverted to pending or changed.
+                    const originallyPaid =
+                      mode === "edit" &&
+                      appointment?.paymentMode &&
+                      appointment.paymentMode !== "pending";
+                    return (
+                      <FormItem>
+                        <FormLabel>Payment Mode</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || "pending"}
+                          disabled={originallyPaid}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select mode" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="cash">Cash</SelectItem>
+                            <SelectItem value="card">Card</SelectItem>
+                            <SelectItem value="upi">UPI</SelectItem>
+                            <SelectItem value="net_banking">Net Banking</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {originallyPaid && (
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            Payment already recorded — mode is locked.
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               </div>
 
