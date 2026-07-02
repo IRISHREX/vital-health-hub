@@ -422,20 +422,41 @@ export default function PrescriptionPreview() {
             style={previewTypographyStyle}
           >
               {showHeader && (
-                <div className="border-b pb-3 mb-4" style={{ borderColor: textColor }}>
-                  <h2 className="text-xl font-bold" style={{ color: textColor }}>{hospitalSettings.hospitalName}</h2>
-                  {hospitalSettings.registrationNumber && (
-                    <p className="text-sm">Reg No: {hospitalSettings.registrationNumber}</p>
-                  )}
-                  {hospitalSettings.address && <p className="text-sm">{hospitalSettings.address}</p>}
-                  {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
-                    <p className="text-sm">
-                      {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}
-                    </p>
-                  )}
-                  <p className="text-sm font-semibold mt-1">Prescription (Rx)</p>
-                  <p className="text-sm">Generated: {createdAt}</p>
-                </div>
+                branding.useHeaderImage && branding.headerImage ? (
+                  <div className="border-b pb-3 mb-4" style={{ borderColor: textColor }}>
+                    <img
+                      src={branding.headerImage}
+                      alt="header"
+                      style={{ display: "block", width: "100%", maxHeight: 160, objectFit: "contain" }}
+                    />
+                    <p className="text-sm font-semibold mt-2">Prescription (Rx)</p>
+                    <p className="text-sm">Generated: {createdAt}</p>
+                  </div>
+                ) : (
+                  <div className="border-b pb-3 mb-4 flex items-start gap-3" style={{ borderColor: textColor }}>
+                    {branding.showLogo && branding.logo && (
+                      <img
+                        src={branding.logo}
+                        alt="logo"
+                        style={{ maxHeight: 60, maxWidth: 120, objectFit: "contain" }}
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold" style={{ color: textColor }}>{hospitalSettings.hospitalName}</h2>
+                      {hospitalSettings.registrationNumber && (
+                        <p className="text-sm">Reg No: {hospitalSettings.registrationNumber}</p>
+                      )}
+                      {hospitalSettings.address && <p className="text-sm">{hospitalSettings.address}</p>}
+                      {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
+                        <p className="text-sm">
+                          {[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}
+                        </p>
+                      )}
+                      <p className="text-sm font-semibold mt-1">Prescription (Rx)</p>
+                      <p className="text-sm">Generated: {createdAt}</p>
+                    </div>
+                  </div>
+                )
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
