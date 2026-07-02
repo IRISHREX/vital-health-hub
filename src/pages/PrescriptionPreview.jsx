@@ -14,6 +14,7 @@ import { getPrescription, sharePrescription } from "@/lib/pharmacy";
 import { getUsers } from "@/lib/users";
 import { getHospitalSettings } from "@/lib/settings";
 import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
+import { resolveBranding } from "@/lib/branding";
 import {
   Download,
   Printer,
