@@ -377,10 +377,15 @@ export default function InvoicePreview({ invoice, admission, onClose }) {
                 onClick={() => {
                   const content = document.getElementById('invoice-print-area') || document.querySelector('.brand-invoice-body');
                   const branding = resolveBranding(hospitalRes?.data || {}, "invoice");
+                  const codes = buildDocumentCodes({
+                    docId: invoice.invoiceNumber || invoice._id,
+                    patientId: invoice.patient?.patientId || invoice.patient?._id,
+                    type: "invoice",
+                  });
                   const html = content
                     ? content.innerHTML
                     : `<h2>Invoice #${invoice.invoiceNumber}</h2><p>Total: ₹${invoice.totalAmount}</p>`;
-                  printBrandedHtml(`Invoice ${invoice.invoiceNumber}`, branding, html, "table{border-collapse:collapse;width:100%}th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}");
+                  printBrandedHtml(`Invoice ${invoice.invoiceNumber}`, branding, html, "table{border-collapse:collapse;width:100%}th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}", codes);
                 }}
               >
                 <Download className="h-4 w-4" />
