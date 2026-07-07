@@ -180,6 +180,9 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
   const b = branding || {};
   const left = opts.left ?? 12;
   const right = opts.right ?? (doc.internal.pageSize.getWidth() - 12);
+  const codes = opts.codes || null;
+  // Reserve space on the right for QR/barcode so title text doesn't collide
+  const rightTextBound = codes && (codes.qrDataUrl || codes.barcodeDataUrl) ? right - 26 : right;
   let y = opts.top ?? 12;
 
   // Full-width header image (letterhead banner) takes precedence when enabled
