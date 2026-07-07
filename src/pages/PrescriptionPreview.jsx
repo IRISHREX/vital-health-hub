@@ -112,6 +112,17 @@ export default function PrescriptionPreview() {
     () => resolveBranding(hospitalRes?.data || {}, "prescription"),
     [hospitalRes?.data]
   );
+  const codes = useMemo(
+    () =>
+      prescription
+        ? buildDocumentCodes({
+            docId: prescription._id || prescription.rxNumber,
+            patientId: prescription.patient?.patientId || prescription.patient?._id,
+            type: "prescription",
+          })
+        : null,
+    [prescription]
+  );
   const shareableRoles = ["doctor", "nurse", "head_nurse", "billing_staff", "hospital_admin", "super_admin"];
 
   const filteredUsers = useMemo(() => {
