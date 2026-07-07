@@ -22,6 +22,7 @@ import { getInvoices } from "@/lib/invoices";
 import { getAppointments } from "@/lib/appointments";
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, addJsPdfHeader, addJsPdfFooter, wrapBrandedPrintHtml, printBrandedHtml } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
