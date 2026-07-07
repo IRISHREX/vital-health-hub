@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createReport, verifyReport } from "@/lib/radiology";
 import { getHospitalSettings } from "@/lib/settings";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { jsPDF } from "jspdf";
 import { Download, Loader2, CheckCircle2, FileText } from "lucide-react";
 
