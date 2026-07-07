@@ -1,6 +1,8 @@
 // Centralised branded header/footer for every printable in the app.
 // Consumes HospitalSettings (with optional `branding` block) and resolves per-module overrides.
 
+import { brandedCodesHtml, drawCodesOnPdf } from "./document-codes";
+
 const escapeHtml = (value) =>
   String(value ?? "")
     .replaceAll("&", "&amp;")
