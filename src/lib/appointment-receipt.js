@@ -88,5 +88,10 @@ export const printAppointmentReceipt = (apt, hospital) => {
     </div>
   `;
 
-  printBrandedHtml(`Appointment ${apt.appointmentId || ""}`, branding, body);
+  const codes = buildDocumentCodes({
+    docId: apt.appointmentId || apt._id,
+    patientId: apt.patient?.patientId || apt.patient?._id,
+    type: "appointment",
+  });
+  printBrandedHtml(`Appointment ${apt.appointmentId || ""}`, branding, body, "", codes);
 };
