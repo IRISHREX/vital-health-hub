@@ -15,6 +15,7 @@ import { getUsers } from "@/lib/users";
 import { getHospitalSettings } from "@/lib/settings";
 import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
 import { resolveBranding } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import {
   Download,
   Printer,
