@@ -258,6 +258,11 @@ export const printPrescription = (rx, options = {}) => {
   const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
   const female = String(rx?.patient?.gender || "").toLowerCase() === "female";
+  const codes = buildDocumentCodes({
+    docId: rx?._id || rx?.rxNumber,
+    patientId: rx?.patient?.patientId || rx?.patient?._id,
+    type: "prescription",
+  });
 
   const medicineRows = section.medicines
     .map(
