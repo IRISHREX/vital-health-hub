@@ -1,4 +1,5 @@
 import { printBrandedHtml, resolveBranding, _esc as esc } from "./branding";
+import { buildDocumentCodes } from "./document-codes";
 
 const fmtDate = (v) => {
   if (!v) return "-";
