@@ -201,7 +201,7 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
 
   let textX = left;
   let textAlign = "center";
-  let centerX = (left + right) / 2;
+  let centerX = (left + rightTextBound) / 2;
 
   if (b.showLogo && b.logo) {
     try {
