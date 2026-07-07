@@ -235,6 +235,10 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
   }
 
   const headerEnd = Math.max(line, y + 22);
+  // Draw QR + barcode on the top-right of the header area
+  if (codes) {
+    drawCodesOnPdf(doc, codes, { right, top: y - 1 });
+  }
   doc.setDrawColor(21, 101, 192);
   doc.setLineWidth(0.5);
   doc.line(left, headerEnd, right, headerEnd);
