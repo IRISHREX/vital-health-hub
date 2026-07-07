@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { getLabTestById } from "@/lib/labTests";
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, printBrandedHtml } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { jsPDF } from "jspdf";
 import {
   Download, Printer, Bold, Italic, Underline, Highlighter,
