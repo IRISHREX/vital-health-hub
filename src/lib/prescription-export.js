@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { resolveBranding, addJsPdfHeader, addJsPdfFooter, brandedHeaderHtml, brandedFooterHtml } from "./branding";
+import { buildDocumentCodes } from "./document-codes";
 
 const DEFAULT_HOSPITAL = {
   hospitalName: "Hospital",
