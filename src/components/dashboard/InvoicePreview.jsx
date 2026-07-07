@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, printBrandedHtml } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { Download, FileText, Printer, Eye, EyeOff } from 'lucide-react';
 
 const invoiceStatusColors = {
