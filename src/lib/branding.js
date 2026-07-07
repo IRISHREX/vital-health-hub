@@ -52,14 +52,16 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
 /**
  * HTML header block for print/window.open documents.
  */
-export const brandedHeaderHtml = (branding) => {
+export const brandedHeaderHtml = (branding, codes = null) => {
   const b = branding || {};
+  const codesBlock = brandedCodesHtml(codes);
 
   // Full-width header image (letterhead banner) takes precedence when enabled
   if (b.useHeaderImage && b.headerImage) {
     return `
       <div class="brand-header" style="margin-bottom:14px;">
         <img src="${escapeHtml(b.headerImage)}" alt="header" style="display:block;width:100%;max-height:160px;object-fit:contain;" />
+        ${codesBlock ? `<div style="display:flex;justify-content:flex-end;margin-top:4px;">${codesBlock}</div>` : ""}
       </div>
     `;
   }
@@ -85,6 +87,7 @@ export const brandedHeaderHtml = (branding) => {
         ${meta ? `<div style="font-size:11px;color:#555;margin-top:3px;">${meta}</div>` : ""}
         ${reg ? `<div style="font-size:10.5px;color:#6b7280;margin-top:2px;">${reg}</div>` : ""}
       </div>
+      ${codesBlock}
     </div>
   `;
 };
