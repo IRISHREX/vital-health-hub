@@ -103,7 +103,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   };
 
   if (section.showHeader) {
-    y = addJsPdfHeader(doc, branding);
+    y = addJsPdfHeader(doc, branding, { codes });
   }
 
   doc.setFont("helvetica", "bold");
