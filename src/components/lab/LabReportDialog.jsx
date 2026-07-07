@@ -71,11 +71,21 @@ export default function LabReportDialog({ isOpen, onClose, test, tests = [] }) {
     .footer{margin-top:32px;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:8px}
   `;
 
+  const codes = useMemo(
+    () =>
+      buildDocumentCodes({
+        docId: primaryTest.testId || primaryTest._id,
+        patientId: primaryTest.patient?.patientId || primaryTest.patient?._id,
+        type: "lab",
+      }),
+    [primaryTest]
+  );
+
   const openPrintWindow = () => {
     const content = reportRef.current;
     if (!content) return;
     const branding = resolveBranding(hospitalSettings, "lab");
-    printBrandedHtml(titleText, branding, content.innerHTML, printStyles);
+    printBrandedHtml(titleText, branding, content.innerHTML, printStyles, codes);
   };
 
   const handleDownload = () => {
