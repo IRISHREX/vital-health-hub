@@ -134,8 +134,9 @@ export const brandedFooterHtml = (branding) => {
 
 /**
  * Wrap any body HTML with branded header + footer in a printable A4 page.
+ * `codes` (optional) is a bundle from buildDocumentCodes() — rendered top-right of the header.
  */
-export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = "") => `
+export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = "", codes = null) => `
   <html>
     <head>
       <title>${escapeHtml(title || "Document")}</title>
@@ -150,7 +151,7 @@ export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = ""
     </head>
     <body>
       <div class="sheet">
-        ${brandedHeaderHtml(branding)}
+        ${brandedHeaderHtml(branding, codes)}
         ${bodyHtml}
         ${brandedFooterHtml(branding)}
       </div>
@@ -160,11 +161,12 @@ export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = ""
 
 /**
  * Open a new window and print branded HTML.
+ * `codes` (optional) is a bundle from buildDocumentCodes().
  */
-export const printBrandedHtml = (title, branding, bodyHtml, extraStyles = "") => {
+export const printBrandedHtml = (title, branding, bodyHtml, extraStyles = "", codes = null) => {
   const w = window.open("", "_blank");
   if (!w) return;
-  w.document.write(wrapBrandedPrintHtml(title, branding, bodyHtml, extraStyles));
+  w.document.write(wrapBrandedPrintHtml(title, branding, bodyHtml, extraStyles, codes));
   w.document.close();
   setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 200);
 };
