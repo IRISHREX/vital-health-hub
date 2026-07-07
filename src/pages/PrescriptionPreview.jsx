@@ -15,6 +15,7 @@ import { getUsers } from "@/lib/users";
 import { getHospitalSettings } from "@/lib/settings";
 import { downloadPrescriptionPdf, printPrescription } from "@/lib/prescription-export";
 import { resolveBranding } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import {
   Download,
   Printer,
@@ -110,6 +111,17 @@ export default function PrescriptionPreview() {
   const branding = useMemo(
     () => resolveBranding(hospitalRes?.data || {}, "prescription"),
     [hospitalRes?.data]
+  );
+  const codes = useMemo(
+    () =>
+      prescription
+        ? buildDocumentCodes({
+            docId: prescription._id || prescription.rxNumber,
+            patientId: prescription.patient?.patientId || prescription.patient?._id,
+            type: "prescription",
+          })
+        : null,
+    [prescription]
   );
   const shareableRoles = ["doctor", "nurse", "head_nurse", "billing_staff", "hospital_admin", "super_admin"];
 
@@ -455,6 +467,12 @@ export default function PrescriptionPreview() {
                       <p className="text-sm font-semibold mt-1">Prescription (Rx)</p>
                       <p className="text-sm">Generated: {createdAt}</p>
                     </div>
+                    {codes && (codes.qrDataUrl || codes.barcodeDataUrl) && (
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {codes.qrDataUrl && <img src={codes.qrDataUrl} alt="QR" style={{ width: 72, height: 72 }} />}
+                        {codes.barcodeDataUrl && <img src={codes.barcodeDataUrl} alt="Barcode" style={{ height: 32, maxWidth: 160 }} />}
+                      </div>
+                    )}
                   </div>
                 )
               )}

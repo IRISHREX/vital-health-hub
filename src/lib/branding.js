@@ -1,6 +1,8 @@
 // Centralised branded header/footer for every printable in the app.
 // Consumes HospitalSettings (with optional `branding` block) and resolves per-module overrides.
 
+import { brandedCodesHtml, drawCodesOnPdf } from "./document-codes";
+
 const escapeHtml = (value) =>
   String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -50,14 +52,16 @@ export const resolveBranding = (hospital = {}, moduleKey = "invoice") => {
 /**
  * HTML header block for print/window.open documents.
  */
-export const brandedHeaderHtml = (branding) => {
+export const brandedHeaderHtml = (branding, codes = null) => {
   const b = branding || {};
+  const codesBlock = brandedCodesHtml(codes);
 
   // Full-width header image (letterhead banner) takes precedence when enabled
   if (b.useHeaderImage && b.headerImage) {
     return `
       <div class="brand-header" style="margin-bottom:14px;">
         <img src="${escapeHtml(b.headerImage)}" alt="header" style="display:block;width:100%;max-height:160px;object-fit:contain;" />
+        ${codesBlock ? `<div style="display:flex;justify-content:flex-end;margin-top:4px;">${codesBlock}</div>` : ""}
       </div>
     `;
   }
@@ -83,6 +87,7 @@ export const brandedHeaderHtml = (branding) => {
         ${meta ? `<div style="font-size:11px;color:#555;margin-top:3px;">${meta}</div>` : ""}
         ${reg ? `<div style="font-size:10.5px;color:#6b7280;margin-top:2px;">${reg}</div>` : ""}
       </div>
+      ${codesBlock}
     </div>
   `;
 };
@@ -129,8 +134,9 @@ export const brandedFooterHtml = (branding) => {
 
 /**
  * Wrap any body HTML with branded header + footer in a printable A4 page.
+ * `codes` (optional) is a bundle from buildDocumentCodes() — rendered top-right of the header.
  */
-export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = "") => `
+export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = "", codes = null) => `
   <html>
     <head>
       <title>${escapeHtml(title || "Document")}</title>
@@ -145,7 +151,7 @@ export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = ""
     </head>
     <body>
       <div class="sheet">
-        ${brandedHeaderHtml(branding)}
+        ${brandedHeaderHtml(branding, codes)}
         ${bodyHtml}
         ${brandedFooterHtml(branding)}
       </div>
@@ -155,11 +161,12 @@ export const wrapBrandedPrintHtml = (title, branding, bodyHtml, extraStyles = ""
 
 /**
  * Open a new window and print branded HTML.
+ * `codes` (optional) is a bundle from buildDocumentCodes().
  */
-export const printBrandedHtml = (title, branding, bodyHtml, extraStyles = "") => {
+export const printBrandedHtml = (title, branding, bodyHtml, extraStyles = "", codes = null) => {
   const w = window.open("", "_blank");
   if (!w) return;
-  w.document.write(wrapBrandedPrintHtml(title, branding, bodyHtml, extraStyles));
+  w.document.write(wrapBrandedPrintHtml(title, branding, bodyHtml, extraStyles, codes));
   w.document.close();
   setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 200);
 };
@@ -173,6 +180,9 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
   const b = branding || {};
   const left = opts.left ?? 12;
   const right = opts.right ?? (doc.internal.pageSize.getWidth() - 12);
+  const codes = opts.codes || null;
+  // Reserve space on the right for QR/barcode so title text doesn't collide
+  const rightTextBound = codes && (codes.qrDataUrl || codes.barcodeDataUrl) ? right - 26 : right;
   let y = opts.top ?? 12;
 
   // Full-width header image (letterhead banner) takes precedence when enabled
@@ -181,7 +191,8 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
       const width = right - left;
       const height = opts.headerImageHeight ?? 32;
       doc.addImage(b.headerImage, left, y, width, height);
-      return y + height + 4;
+      if (codes) drawCodesOnPdf(doc, codes, { right, top: y + height + 2, qrSize: 18, barcodeHeight: 8 });
+      return y + height + (codes ? 34 : 4);
     } catch {
       // fall through to default text header
     }
@@ -190,7 +201,7 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
 
   let textX = left;
   let textAlign = "center";
-  let centerX = (left + right) / 2;
+  let centerX = (left + rightTextBound) / 2;
 
   if (b.showLogo && b.logo) {
     try {
@@ -225,6 +236,10 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
   }
 
   const headerEnd = Math.max(line, y + 22);
+  // Draw QR + barcode on the top-right of the header area
+  if (codes) {
+    drawCodesOnPdf(doc, codes, { right, top: y - 1 });
+  }
   doc.setDrawColor(21, 101, 192);
   doc.setLineWidth(0.5);
   doc.line(left, headerEnd, right, headerEnd);

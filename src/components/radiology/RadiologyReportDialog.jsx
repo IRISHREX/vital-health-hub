@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createReport, verifyReport } from "@/lib/radiology";
 import { getHospitalSettings } from "@/lib/settings";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { jsPDF } from "jspdf";
 import { Download, Loader2, CheckCircle2, FileText } from "lucide-react";
 
@@ -80,6 +81,12 @@ export default function RadiologyReportDialog({ isOpen, onClose, order, permissi
     }
   };
 
+  const codes = buildDocumentCodes({
+    docId: order?.orderId || order?._id,
+    patientId: patient?.patientId || patient?._id,
+    type: "radiology",
+  });
+
   const downloadPdf = () => {
     const doc = new jsPDF();
     const pw = doc.internal.pageSize.getWidth();
@@ -90,6 +97,12 @@ export default function RadiologyReportDialog({ isOpen, onClose, order, permissi
     doc.text("Radiology Report", 14, 21);
     doc.setFontSize(8);
     doc.text(`Generated: ${new Date().toLocaleString()}`, pw - 14, 14, { align: "right" });
+    try {
+      if (codes?.qrDataUrl) doc.addImage(codes.qrDataUrl, "PNG", pw - 34, 6, 20, 20);
+      if (codes?.barcodeDataUrl) doc.addImage(codes.barcodeDataUrl, "PNG", pw - 54, 27, 40, 8);
+    } catch {
+      // ignore
+    }
 
     let y = 32;
     doc.setFontSize(10);

@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { getLabTestById } from "@/lib/labTests";
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, printBrandedHtml } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { jsPDF } from "jspdf";
 import {
   Download, Printer, Bold, Italic, Underline, Highlighter,
@@ -91,6 +92,11 @@ export default function LabReportPreview() {
     const el = previewRef.current;
     if (!el) return;
     const branding = resolveBranding(hospitalSettings, "lab");
+    const codes = buildDocumentCodes({
+      docId: test?.testId || test?._id,
+      patientId: test?.patient?.patientId || test?.patient?._id,
+      type: "lab",
+    });
     const styles = `
       .section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1565c0;border-bottom:1px solid #ddd;padding-bottom:4px;margin:12px 0 8px}
       table{width:100%;border-collapse:collapse;margin:8px 0}
@@ -99,7 +105,7 @@ export default function LabReportPreview() {
       .group-header td{background:#f8f9fa;font-weight:600}
       .sub-param td:first-child{padding-left:24px}
     `;
-    printBrandedHtml("Lab Report", branding, el.innerHTML, styles);
+    printBrandedHtml("Lab Report", branding, el.innerHTML, styles, codes);
   };
 
   const handleDownloadPdf = () => {

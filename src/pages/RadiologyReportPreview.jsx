@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { getRadiologyOrderById } from "@/lib/radiology";
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, printBrandedHtml } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { jsPDF } from "jspdf";
 import {
   Download, Printer, Bold, Italic, Underline, Highlighter,
@@ -92,8 +93,13 @@ export default function RadiologyReportPreview() {
     const el = previewRef.current;
     if (!el) return;
     const branding = resolveBranding(hospitalSettings, "radiology");
+    const codes = buildDocumentCodes({
+      docId: order?.orderId || order?._id,
+      patientId: order?.patient?.patientId || order?.patient?._id,
+      type: "radiology",
+    });
     const styles = `h3{margin:12px 0 6px;font-size:15px}.section{margin-bottom:16px}`;
-    printBrandedHtml("Radiology Report", branding, el.innerHTML, styles);
+    printBrandedHtml("Radiology Report", branding, el.innerHTML, styles, codes);
   };
 
   const handleDownloadPdf = () => {

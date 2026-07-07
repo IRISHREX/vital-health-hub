@@ -22,6 +22,7 @@ import { getInvoices } from "@/lib/invoices";
 import { getAppointments } from "@/lib/appointments";
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, addJsPdfHeader, addJsPdfFooter, wrapBrandedPrintHtml, printBrandedHtml } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -117,6 +118,11 @@ export default function PatientOverview() {
 
   const handlePrint = () => {
     const branding = resolveBranding(hospital, "invoice");
+    const codes = buildDocumentCodes({
+      docId: patient?.patientId || patient?._id,
+      patientId: patient?.patientId || patient?._id,
+      type: "patient",
+    });
     const body = document.getElementById("patient-overview-printable")?.innerHTML || "";
     printBrandedHtml(`Patient Overview - ${fullName(patient)}`, branding, body, `
       h2 { font-size: 14px; margin: 14px 0 6px; color:#1565c0; border-bottom:1px solid #e5e7eb; padding-bottom:3px;}
@@ -127,13 +133,18 @@ export default function PatientOverview() {
       .summary { display:flex; gap:12px; margin:6px 0 10px;}
       .summary .box { flex:1; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; font-size:11px;}
       .summary .box b { display:block; font-size:13px; }
-    `);
+    `, codes);
   };
 
   const handleDownloadPdf = async () => {
     const branding = resolveBranding(hospital, "invoice");
+    const codes = buildDocumentCodes({
+      docId: patient?.patientId || patient?._id,
+      patientId: patient?.patientId || patient?._id,
+      type: "patient",
+    });
     const doc = new jsPDF();
-    let y = addJsPdfHeader(doc, branding);
+    let y = addJsPdfHeader(doc, branding, { codes });
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);

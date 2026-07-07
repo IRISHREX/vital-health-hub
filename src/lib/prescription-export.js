@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { resolveBranding, addJsPdfHeader, addJsPdfFooter, brandedHeaderHtml, brandedFooterHtml } from "./branding";
+import { buildDocumentCodes } from "./document-codes";
 
 const DEFAULT_HOSPITAL = {
   hospitalName: "Hospital",
@@ -71,6 +72,11 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   const hospital = normalizeHospital(options.hospitalSettings);
   const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
+  const codes = buildDocumentCodes({
+    docId: rx?._id || rx?.rxNumber,
+    patientId: rx?.patient?.patientId || rx?.patient?._id,
+    type: "prescription",
+  });
   const doc = new jsPDF("p", "mm", "a4");
   const pageHeight = 297;
   const left = 12;
@@ -82,7 +88,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
     if (y + needed <= pageHeight - 30) return;
     addJsPdfFooter(doc, branding);
     doc.addPage();
-    y = section.showHeader ? addJsPdfHeader(doc, branding) : 14;
+    y = section.showHeader ? addJsPdfHeader(doc, branding, { codes }) : 14;
   };
 
   const drawWrapped = (label, value, fontSize = 9) => {
@@ -97,7 +103,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   };
 
   if (section.showHeader) {
-    y = addJsPdfHeader(doc, branding);
+    y = addJsPdfHeader(doc, branding, { codes });
   }
 
   doc.setFont("helvetica", "bold");
@@ -252,6 +258,11 @@ export const printPrescription = (rx, options = {}) => {
   const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
   const female = String(rx?.patient?.gender || "").toLowerCase() === "female";
+  const codes = buildDocumentCodes({
+    docId: rx?._id || rx?.rxNumber,
+    patientId: rx?.patient?.patientId || rx?.patient?._id,
+    type: "prescription",
+  });
 
   const medicineRows = section.medicines
     .map(
@@ -377,7 +388,7 @@ export const printPrescription = (rx, options = {}) => {
       </head>
       <body>
         <div class="sheet">
-          ${section.showHeader ? brandedHeaderHtml(branding) : ""}
+          ${section.showHeader ? brandedHeaderHtml(branding, codes) : ""}
           <div class="title">PRESCRIPTION</div>
           <div class="rx-meta">
             <div>Rx ID: ${escapeHtml(rx?._id || "-")}</div>
