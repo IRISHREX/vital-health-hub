@@ -388,7 +388,7 @@ export const printPrescription = (rx, options = {}) => {
       </head>
       <body>
         <div class="sheet">
-          ${section.showHeader ? brandedHeaderHtml(branding) : ""}
+          ${section.showHeader ? brandedHeaderHtml(branding, codes) : ""}
           <div class="title">PRESCRIPTION</div>
           <div class="rx-meta">
             <div>Rx ID: ${escapeHtml(rx?._id || "-")}</div>
