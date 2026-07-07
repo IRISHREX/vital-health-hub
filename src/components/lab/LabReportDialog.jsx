@@ -220,12 +220,20 @@ export default function LabReportDialog({ isOpen, onClose, test, tests = [] }) {
         </DialogHeader>
 
         <div ref={reportRef} className="space-y-4 p-4 border rounded-lg bg-card">
-          <div className="text-center border-b-2 border-primary pb-4">
-            <h1 className="text-2xl font-bold text-primary">{hospitalSettings.hospitalName}</h1>
-            <p className="text-sm text-muted-foreground">{isCombined ? "Combined Laboratory Reports" : "Laboratory Report"}</p>
-            {hospitalSettings.address && <p className="text-xs text-muted-foreground">{hospitalSettings.address}</p>}
-            {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
-              <p className="text-xs text-muted-foreground">{[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}</p>
+          <div className="flex items-start justify-between gap-4 border-b-2 border-primary pb-4">
+            <div className="flex-1 text-center">
+              <h1 className="text-2xl font-bold text-primary">{hospitalSettings.hospitalName}</h1>
+              <p className="text-sm text-muted-foreground">{isCombined ? "Combined Laboratory Reports" : "Laboratory Report"}</p>
+              {hospitalSettings.address && <p className="text-xs text-muted-foreground">{hospitalSettings.address}</p>}
+              {(hospitalSettings.phone || hospitalSettings.email || hospitalSettings.website) && (
+                <p className="text-xs text-muted-foreground">{[hospitalSettings.phone, hospitalSettings.email, hospitalSettings.website].filter(Boolean).join(" | ")}</p>
+              )}
+            </div>
+            {codes && (codes.qrDataUrl || codes.barcodeDataUrl) && (
+              <div className="flex flex-col items-end gap-1">
+                {codes.qrDataUrl && <img src={codes.qrDataUrl} alt="QR" style={{ width: 72, height: 72 }} />}
+                {codes.barcodeDataUrl && <img src={codes.barcodeDataUrl} alt="Barcode" style={{ height: 32, maxWidth: 160 }} />}
+              </div>
             )}
           </div>
 
