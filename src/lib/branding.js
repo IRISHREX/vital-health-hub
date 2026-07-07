@@ -191,7 +191,8 @@ export const addJsPdfHeader = (doc, branding, opts = {}) => {
       const width = right - left;
       const height = opts.headerImageHeight ?? 32;
       doc.addImage(b.headerImage, left, y, width, height);
-      return y + height + 4;
+      if (codes) drawCodesOnPdf(doc, codes, { right, top: y + height + 2, qrSize: 18, barcodeHeight: 8 });
+      return y + height + (codes ? 34 : 4);
     } catch {
       // fall through to default text header
     }
