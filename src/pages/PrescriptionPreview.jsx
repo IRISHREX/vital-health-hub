@@ -467,6 +467,12 @@ export default function PrescriptionPreview() {
                       <p className="text-sm font-semibold mt-1">Prescription (Rx)</p>
                       <p className="text-sm">Generated: {createdAt}</p>
                     </div>
+                    {codes && (codes.qrDataUrl || codes.barcodeDataUrl) && (
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {codes.qrDataUrl && <img src={codes.qrDataUrl} alt="QR" style={{ width: 72, height: 72 }} />}
+                        {codes.barcodeDataUrl && <img src={codes.barcodeDataUrl} alt="Barcode" style={{ height: 32, maxWidth: 160 }} />}
+                      </div>
+                    )}
                   </div>
                 )
               )}
