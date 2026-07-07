@@ -72,6 +72,11 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
   const hospital = normalizeHospital(options.hospitalSettings);
   const branding = resolveBranding(hospital, "prescription");
   const section = getSections(rx, options);
+  const codes = buildDocumentCodes({
+    docId: rx?._id || rx?.rxNumber,
+    patientId: rx?.patient?.patientId || rx?.patient?._id,
+    type: "prescription",
+  });
   const doc = new jsPDF("p", "mm", "a4");
   const pageHeight = 297;
   const left = 12;
@@ -83,7 +88,7 @@ export const downloadPrescriptionPdf = (rx, options = {}) => {
     if (y + needed <= pageHeight - 30) return;
     addJsPdfFooter(doc, branding);
     doc.addPage();
-    y = section.showHeader ? addJsPdfHeader(doc, branding) : 14;
+    y = section.showHeader ? addJsPdfHeader(doc, branding, { codes }) : 14;
   };
 
   const drawWrapped = (label, value, fontSize = 9) => {
