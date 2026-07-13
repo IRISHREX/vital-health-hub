@@ -404,13 +404,21 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                       mode === "edit" &&
                       appointment?.paymentMode &&
                       appointment.paymentMode !== "pending";
+                    // Also lock payment mode once the appointment reaches a terminal state
+                    // (cancelled/refunded/no_show/completed) — payments cannot be changed after that.
+                    const terminalStatus =
+                      mode === "edit" &&
+                      ["cancelled", "refunded", "no_show", "completed"].includes(
+                        appointment?.status
+                      );
+                    const locked = originallyPaid || terminalStatus;
                     return (
                       <FormItem>
                         <FormLabel>Payment Mode</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || "pending"}
-                          disabled={originallyPaid}
+                          disabled={locked}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -425,9 +433,11 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                             <SelectItem value="net_banking">Net Banking</SelectItem>
                           </SelectContent>
                         </Select>
-                        {originallyPaid && (
+                        {locked && (
                           <p className="text-[11px] text-muted-foreground mt-1">
-                            Payment already recorded — mode is locked.
+                            {terminalStatus
+                              ? `Appointment is ${appointment?.status} — payment mode is locked.`
+                              : "Payment already recorded — mode is locked."}
                           </p>
                         )}
                         <FormMessage />
