@@ -68,7 +68,11 @@ export default function DispenseDialog({ open, onOpenChange, prescription }) {
             const stock = getStock(item);
             const noMedicine = !item.medicine;
             const outOfStock = !noMedicine && (stock ?? 0) <= 0;
-            const max = noMedicine ? 0 : Math.min(Number(item.quantity || 0), stock ?? 0);
+            // Max the pharmacist can dispense. When medicine is not linked we still allow the
+            // pharmacist to type a value (validated at submit) — but capped by prescribed qty.
+            const cap = noMedicine
+              ? Number(item.quantity || 0)
+              : Math.min(Number(item.quantity || 0), Math.max(0, stock ?? 0));
 
             return (
               <div key={item._id} className="flex items-start gap-3 border rounded-lg p-3">
@@ -79,10 +83,10 @@ export default function DispenseDialog({ open, onOpenChange, prescription }) {
                     Prescribed: <span className="font-semibold">{item.quantity}</span> | Stock: <span className={outOfStock ? "text-destructive font-semibold" : "font-semibold"}>{stock ?? "—"}</span>
                   </p>
                   {noMedicine && (
-                    <p className="text-xs text-amber-600 mt-1">No medicine linked from inventory — cannot be dispensed. Add the medicine to inventory first.</p>
+                    <p className="text-xs text-amber-600 mt-1">No medicine linked from inventory — link it to inventory before dispensing.</p>
                   )}
                   {!noMedicine && outOfStock && (
-                    <p className="text-xs text-destructive mt-1">Out of stock — cannot dispense.</p>
+                    <p className="text-xs text-destructive mt-1">Out of stock — restock before dispensing.</p>
                   )}
                 </div>
                 {item.dispensed ? (
@@ -92,21 +96,22 @@ export default function DispenseDialog({ open, onOpenChange, prescription }) {
                     <Input
                       type="number"
                       min="0"
-                      max={max}
+                      max={Number(item.quantity || 0)}
                       className="w-20"
                       placeholder="Qty"
-                      disabled={noMedicine || outOfStock}
+                      disabled={!!item.dispensed}
                       value={quantities[item._id] || ''}
                       onChange={e => {
                         const raw = e.target.value;
                         if (raw === '') return setQuantities(p => ({ ...p, [item._id]: '' }));
-                        const n = Math.max(0, Math.min(max, Number(raw)));
+                        const upper = Number(item.quantity || 0);
+                        const n = Math.max(0, Math.min(upper, Number(raw)));
                         setQuantities(p => ({ ...p, [item._id]: String(n) }));
                       }}
                     />
-                    {!noMedicine && !outOfStock && (
-                      <span className="text-[10px] text-muted-foreground">max {max}</span>
-                    )}
+                    <span className="text-[10px] text-muted-foreground">
+                      max {cap}{noMedicine || outOfStock ? " (blocked at submit)" : ""}
+                    </span>
                   </div>
                 )}
               </div>
