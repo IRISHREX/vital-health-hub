@@ -1,6 +1,7 @@
 const BaseAppointment = require('../models/NH_Appointment');
 const BaseDoctor = require('../models/NH_Doctor');
 const BasePatient = require('../models/NH_Patient');
+const BaseInvoice = require('../models/NH_Invoice');
 const { sendEmail } = require('../config/email');
 const { emitNotification } = require('../config/socket');
 const { AppError } = require('../middleware/errorHandler');
@@ -10,7 +11,100 @@ const getModels = (req) => ({
   Appointment: getModel(req, 'Appointment', BaseAppointment),
   Doctor: getModel(req, 'Doctor', BaseDoctor),
   Patient: getModel(req, 'Patient', BasePatient),
+  Invoice: getModel(req, 'Invoice', BaseInvoice),
 });
+
+// Upsert an OPD/IPD consultation invoice tied to an appointment.
+// Reflects fee changes, payment mode, and cancellation on the invoice so
+// Billing shows the correct Total/Paid/Due for completed consultations.
+const syncAppointmentInvoice = async ({ Invoice, appointment, userId }) => {
+  try {
+    if (!appointment || !appointment._id) return;
+    const type = (appointment.type === 'ipd' ? 'ipd' : 'opd');
+    const fee = Number(appointment.fee || 0);
+    const paymentMode = appointment.paymentMode || 'pending';
+    const isCancelled = ['cancelled', 'refunded', 'no_show'].includes(appointment.status);
+    const isPaid = paymentMode && paymentMode !== 'pending';
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+
+    let invoice = await Invoice.findOne({ appointment: appointment._id });
+
+    const item = {
+      description: `Consultation Fee`,
+      category: 'doctor_fee',
+      quantity: 1,
+      unitPrice: fee,
+      discount: 0,
+      tax: 0,
+      amount: fee,
+    };
+
+    if (!invoice) {
+      invoice = new Invoice({
+        patient: appointment.patient,
+        appointment: appointment._id,
+        type,
+        items: [item],
+        subtotal: fee,
+        discountAmount: 0,
+        totalTax: 0,
+        totalAmount: fee,
+        paidAmount: isPaid ? fee : 0,
+        dueAmount: isPaid ? 0 : fee,
+        status: isCancelled ? 'cancelled' : (isPaid ? 'paid' : 'pending'),
+        dueDate,
+        generatedBy: userId,
+        notes: `Auto-generated for appointment ${appointment._id}`,
+        ...(isPaid ? {
+          payments: [{
+            amount: fee,
+            method: paymentMode,
+            paidAt: new Date(),
+            receivedBy: userId,
+          }],
+        } : {}),
+      });
+      await invoice.save();
+      return;
+    }
+
+    // Update existing invoice to reflect latest appointment state.
+    invoice.items = [item];
+    invoice.subtotal = fee;
+    invoice.totalAmount = fee;
+
+    if (isCancelled) {
+      invoice.status = 'cancelled';
+      invoice.paidAmount = 0;
+      invoice.dueAmount = 0;
+    } else if (isPaid) {
+      // Record payment if not already reflected.
+      const alreadyPaid = Number(invoice.paidAmount || 0) >= fee;
+      if (!alreadyPaid) {
+        invoice.payments = invoice.payments || [];
+        invoice.payments.push({
+          amount: fee - Number(invoice.paidAmount || 0),
+          method: paymentMode,
+          paidAt: new Date(),
+          receivedBy: userId,
+        });
+        invoice.paidAmount = fee;
+      }
+      invoice.dueAmount = 0;
+    } else {
+      invoice.paidAmount = 0;
+      invoice.dueAmount = fee;
+    }
+
+    invoice.lastUpdatedBy = userId;
+    await invoice.save();
+  } catch (err) {
+    console.error('Failed to sync appointment invoice:', err.message);
+  }
+};
+
 
 const getLoggedInDoctorProfile = async (Doctor, user) => {
   if (!user) return null;
