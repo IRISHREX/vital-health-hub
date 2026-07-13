@@ -374,6 +374,12 @@ exports.createAppointment = async (req, res, next) => {
       populate: { path: 'user', select: 'firstName lastName' }
     });
 
+    // Auto-create/sync consultation invoice so Billing reflects the fee.
+    const { Invoice } = getModels(req);
+    await syncAppointmentInvoice({ Invoice, appointment, userId: req.user._id });
+
+
+
     // Send confirmation email if patient has email
     if (patient.email) {
       await sendEmail(patient.email, 'appointmentConfirmation', {
