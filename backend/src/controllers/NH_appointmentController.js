@@ -451,11 +451,16 @@ exports.updateAppointment = async (req, res, next) => {
       throw new AppError('Appointment not found', 404);
     }
 
+    // Sync consultation invoice with latest fee/payment/status
+    const { Invoice } = getModels(req);
+    await syncAppointmentInvoice({ Invoice, appointment, userId: req.user._id });
+
     res.json({
       success: true,
       message: 'Appointment updated',
       data: { appointment }
     });
+
   } catch (error) {
     next(error);
   }
