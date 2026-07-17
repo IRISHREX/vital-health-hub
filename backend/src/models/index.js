@@ -35,6 +35,12 @@ const RoomTypeService = require('./NH_RoomTypeService');
 const ApprovalRule = require('./NH_ApprovalRule');
 const ApprovalRequest = require('./NH_ApprovalRequest');
 const ScheduleEvent = require('./NH_ScheduleEvent');
+const ReturnRequest = require('./NH_ReturnRequest');
+const MedicineIndent = require('./NH_MedicineIndent');
+const NursingCharge = require('./NH_NursingCharge');
+const Handover = require('./NH_Handover');
+const PACRequest = require('./NH_PACRequest');
+const FluidIO = require('./NH_FluidIO');
 
 module.exports = {
   User,
@@ -72,4 +78,10 @@ module.exports = {
   ApprovalRule,
   ApprovalRequest,
   ScheduleEvent,
+  ReturnRequest,
+  MedicineIndent,
+  NursingCharge,
+  Handover,
+  PACRequest,
+  FluidIO,
 };

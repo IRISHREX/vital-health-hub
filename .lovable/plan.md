@@ -1,78 +1,157 @@
+# Nursing Modules Integration Roadmap
 
-# Enhancements & Bug Fixes Plan
+Extends the HMS with **Return workflows across modules** plus five new nursing features: **Medicine Indent/Return, Nursing Billing, Nurse Handover (SBAR), PAC (Pre‑Anesthesia Check) Requests, Fluid I/O Charts** — all wired into the existing tenant DB, RBAC, `BillingLedger`, `StockAdjustment`, `Notification`, and Approval systems without breaking current flows.
 
-Breaking the request into 6 focused work areas. Items 5 & 6 partially overlap with already-shipped work (payment date input, day/doctor/user/due grouping, date range filter) — I'll verify and fill gaps rather than rebuild.
+---
 
-## 1. Patient Registration — Configurable Required Fields
+## 1. Codebase Analysis (what we build on)
 
-**Default required:** `firstName`, `gender`, `phone` only. Everything else (lastName, DOB, email, address, blood group, etc.) becomes optional by default.
+| Existing asset | Reuse for |
+|---|---|
+| `NH_Medicine`, `NH_StockAdjustment` (types: purchase/dispense/return/expired/damaged/adjustment) | Indent/Return already has `return` type — extend, don't replace |
+| `NH_BillingLedger` (`sourceType`: pharmacy/nursing/procedure…, `category`: nursing/medication…) | Nursing Billing + Return credits — enums already accommodate |
+| `NH_Prescription` + `dispensePrescription` | Return-against-dispense linkage |
+| `NH_Admission`, `NH_Bed`, `NH_Vital` | I/O chart parenting, nursing charges by bed |
+| `NH_nurseController` handover endpoint (`/nurse/handover`) | Upgrade to SBAR payload — endpoint exists, expand schema |
+| `NH_ApprovalRequest` + `ApprovalGate` | PAC sign-off, high-value returns, indent approvals |
+| `NH_Notification` + Socket.io | Real-time alerts for indents, PAC, handover |
+| `useVisualAuth`, `rbac.js`, `PersonalPermissions` | Gate new routes with existing pattern — no new auth system |
+| `Module Operations Settings` | Add nursing toggles into existing settings shell |
+| Sequence generator, `tenantModel.getModel` | ID generation + multi-tenant safety |
 
-- Extend the existing **Validation Preferences** system (`src/lib/validationPreferences.js` + `ValidationPreferencesContext`) with a new per-field `required` flag (currently it only toggles UI visibility).
-- Update `patient_dialog` form registry: mark only `firstName`, `gender`, `phone` as `requiredByDefault: true`.
-- Update `PatientDialog` (frontend) to read the required flag and apply it to validation + asterisks.
-- Update `backend/src/routes/patients.js` validators: keep `firstName`, `gender`, `phone` required; make `lastName` and `dateOfBirth` optional (still validate format when present).
-- Settings UI (`src/components/settings/` Validation tab): add a "Required" toggle next to each field's visibility toggle.
+**Non-negotiables observed:** JS/JSX only, MongoDB per tenant, `NH_` prefix on new models, blue/teal medical theme, `useSound` feedback, server-side pagination, skeleton loaders, `SettingInfo` popovers on new settings sections.
 
-## 2. Appointment Dialog — "New Patient" Button + Remove Time
+---
 
-- In `AppointmentDialog.jsx`, add a **+ New Patient** button next to the patient selector that opens the existing `PatientDialog` inline; on save, auto-select the newly created patient.
-- Remove the **Time** input from the form. Backend still accepts a time, so default it to `00:00` (or current time) when submitting to preserve the existing schema without a migration.
+## 2. Cross-cutting: Return Workflow (all modules)
 
-## 3. Appointment Dialog — Expanded Fields
+A single return engine used by Pharmacy, Lab, Radiology, OT, Admission billables.
 
-New / surfaced inputs in order:
-1. Serial No. (auto-generated, read-only — derive from count of that day's appointments + 1; backend already orders by createdAt)
-2. Patient name (existing selector + new-patient button)
-3. Select doctor (existing)
-4. Appointment date (existing, date-only)
-5. **Appointment priority** — new (`routine` / `urgent` / `emergency`)
-6. **Doctor fees** — new (prefilled from doctor.consultationFee, editable)
-7. **Payment mode** — new (`cash` / `card` / `upi` / `net_banking` / `pending`)
-8. Status (existing)
-9. **Referred by** — new (free text, optionally linked to a referral doctor from #4)
-10. Message / notes (existing `notes`/`reason`)
+**Model — `NH_ReturnRequest`** (new):
+- `module` (pharmacy | lab | radiology | ot | service), `sourceType`, `sourceId` (dispense/order/invoice ref)
+- `items[]` { itemRef, qty, reason, condition (unused/opened/damaged/expired) }
+- `patient`, `admission`, `requestedBy`, `status` (pending/approved/rejected/completed), `approvalRequest` ref
+- `refundMode` (credit_note | cash | adjust_invoice | none), `refundAmount`
 
-Backend (`NH_Appointment.js` model + controller): add `serialNo`, `priority`, `consultationFee`, `paymentMode`, `referredBy` fields. Serial No. computed server-side on create (per-day per-doctor). Existing receipt/token logic stays.
+**Flow (ACID via mongoose sessions):**
+```text
+Request → ApprovalRequest (if amount > threshold) → Approve
+   ├─ Stock: create StockAdjustment(type='return', qty+)
+   ├─ Ledger: reverse BillingLedger (negative amount, sourceType='return')
+   ├─ Invoice: if invoice.status='paid' → credit note; else reduce line
+   └─ Notify: requester + billing_staff
+```
 
-## 4. Doctor Tagging — Hospital vs Referral
+All writes wrapped in `mongoose.startSession()` + `withTransaction()` — MongoDB replica set required (Atlas has it). Idempotency key = `returnRequest._id + itemRef`.
 
-- Extend `NH_Doctor.js` with `doctorType` enum: `hospital` (default) | `referral` | other custom tags via `tags: [String]`.
-- Doctor dialog: add a "Doctor type" select + free-form tags input.
-- Doctors page: add a filter chip group (All / Hospital / Referral / + tags) above the list.
-- Appointment "Referred by" selector pulls from doctors where `doctorType === 'referral'` (plus free text fallback).
+---
 
-## 5. Date-wise Appointment Search + Payment Date in Invoice
+## 3. Feature Modules
 
-- Appointments page: add **Date From / Date To** range filter (and a quick "Today / This Week" preset). Backend `getAppointments` already accepts `startDate`/`endDate` — wire UI to it.
-- **Payment date in invoice** is already implemented (`addPayment` accepts `paidAt`, Billing dialog has the input, InvoicePreview shows "Last Payment Date"). I'll verify the PDF section actually renders the date and add it to the printed invoice header line if missing.
+### 3.1 Medicine Indent / Return
+- **Indent**: ward nurse requests stock from pharmacy. Model `NH_MedicineIndent` { ward, items, requestedBy, status, issuedBy, issuedAt }.
+- **Issue**: pharmacist issues → `StockAdjustment(type='dispense', reference=indentId)`; no ledger entry (internal transfer).
+- **Return**: unused ward stock back → `StockAdjustment(type='return')`; reverses indent qty.
+- Routes: `POST/GET /pharmacy/indents`, `POST /pharmacy/indents/:id/issue|return|approve`.
+- UI: new tab in `PharmacyDashboard` + widget in `NurseDashboard`.
 
-## 6. Billing Reports — Verify & Polish
+### 3.2 Nursing Billing
+- **Model** `NH_NursingCharge` { admission, chargeType (procedure|iv_line|dressing|catheter|monitoring|injection), catalogItemRef (`ServiceCatalog`), qty, performedBy, performedAt }.
+- On save → auto `BillingLedger` insert (`sourceType='nursing'`, `category='nursing'`, `sourceId=nursingCharge._id`) inside a transaction.
+- Reuses **Service Catalog** included-vs-billable rules — no bypass.
+- UI: "Nursing Actions" panel on `PatientDetails` + bulk entry on `NursePatients`.
 
-Already shipped: day/doctor/user grouping, due-only toggle, date range filter on Billing page.
+### 3.3 Nurse Handover (SBAR)
+- Extend existing `/nurse/handover` payload:
+  - `situation`, `background`, `assessment`, `recommendation` (SBAR)
+  - `vitalsSnapshot` (embed last `NH_Vital`), `pendingTasks[]`, `activeIVs[]`, `alerts[]`
+- Persist as `NH_Handover` (new) — keeps handover history for audit; existing endpoint becomes thin wrapper.
+- PDF export via existing report utility, includes QR from `src/lib/document-codes.js`.
+- Notification on submit → incoming nurse; accept/reject via existing `/handover/:id/respond`.
 
-Remaining polish:
-- Ensure **Reports → Billing** tab exposes a CSV/PDF export of each grouped report using the branding header/footer helper.
-- Add a clear **Due Report** preset (one-click filter: groupBy=patient, dueOnly=true) with patient + outstanding amount + last payment date columns.
-- Add date-range presets (Today / This Week / This Month / Custom) on both Billing and Reports pages.
+### 3.4 PAC (Pre‑Anesthesia Check) Requests
+- **Model** `NH_PACRequest` { surgery (ref `NH_Surgery`), patient, anesthetist, status (requested|scheduled|completed|cleared|deferred), assessment{airway, ASA_grade, comorbidities, labs[], allergies, fastingStatus}, clearance{ status, notes, signedBy, signedAt } }.
+- Auto-created when `CreateSurgeryDialog` schedules a surgery (backend hook in `NH_otController`).
+- OT flow gated: `endSurgery` and `startSurgery` verify `pac.clearance.status='cleared'` else block with `ApprovalGate` override.
+- UI: `/ot/pac` list, PAC dialog on surgery card; nurse dashboard shows "PAC due" queue.
 
-## Files to Create
-- `src/components/appointments/AppointmentPriorityField.jsx` (small reusable)
-- No new pages.
+### 3.5 Fluid I/O Charts
+- **Model** `NH_FluidIO` { admission, patient, ts, direction ('in'|'out'), source (IV|Oral|NG|Urine|Drain|Vomit|Stool|Blood), volumeMl, notes, recordedBy }.
+- Aggregation endpoint: `/nurse/io/:admissionId?range=shift|24h|custom` → totals + hourly buckets.
+- UI: chart tab in `PatientDetails` (Recharts, already in deps), quick-entry FAB in `NurseDashboard`.
+- Alert rule: negative balance > configurable threshold → `Notification` to head_nurse.
 
-## Files to Edit (high level)
-- `src/lib/validationPreferences.js`, `src/lib/ValidationPreferencesContext.jsx`, validation Settings tab, `PatientDialog.jsx`
-- `backend/src/routes/patients.js`
-- `src/components/dashboard/AppointmentDialog.jsx`, `src/pages/Appointments.jsx`
-- `backend/src/models/NH_Appointment.js`, `backend/src/controllers/NH_appointmentController.js`
-- `backend/src/models/NH_Doctor.js`, `backend/src/controllers/NH_doctorController.js`, `src/pages/Doctors.jsx`, doctor dialog
-- `src/components/dashboard/InvoicePreview.jsx` (PDF payment-date polish)
-- `src/pages/Reports.jsx`, `src/pages/Billing.jsx` (presets + Due Report preset + export)
+---
 
-## Technical Notes
-- No DB migration tool needed (Mongo, dynamic schema). Mongoose model edits suffice.
-- Required-field setting is enforced both client-side (asterisk + form validation) and server-side (express-validator). Server keeps a hard minimum of `firstName + phone + gender` regardless of settings, to prevent garbage records.
-- Serial No. is informational only (not unique-indexed) to avoid collisions on concurrent inserts.
+## 4. Data Integrity Strategy (ACID)
 
-## Out of Scope (please confirm if you want these)
-- Migrating existing appointments to backfill `serialNo` — new appointments only.
-- Sending the appointment receipt via SMS/WhatsApp (still print/PDF only).
+- **Transactions**: every write that touches ≥2 collections (stock+ledger, indent+adjustment, return+invoice, nursing charge+ledger, PAC+surgery gating) uses `session.withTransaction()`.
+- **Optimistic concurrency**: `__v` version key on `Medicine.stock` and `Invoice.totals` updates; retry on `WriteConflict`.
+- **Idempotency**: client mutation keys stored on new endpoints (`Idempotency-Key` header → hash into a small `NH_IdemKey` collection with TTL).
+- **Audit**: reuse `NH_ActivityLog` for all new mutations; sensitive ops (return approve, PAC override) also write `GM_AuditLog`.
+- **Validation triggers over CHECK**: reason/qty guards live in mongoose pre-save hooks.
+
+---
+
+## 5. RBAC & Settings
+
+- New RBAC keys in `src/lib/rbac.js`: `medicine_indent`, `nursing_charges`, `handover`, `pac`, `fluid_io`, `returns`.
+- Default matrix: `nurse` r/w on handover/fluid_io/indent/nursing_charges; `pharmacist` on indent issue + returns; `anesthetist`/`doctor` on PAC; `billing_staff` on return refund; `super_admin`/`hospital_admin` all.
+- Module Operations Settings: add toggles under new "Nursing" section — `enableIndent`, `enableNursingBilling`, `enableFluidIO`, `enforcePACBeforeSurgery`, `returnApprovalThreshold`.
+- Each section ships a `SettingInfo` popover (existing pattern).
+
+---
+
+## 6. Phased Delivery (5 phases, ship each independently)
+
+```text
+Phase 1 — Foundation (no user-facing break)
+  ├─ Return engine (model + service + transactions + RBAC keys)
+  ├─ Idempotency helper, activity log wiring
+  └─ Settings toggles (default OFF for new features)
+
+Phase 2 — Pharmacy uplift
+  ├─ Medicine Indent (request → issue → return)
+  ├─ Pharmacy Return against dispense (uses Phase 1 engine)
+  └─ Ward stock ledger view
+
+Phase 3 — Nursing Ops
+  ├─ Nursing Billing (charges → auto ledger)
+  ├─ Fluid I/O Chart + threshold alerts
+  └─ Widgets on NurseDashboard
+
+Phase 4 — Clinical handoffs
+  ├─ SBAR handover model + PDF/QR export
+  └─ PAC requests + OT gating (soft gate first, hard gate via setting)
+
+Phase 5 — Cross-module returns
+  ├─ Lab / Radiology / OT / Service returns using Phase 1 engine
+  ├─ Credit-note invoices
+  └─ Reports: returns register, nursing revenue, I/O compliance
+```
+
+Each phase has: migration script (idempotent — checks existing indexes), seed updates, RBAC defaults, feature-flag gate, e2e scenario in `KT/09_E2E_Test_Scenarios.md`.
+
+---
+
+## 7. Risk & Mitigation
+
+| Risk | Mitigation |
+|---|---|
+| Existing pharmacy dispense flow regression | Return engine only *adds* `StockAdjustment` rows; dispense path untouched. Feature-flag Phase 2. |
+| Invoice recalculation drift | Credit notes are new `Invoice` docs linked via `relatedInvoice`; original invoices immutable after payment. |
+| OT PAC gate blocks legitimate emergencies | Setting `enforcePACBeforeSurgery` (soft/hard/off) + `ApprovalGate` override with audit. |
+| Transactions require replica set | Confirm each tenant's Mongo URI is RS-enabled during onboarding; fallback path logs + queues rather than fails. |
+| RBAC drift across 9 roles × new modules | Extend `rbac.js` matrix in one PR with unit tests in `src/test/backend-unit-test-cases.spec.ts`. |
+
+---
+
+## 8. Deliverables per Phase
+
+Backend: models under `backend/src/models/NH_*.js`, controllers, routes registered in `backend/src/routes/index.js`, seed updates.
+Frontend: `src/lib/*.js` API wrappers, page components under `src/pages/` and dialogs under `src/components/nursing|pharmacy|ot/`, RBAC gates via `Can`/`RestrictedAction`, sounds via `useSound`, skeletons.
+Docs: update `KT/07_Module_Functionality_Reference.md`, add `KT/11_Nursing_Modules.md`, DFDs in `KT/03`.
+
+---
+
+**Next step:** confirm the roadmap, then I start with **Phase 1 (Return engine + settings + RBAC keys)** — no user-facing change, safe to land first.
