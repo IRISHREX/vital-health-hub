@@ -45,6 +45,7 @@ const PrescriptionPreview = lazy(() => import("./pages/PrescriptionPreview"));
 const LabReportPreview = lazy(() => import("./pages/LabReportPreview"));
 const RadiologyReportPreview = lazy(() => import("./pages/RadiologyReportPreview"));
 const Scheduler = lazy(() => import("./pages/Scheduler"));
+const NursingOps = lazy(() => import("./pages/NursingOps"));
 const PublicLanding = lazy(() => import("./pages/public/PublicLanding"));
 
 // Standalone Portals
@@ -149,6 +150,9 @@ const App = () => (
                 </Route>
                 <Route element={<AuthorizedRoute module="scheduler" />}>
                   <Route path="/scheduler" element={<Page><Scheduler /></Page>} />
+                </Route>
+                <Route element={<AuthorizedRoute module="nursing_charges" />}>
+                  <Route path="/nursing-ops" element={<Page><NursingOps /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="tasks" />}>
                   <Route path="/tasks" element={<Page><Tasks /></Page>} />
