@@ -60,6 +60,12 @@ v1Router.use('/room-type-services', require('./roomTypeServices'));
 v1Router.use('/approvals', require('./approvals'));
 v1Router.use('/platform-notices', require('./platformNotices'));
 v1Router.use('/scheduler', require('./scheduler'));
+v1Router.use('/returns', require('./returns'));
+v1Router.use('/medicine-indents', require('./medicineIndents'));
+v1Router.use('/nursing-charges', require('./nursingCharges'));
+v1Router.use('/handovers', require('./handovers'));
+v1Router.use('/pac', require('./pac'));
+v1Router.use('/fluid-io', require('./fluidIO'));
 
 // Mount v1 routes under nh/api/v1
 router.use('/nh/api/v1', v1Router);
