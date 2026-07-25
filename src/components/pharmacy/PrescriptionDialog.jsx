@@ -418,9 +418,6 @@ export default function PrescriptionDialog({
       .filter((t) => t.testName?.trim())
       .map((t) => ({ testName: t.testName.trim(), testType: t.testType || "", instructions: t.instructions || "" }));
 
-    if (rxMode === "internal" && (!patientId || !doctorId) && cleanedItems.length === 0) {
-      return toast.error("Patient, doctor and at least one medicine are required");
-    }
     if (rxMode === "internal" && (!patientId || !doctorId)) {
       return toast.error("Patient and doctor are required for internal mode");
     }
