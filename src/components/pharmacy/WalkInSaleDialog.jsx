@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getMedicines, createPrescription, dispensePrescription } from "@/lib/pharmacy";
+import { composePaymentNote } from "./pharmacy-utils";
 
 const emptyItem = { medicineId: "", medicineName: "", quantity: 1, unitPrice: 0, stock: 0 };
 const emptyPatient = { name: "", phone: "", age: "", gender: "", address: "" };
@@ -20,6 +21,49 @@ const PAYMENT_METHODS = [
   { value: "insurance", label: "Insurance" },
   { value: "cheque", label: "Cheque" },
 ];
+
+const PHARMACY_QUERY_KEYS = [
+  ["prescriptions"],
+  ["medicines"],
+  ["pharmacy-stats"],
+  ["pharmacy-invoices"],
+  ["invoices"],
+];
+
+const validateWalkInSale = (patient, validItems) => {
+  if (!patient.name?.trim()) return "Patient name is required";
+  if (validItems.length === 0) return "Add at least one medicine with quantity";
+  for (const it of validItems) {
+    if (Number(it.quantity) > Number(it.stock)) {
+      return `"${it.medicineName}": only ${it.stock} in stock.`;
+    }
+  }
+  return null;
+};
+
+const buildWalkInRxPayload = ({ patient, validItems, composedNotes }) => ({
+  mode: "external",
+  externalPatient: {
+    name: patient.name.trim(),
+    phone: patient.phone || undefined,
+    age: patient.age || undefined,
+    gender: patient.gender || undefined,
+    address: patient.address || undefined,
+  },
+  encounterType: "opd",
+  notes: composedNotes || "Walk-in sale",
+  items: validItems.map((it) => ({
+    medicine: it.medicineId,
+    medicineName: it.medicineName,
+    dosage: "As directed",
+    frequency: "SOS",
+    duration: "-",
+    route: "oral",
+    quantity: Number(it.quantity),
+    stockRequestRaised: false,
+  })),
+  testAdvice: [],
+});
 
 export default function WalkInSaleDialog({ open, onOpenChange }) {
   const qc = useQueryClient();
@@ -70,53 +114,19 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
   };
 
   const handleSubmit = async () => {
-    if (!patient.name?.trim()) return toast.error("Patient name is required");
     const validItems = items.filter((it) => it.medicineId && Number(it.quantity) > 0);
-    if (validItems.length === 0) return toast.error("Add at least one medicine with quantity");
-
-    for (const it of validItems) {
-      if (Number(it.quantity) > Number(it.stock)) {
-        return toast.error(`"${it.medicineName}": only ${it.stock} in stock.`);
-      }
-    }
+    const error = validateWalkInSale(patient, validItems);
+    if (error) return toast.error(error);
 
     setLoading(true);
     try {
-      // Compose a notes string that preserves the captured payment intent so it
-      // is not lost (the auto-generated invoice can then be settled in Billing).
-      const paymentNote = `Payment: ${paymentMethod.toUpperCase()}${paymentReference ? ` (Ref: ${paymentReference})` : ""}`;
-      const composedNotes = [notes?.trim(), paymentNote].filter(Boolean).join(" | ");
-
-      // Create an external (walk-in) prescription with the chosen items
-      const rxPayload = {
-        mode: "external",
-        externalPatient: {
-          name: patient.name.trim(),
-          phone: patient.phone || undefined,
-          age: patient.age || undefined,
-          gender: patient.gender || undefined,
-          address: patient.address || undefined,
-        },
-        encounterType: "opd",
-        notes: composedNotes || "Walk-in sale",
-        items: validItems.map((it) => ({
-          medicine: it.medicineId,
-          medicineName: it.medicineName,
-          dosage: "As directed",
-          frequency: "SOS",
-          duration: "-",
-          route: "oral",
-          quantity: Number(it.quantity),
-          stockRequestRaised: false,
-        })),
-        testAdvice: [],
-      };
+      const composedNotes = composePaymentNote(paymentMethod, paymentReference, notes);
+      const rxPayload = buildWalkInRxPayload({ patient, validItems, composedNotes });
 
       const created = await createPrescription(rxPayload);
       const rxId = created?.data?._id || created?._id;
       if (!rxId) throw new Error("Failed to create walk-in record");
 
-      // Immediately dispense everything (this also auto-creates an external invoice)
       const rxItems = created?.data?.items || created?.items || [];
       const dispensePayload = rxItems.map((ri) => ({
         itemId: ri._id,
@@ -127,15 +137,9 @@ export default function WalkInSaleDialog({ open, onOpenChange }) {
       toast.success(
         `Walk-in sale completed${paymentMethod ? ` — paid by ${paymentMethod.toUpperCase()}` : ""}. Invoice generated.`
       );
-      qc.invalidateQueries({ queryKey: ["prescriptions"] });
-      qc.invalidateQueries({ queryKey: ["medicines"] });
-      qc.invalidateQueries({ queryKey: ["pharmacy-stats"] });
-      qc.invalidateQueries({ queryKey: ["pharmacy-invoices"] });
-      qc.invalidateQueries({ queryKey: ["invoices"] });
+      PHARMACY_QUERY_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
 
-      // NOTE: The selected payment method/reference is shown to the user but the
-      // payment is recorded on the auto-generated invoice from the Billing screen.
-      // (Backend dispense flow generates the invoice; payment can be marked there.)
+      // Payment mode/reference is captured on the auto-generated invoice; settle in Billing.
       reset();
       onOpenChange(false);
     } catch (e) {
