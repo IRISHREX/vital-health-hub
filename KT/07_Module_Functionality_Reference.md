@@ -116,11 +116,14 @@
 ### 2.12 Pharmacy (`/pharmacy`) — Dual-Mode
 - **Dashboard:** Prescription queue, medicine inventory
 - **Prescriptions:** PrescriptionDialog with internal/external mode
-- **Dispensing:** DispenseDialog
+- **Dispensing:** DispenseDialog (row extracted to `DispenseItemRow`; payload built by pure `buildDispensePayload`)
+- **Walk-in Sale:** WalkInSaleDialog (validation + payload builders extracted; payment note composed via shared util)
 - **Inventory:** AddMedicineDialog, StockAdjustDialog
 - **Templates:** Prescription templates
 - **Preview:** PrescriptionPreview with PDF export
 - **Autocomplete:** MedicineAutocomplete for searching medicines
+- **Shared utils:** `src/components/pharmacy/pharmacy-utils.js` — `computeDispenseCap`, `readItemStock`, `composePaymentNote`, `parseCsvList`, `uniqueTruthy`, doctor/patient display helpers
+- **Backend refactor:** `dispensePrescription` split into `assertDispenseAllowed`, `buildInvoiceLineItem`, `isPrescriptionFullyDispensed`; fixed bug where `allDispensed` was computed only from incoming batch items (now derived from full prescription state after the loop)
 
 ### 2.13 Operating Theatre (`/ot`)
 - **OT Rooms:** OTRoomDialog for room management

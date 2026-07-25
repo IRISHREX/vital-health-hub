@@ -416,6 +416,43 @@ exports.getPharmacyInvoices = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// --- Dispense helpers --------------------------------------------------
+
+const assertDispenseAllowed = (rxItem, requested, med) => {
+  const remainingPrescribed = Math.max(
+    0,
+    Number(rxItem.quantity || 0) - Number(rxItem.dispensedQty || 0)
+  );
+  if (requested > remainingPrescribed) {
+    throw new AppError(
+      `"${med.name}": requested ${requested} exceeds remaining prescribed ${remainingPrescribed}.`,
+      400
+    );
+  }
+  if (requested > med.stock) {
+    throw new AppError(
+      `"${med.name}": requested ${requested} exceeds available stock ${med.stock}.`,
+      400
+    );
+  }
+};
+
+const buildInvoiceLineItem = (rxItem, med, qty) => ({
+  description: `${rxItem.medicineName} x${qty}`,
+  category: 'medication',
+  quantity: qty,
+  unitPrice: med.sellingPrice,
+  discount: 0,
+  tax: 0,
+  amount: qty * med.sellingPrice,
+});
+
+const isPrescriptionFullyDispensed = (rx) =>
+  (rx.items || []).every((it) => {
+    if (!it.medicine) return false;
+    return Number(it.dispensedQty || 0) >= Number(it.quantity || 0);
+  });
+
 exports.dispensePrescription = async (req, res, next) => {
   try {
     const { Prescription, Medicine, Invoice, StockAdjustment, BillingLedger } = getModels(req);
@@ -431,7 +468,6 @@ exports.dispensePrescription = async (req, res, next) => {
     }
 
     const { items } = req.body;
-    let allDispensed = true;
     let hasAnyDispense = false;
 
     const invoice = await getOrCreatePharmacyInvoice({
@@ -447,8 +483,6 @@ exports.dispensePrescription = async (req, res, next) => {
       const rxItem = rx.items.id(dispenseItem.itemId);
       if (!rxItem) continue;
       if (!rxItem.medicine) {
-        // Cannot dispense items without a linked medicine
-        allDispensed = false;
         if (Number(dispenseItem.dispensedQty || 0) > 0) {
           throw new AppError(`Cannot dispense "${rxItem.medicineName}" — no medicine linked from inventory.`, 400);
         }
@@ -460,15 +494,8 @@ exports.dispensePrescription = async (req, res, next) => {
 
       const requested = Number(dispenseItem.dispensedQty || 0);
       if (requested <= 0) continue;
-      const remainingPrescribed = Math.max(0, Number(rxItem.quantity || 0) - Number(rxItem.dispensedQty || 0));
-      if (requested > remainingPrescribed) {
-        throw new AppError(`"${med.name}": requested ${requested} exceeds remaining prescribed ${remainingPrescribed}.`, 400);
-      }
-      if (requested > med.stock) {
-        throw new AppError(`"${med.name}": requested ${requested} exceeds available stock ${med.stock}.`, 400);
-      }
+      assertDispenseAllowed(rxItem, requested, med);
       const qty = requested;
-      if (qty <= 0) continue;
       hasAnyDispense = true;
 
       const prevStock = med.stock;
@@ -489,8 +516,7 @@ exports.dispensePrescription = async (req, res, next) => {
       rxItem.dispensedQty = (rxItem.dispensedQty || 0) + qty;
       rxItem.dispensedAt = new Date();
 
-      const amount = qty * med.sellingPrice;
-      const lineDescription = `${rxItem.medicineName} x${qty}`;
+      const lineItem = buildInvoiceLineItem(rxItem, med, qty);
 
       const ledgerEntry = (rx.mode === 'internal' && rx.patient)
         ? await BillingLedger.create({
@@ -499,23 +525,15 @@ exports.dispensePrescription = async (req, res, next) => {
           sourceType: 'pharmacy',
           sourceId: rx._id,
           category: 'medication',
-          description: lineDescription,
+          description: lineItem.description,
           quantity: qty,
           unitPrice: med.sellingPrice,
-          amount,
+          amount: lineItem.amount,
           recordedBy: req.user._id
         })
         : null;
 
-      invoice.items.push({
-        description: lineDescription,
-        category: 'medication',
-        quantity: qty,
-        unitPrice: med.sellingPrice,
-        discount: 0,
-        tax: 0,
-        amount
-      });
+      invoice.items.push(lineItem);
 
       if (ledgerEntry) {
         ledgerEntry.billed = true;
@@ -523,8 +541,6 @@ exports.dispensePrescription = async (req, res, next) => {
         ledgerEntry.invoice = invoice._id;
         await ledgerEntry.save();
       }
-
-      if (rxItem.dispensedQty < rxItem.quantity) allDispensed = false;
     }
 
     if (hasAnyDispense) {
@@ -533,7 +549,8 @@ exports.dispensePrescription = async (req, res, next) => {
       await invoice.save();
     }
 
-    rx.status = allDispensed ? 'fully_dispensed' : 'partially_dispensed';
+    // Compute completion from the full prescription state, not just the incoming batch.
+    rx.status = isPrescriptionFullyDispensed(rx) ? 'fully_dispensed' : 'partially_dispensed';
     await rx.save();
 
     res.json({ success: true, data: { prescription: rx, invoice: hasAnyDispense ? invoice : null } });

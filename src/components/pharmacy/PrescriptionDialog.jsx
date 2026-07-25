@@ -62,22 +62,12 @@ const emptyFemaleHealth = {
 
 const emptyTest = { testName: "", testType: "", instructions: "" };
 
-const parseList = (value) =>
-  String(value || "")
-    .split(",")
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-const unique = (arr) => Array.from(new Set(arr.filter(Boolean)));
-
-const doctorName = (doctor) => {
-  if (!doctor) return "Unknown";
-  if (doctor.name) return doctor.name;
-  const root = `${doctor.firstName || ""} ${doctor.lastName || ""}`.trim();
-  if (root) return root;
-  const user = `${doctor.user?.firstName || ""} ${doctor.user?.lastName || ""}`.trim();
-  return user || "Unknown";
-};
+import {
+  parseCsvList as parseList,
+  uniqueTruthy as unique,
+  getDoctorDisplayName as doctorName,
+  getPatientLabelWithId,
+} from "./pharmacy-utils";
 
 export default function PrescriptionDialog({
   open,
@@ -428,9 +418,6 @@ export default function PrescriptionDialog({
       .filter((t) => t.testName?.trim())
       .map((t) => ({ testName: t.testName.trim(), testType: t.testType || "", instructions: t.instructions || "" }));
 
-    if (rxMode === "internal" && (!patientId || !doctorId) && cleanedItems.length === 0) {
-      return toast.error("Patient, doctor and at least one medicine are required");
-    }
     if (rxMode === "internal" && (!patientId || !doctorId)) {
       return toast.error("Patient and doctor are required for internal mode");
     }
