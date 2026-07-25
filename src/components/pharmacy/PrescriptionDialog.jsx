@@ -62,22 +62,12 @@ const emptyFemaleHealth = {
 
 const emptyTest = { testName: "", testType: "", instructions: "" };
 
-const parseList = (value) =>
-  String(value || "")
-    .split(",")
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-const unique = (arr) => Array.from(new Set(arr.filter(Boolean)));
-
-const doctorName = (doctor) => {
-  if (!doctor) return "Unknown";
-  if (doctor.name) return doctor.name;
-  const root = `${doctor.firstName || ""} ${doctor.lastName || ""}`.trim();
-  if (root) return root;
-  const user = `${doctor.user?.firstName || ""} ${doctor.user?.lastName || ""}`.trim();
-  return user || "Unknown";
-};
+import {
+  parseCsvList as parseList,
+  uniqueTruthy as unique,
+  getDoctorDisplayName as doctorName,
+  getPatientLabelWithId,
+} from "./pharmacy-utils";
 
 export default function PrescriptionDialog({
   open,
