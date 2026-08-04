@@ -3,6 +3,10 @@ const BasePatient = require('../models/NH_Patient');
 const BaseAdmission = require('../models/NH_Admission');
 const asyncHandler = require('express-async-handler');
 const { getModel } = require('../utils/tenantModel');
+const {
+  accrueCommissionForSettledInvoice,
+  cancelCommissionForInvoice,
+} = require('../utils/referralCommission');
 
 const getModels = (req) => ({
   Invoice: getModel(req, 'Invoice', BaseInvoice),
@@ -46,6 +50,7 @@ const getInvoices = asyncHandler(async (req, res) => {
     .populate('patient', 'firstName lastName patientId phone registrationType status')
     .populate('admission', 'admissionId status admissionType')
     .populate('generatedBy', 'firstName lastName email')
+    .populate('referrer', 'name referrerCode type phone')
     .sort({ createdAt: -1 });
   
   // Format response with properly structured patient data
@@ -55,6 +60,8 @@ const getInvoices = asyncHandler(async (req, res) => {
       invoiceObj.patient.name = `${invoiceObj.patient.firstName} ${invoiceObj.patient.lastName}`;
     }
     invoiceObj.dueAmount = Math.max(0, Number(invoiceObj.totalAmount || 0) - Number(invoiceObj.paidAmount || 0));
+    invoiceObj.refundedAmount = Number(invoiceObj.refundedAmount || 0);
+    invoiceObj.refundableAmount = Math.max(0, Number(invoiceObj.paidAmount || 0));
     invoiceObj.status = getComputedInvoiceStatus(invoiceObj);
     return invoiceObj;
   });
@@ -76,7 +83,9 @@ const getInvoiceById = asyncHandler(async (req, res) => {
     .populate('admission')
     .populate('generatedBy', 'name email')
     .populate('lastUpdatedBy', 'name email')
-    .populate('payments.receivedBy', 'name email');
+    .populate('payments.receivedBy', 'name email')
+    .populate('refunds.refundedBy', 'firstName lastName email')
+    .populate('referrer', 'name referrerCode type phone defaultPercentage commissionRates');
 
   if (invoice) {
     res.json(invoice);
@@ -109,6 +118,8 @@ const createInvoice = asyncHandler(async (req, res) => {
     status,
     dueDate,
     notes,
+    referrer,
+    referralPercentage,
   } = req.body;
 
   // Validate required fields
@@ -176,6 +187,10 @@ const createInvoice = asyncHandler(async (req, res) => {
     status: 'pending', // Always start with pending
     dueDate,
     notes,
+    referrer: referrer || undefined,
+    referralPercentage: referralPercentage === undefined || referralPercentage === null || referralPercentage === ''
+      ? undefined
+      : Number(referralPercentage),
     generatedBy: req.user._id,
   });
 
@@ -352,11 +367,105 @@ const addPayment = asyncHandler(async (req, res) => {
     // Status will be automatically updated by the pre-save hook
     await invoice.save();
 
+    // Referral commission is accrued only when the invoice is fully settled.
+    await accrueCommissionForSettledInvoice(req, invoice);
+
     res.status(201).json({
       success: true,
       message: `Payment of ₹${amount} recorded successfully`,
       invoice
     });
+});
+
+
+// @desc    Refund against an invoice (full / partial / custom)
+// @route   POST /api/invoices/:id/refunds
+// @access  Private/Billing
+const refundInvoice = asyncHandler(async (req, res) => {
+  const { Invoice } = getModels(req);
+  const { amount, refundType = 'partial', method = 'cash', reason, reference, refundedAt } = req.body;
+
+  const invoice = await Invoice.findById(req.params.id);
+  if (!invoice) {
+    res.status(404);
+    throw new Error('Invoice not found');
+  }
+
+  const paidAmount = Number(invoice.paidAmount || 0);
+  if (paidAmount <= 0) {
+    res.status(400);
+    throw new Error('Nothing to refund — no payment has been received on this invoice');
+  }
+  if (invoice.status === 'cancelled') {
+    res.status(400);
+    throw new Error('Cannot refund a cancelled invoice');
+  }
+
+  const validTypes = ['full', 'partial', 'custom'];
+  if (!validTypes.includes(refundType)) {
+    res.status(400);
+    throw new Error(`Invalid refundType. Must be one of: ${validTypes.join(', ')}`);
+  }
+
+  const validMethods = ['cash', 'card', 'upi', 'net_banking', 'cheque', 'insurance', 'adjustment'];
+  if (!validMethods.includes(method)) {
+    res.status(400);
+    throw new Error(`Invalid refund method. Must be one of: ${validMethods.join(', ')}`);
+  }
+
+  const refundAmount = refundType === 'full' ? paidAmount : Number(amount);
+  if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+    res.status(400);
+    throw new Error('Refund amount must be greater than 0');
+  }
+  if (refundAmount > paidAmount) {
+    res.status(400);
+    throw new Error(`Refund amount (${refundAmount}) exceeds the refundable paid amount (${paidAmount})`);
+  }
+  if (refundType !== 'full' && !reason) {
+    res.status(400);
+    throw new Error('A reason is required for partial and custom refunds');
+  }
+
+  let refundDate;
+  if (refundedAt) {
+    refundDate = new Date(refundedAt);
+    if (Number.isNaN(refundDate.getTime())) {
+      res.status(400);
+      throw new Error('Invalid refund date');
+    }
+    if (refundDate.getTime() > Date.now() + 60_000) {
+      res.status(400);
+      throw new Error('Refund date cannot be in the future');
+    }
+  }
+
+  invoice.refunds.push({
+    amount: refundAmount,
+    refundType,
+    method,
+    reason,
+    reference: reference || '',
+    refundedBy: req.user._id,
+    ...(refundDate ? { refundedAt: refundDate } : {}),
+  });
+
+  invoice.refundedAmount = Number(invoice.refundedAmount || 0) + refundAmount;
+  invoice.paidAmount = Math.max(0, paidAmount - refundAmount);
+  invoice.lastUpdatedBy = req.user._id;
+
+  await invoice.save();
+
+  // A refunded invoice is no longer fully settled, so any pending commission is voided.
+  if (Number(invoice.paidAmount) < Number(invoice.totalAmount || 0)) {
+    await cancelCommissionForInvoice(req, invoice, reason || 'Invoice refunded');
+  }
+
+  res.status(201).json({
+    success: true,
+    message: `Refund of ₹${refundAmount} recorded successfully`,
+    invoice,
+  });
 });
 
 
@@ -366,5 +475,6 @@ module.exports = {
   createInvoice,
   updateInvoice,
   deleteInvoice,
-  addPayment
+  addPayment,
+  refundInvoice
 };
