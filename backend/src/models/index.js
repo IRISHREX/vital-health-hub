@@ -41,6 +41,13 @@ const NursingCharge = require('./NH_NursingCharge');
 const Handover = require('./NH_Handover');
 const PACRequest = require('./NH_PACRequest');
 const FluidIO = require('./NH_FluidIO');
+const BirthRecord = require('./NH_BirthRecord');
+const DeathRecord = require('./NH_DeathRecord');
+const Referrer = require('./NH_Referrer');
+const ReferralCommission = require('./NH_ReferralCommission');
+const Estimate = require('./NH_Estimate');
+const Attendance = require('./NH_Attendance');
+const AttendanceLocation = require('./NH_AttendanceLocation');
 
 module.exports = {
   User,
@@ -84,4 +91,11 @@ module.exports = {
   Handover,
   PACRequest,
   FluidIO,
+  BirthRecord,
+  DeathRecord,
+  Referrer,
+  ReferralCommission,
+  Estimate,
+  Attendance,
+  AttendanceLocation,
 };

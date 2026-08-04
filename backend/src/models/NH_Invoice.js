@@ -113,6 +113,32 @@ const invoiceSchema = new mongoose.Schema({
     status: { type: String, enum: ['pending', 'approved', 'rejected', 'partial'] },
     approvedAmount: Number
   },
+  refunds: [{
+    amount: { type: Number, required: true },
+    refundType: { type: String, enum: ['full', 'partial', 'custom'], default: 'partial' },
+    method: {
+      type: String,
+      enum: ['cash', 'card', 'upi', 'net_banking', 'cheque', 'insurance', 'adjustment'],
+      default: 'cash'
+    },
+    reason: String,
+    reference: String,
+    refundedAt: { type: Date, default: Date.now },
+    refundedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }],
+  refundedAmount: {
+    type: Number,
+    default: 0
+  },
+  referrer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Referrer'
+  },
+  referralPercentage: {
+    type: Number,
+    min: 0,
+    max: 100
+  },
   notes: String,
   generatedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -153,6 +179,12 @@ invoiceSchema.pre('save', async function(next) {
 invoiceSchema.pre('save', function(next) {
   this.dueAmount = Math.max(0, this.totalAmount - this.paidAmount);
   
+  const refunded = Number(this.refundedAmount || 0);
+  if (refunded > 0 && refunded >= Number(this.totalAmount || 0)) {
+    this.status = 'refunded';
+    return next();
+  }
+
   if (this.status !== 'cancelled' && this.status !== 'refunded') {
     if (this.paidAmount >= this.totalAmount) {
       this.status = 'paid';
