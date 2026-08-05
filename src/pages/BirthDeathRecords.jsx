@@ -16,6 +16,7 @@ import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, printBrandedHtml } from "@/lib/branding";
 import { buildDocumentCodes } from "@/lib/document-codes";
 import * as api from "@/lib/vital-records";
+import { Pencil, Printer, CheckCircle2, X } from "lucide-react";
 
 const fmtDate = (value) => (value ? new Date(value).toLocaleDateString("en-IN") : "—");
 
@@ -81,6 +82,47 @@ const cleanPayload = (form) =>
     if (value !== "" && value !== null && value !== undefined) acc[key] = value;
     return acc;
   }, {});
+
+const todayLocalStrings = () => {
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  return {
+    date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+  };
+};
+
+const parseLocalDate = (value) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const isFutureLocalDate = (value) => {
+  if (!value) return false;
+  const date = parseLocalDate(value);
+  const now = new Date();
+  const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const localValue = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return localValue > localToday;
+};
+
+const isTodayLocalDate = (value) => {
+  if (!value) return false;
+  const date = parseLocalDate(value);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+};
+
+const isFutureLocalTime = (value) => {
+  if (!value) return false;
+  const [hour, minute] = value.split(":").map(Number);
+  const now = new Date();
+  return hour * 60 + minute > now.getHours() * 60 + now.getMinutes();
+};
 
 const detailRows = (record, fields) =>
   fields
@@ -151,8 +193,8 @@ function CertificatePrinter({ record, kind, hospitalSettings }) {
   };
 
   return (
-    <Button size="sm" variant="ghost" onClick={print}>
-      Print
+    <Button size="icon" variant="ghost" title="Print certificate" onClick={print}>
+      <Printer className="h-4 w-4" />
     </Button>
   );
 }
@@ -241,6 +283,19 @@ function RecordsTab({ kind, permissions, hospitalSettings }) {
       toast({ title: `${missing[1]} is required`, variant: "destructive" });
       return;
     }
+
+    const dateKey = isBirth ? "dateOfBirth" : "dateOfDeath";
+    const timeKey = isBirth ? "timeOfBirth" : "timeOfDeath";
+    if (isFutureLocalDate(form[dateKey])) {
+      toast({ title: `${isBirth ? "Date of Birth" : "Date of Death"} cannot be in the future`, variant: "destructive" });
+      return;
+    }
+
+    if (form[timeKey] && isTodayLocalDate(form[dateKey]) && isFutureLocalTime(form[timeKey])) {
+      toast({ title: `${isBirth ? "Time of Birth" : "Time of Death"} cannot be in the future`, variant: "destructive" });
+      return;
+    }
+
     save.mutate(cleanPayload(form));
   };
 
@@ -324,18 +379,30 @@ function RecordsTab({ kind, permissions, hospitalSettings }) {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {permissions.canEdit && record.status !== "cancelled" && (
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(record)}>Edit</Button>
+                          <Button size="icon" variant="ghost" title="Edit record" onClick={() => openEdit(record)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         )}
                         {permissions.canEdit && record.status === "registered" && (
-                          <Button size="sm" variant="outline" onClick={() => issue.mutate(record._id)} disabled={issue.isPending}>
-                            Issue Certificate
+                          <Button size="icon" variant="ghost" title="Issue certificate" onClick={() => issue.mutate(record._id)} disabled={issue.isPending}>
+                            <CheckCircle2 className="h-4 w-4" />
                           </Button>
                         )}
                         {record.status === "certificate_issued" && (
-                          <CertificatePrinter record={record} kind={kind} hospitalSettings={hospitalSettings} />
+                          <Button size="icon" variant="ghost" title="Print certificate" onClick={() => {}}>
+                            <Printer className="h-4 w-4" />
+                          </Button>
                         )}
-                        {permissions.canDelete && record.status !== "cancelled" && (
-                          <Button size="sm" variant="ghost" onClick={() => cancel.mutate(record._id)}>Cancel</Button>
+                        {permissions.canDelete && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Cancel record"
+                            onClick={() => cancel.mutate(record._id)}
+                            disabled={record.status === "certificate_issued"}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -367,8 +434,8 @@ function RecordsTab({ kind, permissions, hospitalSettings }) {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Date of Birth *</Label><Input type="date" value={form.dateOfBirth} onChange={(e) => field("dateOfBirth", e.target.value)} /></div>
-              <div><Label>Time of Birth</Label><Input type="time" value={form.timeOfBirth} onChange={(e) => field("timeOfBirth", e.target.value)} /></div>
+              <div><Label>Date of Birth *</Label><Input type="date" max={todayLocalStrings().date} value={form.dateOfBirth} onChange={(e) => field("dateOfBirth", e.target.value)} /></div>
+              <div><Label>Time of Birth</Label><Input type="time" max={todayLocalStrings().time} value={form.timeOfBirth} onChange={(e) => field("timeOfBirth", e.target.value)} /></div>
               <div><Label>Weight (grams)</Label><Input type="number" min="0" value={form.weightGrams} onChange={(e) => field("weightGrams", e.target.value)} /></div>
               <div><Label>Gestation (weeks)</Label><Input type="number" min="0" value={form.gestationWeeks} onChange={(e) => field("gestationWeeks", e.target.value)} /></div>
               <div>
@@ -424,8 +491,8 @@ function RecordsTab({ kind, permissions, hospitalSettings }) {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Date of Death *</Label><Input type="date" value={form.dateOfDeath} onChange={(e) => field("dateOfDeath", e.target.value)} /></div>
-              <div><Label>Time of Death</Label><Input type="time" value={form.timeOfDeath} onChange={(e) => field("timeOfDeath", e.target.value)} /></div>
+              <div><Label>Date of Death *</Label><Input type="date" max={todayLocalStrings().date} value={form.dateOfDeath} onChange={(e) => field("dateOfDeath", e.target.value)} /></div>
+              <div><Label>Time of Death</Label><Input type="time" max={todayLocalStrings().time} value={form.timeOfDeath} onChange={(e) => field("timeOfDeath", e.target.value)} /></div>
               <div>
                 <Label>Place of Death</Label>
                 <Select value={form.placeOfDeath} onValueChange={(v) => field("placeOfDeath", v)}>

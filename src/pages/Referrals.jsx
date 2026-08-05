@@ -93,49 +93,53 @@ function ReferrerForm({ open, onOpenChange, editing, onSaved }) {
         <DialogHeader><DialogTitle>{editing ? "Edit Referrer" : "Add Referrer"}</DialogTitle></DialogHeader>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="sm:col-span-2"><Label>Name *</Label><Input value={form.name} onChange={(e) => field("name", e.target.value)} /></div>
-          <div>
-            <Label>Type</Label>
-            <Select value={form.type} onValueChange={(v) => field("type", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {api.REFERRER_TYPES.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => field("phone", e.target.value)} /></div>
-          <div><Label>Email</Label><Input value={form.email} onChange={(e) => field("email", e.target.value)} /></div>
-          <div><Label>Organization</Label><Input value={form.organization} onChange={(e) => field("organization", e.target.value)} /></div>
-          <div><Label>Qualification</Label><Input value={form.qualification} onChange={(e) => field("qualification", e.target.value)} /></div>
-          <div><Label>Registration No.</Label><Input value={form.registrationNumber} onChange={(e) => field("registrationNumber", e.target.value)} /></div>
-          <div><Label>PAN</Label><Input value={form.panNumber} onChange={(e) => field("panNumber", e.target.value)} /></div>
-          <div><Label>Default Commission %</Label><Input type="number" min="0" max="100" value={form.defaultPercentage} onChange={(e) => field("defaultPercentage", e.target.value)} /></div>
-          <div className="sm:col-span-3"><Label>Address</Label><Textarea value={form.address} onChange={(e) => field("address", e.target.value)} /></div>
-        </div>
-
-        <div>
-          <p className="mb-2 text-sm font-medium">Module-wise Commission %</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {api.REFERRAL_MODULES.map((module) => (
-              <div key={module}>
-                <Label className="capitalize">{module}</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="default"
-                  value={rates[module]}
-                  onChange={(e) => setRates({ ...rates, [module]: e.target.value })}
-                />
+          <div className="sm:col-span-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2"><Label>Name *</Label><Input value={form.name} onChange={(e) => field("name", e.target.value)} /></div>
+              <div>
+                <Label>Type</Label>
+                <Select value={form.type} onValueChange={(v) => field("type", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {api.REFERRER_TYPES.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-            ))}
+              <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => field("phone", e.target.value)} /></div>
+              <div><Label>Email</Label><Input value={form.email} onChange={(e) => field("email", e.target.value)} /></div>
+              <div><Label>Organization</Label><Input value={form.organization} onChange={(e) => field("organization", e.target.value)} /></div>
+              <div><Label>Qualification</Label><Input value={form.qualification} onChange={(e) => field("qualification", e.target.value)} /></div>
+              <div><Label>Registration No.</Label><Input value={form.registrationNumber} onChange={(e) => field("registrationNumber", e.target.value)} /></div>
+              <div><Label>PAN</Label><Input value={form.panNumber} onChange={(e) => field("panNumber", e.target.value)} /></div>
+              <div><Label>Default Commission %</Label><Input type="number" min="0" max="100" value={form.defaultPercentage} onChange={(e) => field("defaultPercentage", e.target.value)} /></div>
+            </div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Blank modules fall back to the default commission percentage.
-          </p>
-        </div>
 
-        <div className="sm:col-span-3"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => field("notes", e.target.value)} /></div>
+          <div className="sm:col-span-1">
+            <p className="mb-2 text-sm font-medium">Module-wise Commission %</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-1">
+              {api.REFERRAL_MODULES.map((module) => (
+                <div key={module}>
+                  <Label className="capitalize">{module}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="default"
+                    value={rates[module]}
+                    onChange={(e) => setRates({ ...rates, [module]: e.target.value })}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Blank modules fall back to the default commission percentage.
+            </p>
+          </div>
+
+          <div className="sm:col-span-3"><Label>Address</Label><Textarea value={form.address} onChange={(e) => field("address", e.target.value)} /></div>
+          <div className="sm:col-span-3"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => field("notes", e.target.value)} /></div>
+        </div>
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
