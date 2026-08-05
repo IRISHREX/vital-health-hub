@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getHospitalSettings } from "@/lib/settings";
-import { buildBrandedDocument, openPrintWindow } from "@/lib/branding";
+import { resolveBranding, printBrandedHtml } from "@/lib/branding";
+import { buildDocumentCodes } from "@/lib/document-codes";
 import * as api from "@/lib/vital-records";
 
 const fmtDate = (value) => (value ? new Date(value).toLocaleDateString("en-IN") : "—");
@@ -134,15 +135,19 @@ function CertificatePrinter({ record, kind, hospitalSettings }) {
       </style>
     `;
 
-    const html = buildBrandedDocument({
-      title: isBirth ? "Birth Certificate" : "Death Certificate",
-      settings: hospitalSettings,
-      body,
+    const branding = resolveBranding(hospitalSettings, "report");
+    const codes = buildDocumentCodes({
       docId: record?._id,
       patientId: record?.patient?._id || record?.patient,
-      docType: isBirth ? "birth-certificate" : "death-certificate",
+      type: isBirth ? "birth-certificate" : "death-certificate",
     });
-    openPrintWindow(html);
+    printBrandedHtml(
+      isBirth ? "Birth Certificate" : "Death Certificate",
+      branding,
+      body,
+      "",
+      codes
+    );
   };
 
   return (
