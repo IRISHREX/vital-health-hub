@@ -19,6 +19,9 @@ import {
   ScanLine,
   Scissors,
   PackageSearch,
+  Baby,
+  Share2,
+  Calculator,
 } from "lucide-react";
 import {
   Sidebar,
@@ -60,6 +63,9 @@ const managementItems = [
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
   { title: "Catalog", url: "/service-catalog", icon: PackageSearch, module: "service_catalog", requireAction: "canView" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
+  { title: "Estimates", url: "/estimates", icon: Calculator, module: "estimates" },
+  { title: "Referrals", url: "/referrals", icon: Share2, module: "referrals" },
+  { title: "Birth & Death", url: "/vital-records", icon: Baby, module: "vital_records" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];
 
