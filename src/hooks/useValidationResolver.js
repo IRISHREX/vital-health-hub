@@ -48,7 +48,6 @@ export const useValidationResolver = (schema, formId) => {
 
       return { values: Object.keys(errors).length === 0 ? values : result.values, errors };
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [schema, formId, preferences],
   );
 };
