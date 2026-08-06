@@ -70,6 +70,7 @@ const managementItems = [
 ];
 
 const systemItems = [
+  { title: "Attendance", url: "/attendance", icon: QrCode, alwaysVisible: true },
   { title: "Notifications", url: "/notifications", icon: Bell, module: "notifications" },
   { title: "Settings", url: "/settings", icon: Settings, module: "settings" },
 ];
@@ -92,7 +93,10 @@ export function AppSidebar() {
   };
 
   const filterByRole = (items) =>
-    items.filter((item) => (item.requireAction ? can(item.module, item.requireAction) : canView(item.module)));
+    items.filter((item) => {
+      if (item.alwaysVisible) return true;
+      return item.requireAction ? can(item.module, item.requireAction) : canView(item.module);
+    });
 
   return (
     <Sidebar className="border-r-0 bg-gradient-sidebar">
