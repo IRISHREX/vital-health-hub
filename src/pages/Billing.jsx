@@ -735,6 +735,18 @@ export default function Billing() {
     setPaymentDialogOpen(true);
   };
 
+  const openRefund = (invoice) => {
+    setRefundTarget(invoice);
+    setRefundDialogOpen(true);
+  };
+
+  const refreshInvoices = async () => {
+    await qc.invalidateQueries({ queryKey: ["invoices"] });
+    await qc.refetchQueries({ queryKey: ["invoices"] });
+  };
+
+
+
 
   const applyLocalPaymentCache = (paymentByInvoiceId) => {
     qc.setQueriesData({ queryKey: ["invoices"] }, (old) => {
