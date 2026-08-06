@@ -48,6 +48,7 @@ import {
   Clock
 } from "lucide-react";
 import AddInvoiceDialog from "@/components/dashboard/AddInvoiceDialog";
+import RefundDialog, { getRefundableAmount } from "@/components/dashboard/RefundDialog";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const statusConfig = {
