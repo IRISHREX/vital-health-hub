@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useValidationResolver } from "@/hooks/useValidationResolver";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createDoctor, updateDoctor } from "@/lib/doctors";
@@ -52,8 +52,9 @@ export default function DoctorDialog({ isOpen, onClose, doctor, mode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const validationResolver = useValidationResolver(doctorSchema, "doctor_dialog");
   const form = useForm({
-    resolver: zodResolver(doctorSchema),
+    resolver: validationResolver,
     defaultValues: {
       name: "",
       email: "",

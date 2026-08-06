@@ -37,3 +37,9 @@ export const addPayment = async (invoiceId, paymentData) => {
     const response = await apiClient.post(`/invoices/${invoiceId}/payments`, paymentData);
     return response;
 };
+
+export const refundInvoice = async (invoiceId, refundData) => {
+    const response = await apiClient.post(`/invoices/${invoiceId}/refunds`, refundData);
+    return response;
+};
+

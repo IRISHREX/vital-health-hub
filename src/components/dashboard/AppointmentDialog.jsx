@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useValidationResolver } from "@/hooks/useValidationResolver";
 import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { createAppointment, updateAppointment, getAppointments } from "@/lib/appointments";
@@ -121,8 +121,9 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
     ? (loggedInDoctor ? [loggedInDoctor] : [])
     : allDoctors.filter((d) => (d.doctorType || "hospital") !== "referral" && d.availabilityStatus === "available");
 
+  const validationResolver = useValidationResolver(appointmentSchema, "appointment_dialog");
   const form = useForm({
-    resolver: zodResolver(appointmentSchema),
+    resolver: validationResolver,
     defaultValues: {
       patientId: "",
       doctorId: "",
