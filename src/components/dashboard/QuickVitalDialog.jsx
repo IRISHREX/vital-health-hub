@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useValidationResolver } from "@/hooks/useValidationResolver";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createVital } from "@/lib/vitals";
@@ -48,8 +48,9 @@ export default function QuickVitalDialog({ isOpen, onClose, patients = [], defau
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const validationResolver = useValidationResolver(vitalSchema, "quick_vital_dialog");
   const form = useForm({
-    resolver: zodResolver(vitalSchema),
+    resolver: validationResolver,
     defaultValues: {
       patientId: "",
       heartRate: 80,

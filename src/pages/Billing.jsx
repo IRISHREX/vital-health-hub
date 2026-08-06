@@ -48,6 +48,7 @@ import {
   Clock
 } from "lucide-react";
 import AddInvoiceDialog from "@/components/dashboard/AddInvoiceDialog";
+import RefundDialog, { getRefundableAmount } from "@/components/dashboard/RefundDialog";
 import RestrictedAction from "@/components/permissions/RestrictedAction";
 
 const statusConfig = {
@@ -482,6 +483,10 @@ export default function Billing() {
   const [paymentForm, setPaymentForm] = useState({ amount: "", method: "cash", reference: "" });
   const [paying, setPaying] = useState(false);
 
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundTarget, setRefundTarget] = useState(null);
+
+
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [adjustmentRows, setAdjustmentRows] = useState([{ key: "", value: "" }]);
@@ -729,6 +734,18 @@ export default function Billing() {
     });
     setPaymentDialogOpen(true);
   };
+
+  const openRefund = (invoice) => {
+    setRefundTarget(invoice);
+    setRefundDialogOpen(true);
+  };
+
+  const refreshInvoices = async () => {
+    await qc.invalidateQueries({ queryKey: ["invoices"] });
+    await qc.refetchQueries({ queryKey: ["invoices"] });
+  };
+
+
 
 
   const applyLocalPaymentCache = (paymentByInvoiceId) => {
@@ -1105,6 +1122,16 @@ export default function Billing() {
         </DialogContent>
       </Dialog>
 
+      <RefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        invoice={refundTarget}
+        allowedMethods={allowedPaymentMethods}
+        onRefunded={refreshInvoices}
+      />
+
+
+
       <Dialog open={patientDialogOpen} onOpenChange={(open) => {
         setPatientDialogOpen(open);
         if (!open) setSelectedPatientId("");
@@ -1187,6 +1214,11 @@ export default function Billing() {
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
                               {(permissions.canCreate || permissions.canEdit) && Number(inv.dueAmount || 0) > 0 && <Button size="sm" variant="outline" onClick={() => openPayment({ mode: "single", invoice: inv })}>Pay</Button>}
+                              {enableRefunds && permissions.canEdit && getRefundableAmount(inv) > 0 && inv.status !== "cancelled" && (
+                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openRefund(inv)}>
+                                  <IndianRupee className="mr-1 h-3 w-3" />Refund
+                                </Button>
+                              )}
                               {permissions.canEdit && <Button size="sm" variant="ghost" onClick={() => openEditDialog(inv)}><Pencil className="mr-1 h-3 w-3" />Edit</Button>}
                             </div>
                           </TableCell>

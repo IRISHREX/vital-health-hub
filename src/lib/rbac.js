@@ -33,6 +33,9 @@ export const rbacModules = [
   "handovers",
   "pac",
   "fluid_io",
+  "vital_records",
+  "referrals",
+  "estimates",
 ];
 export const moduleLabels = {
   dashboard: "Dashboard",
@@ -61,6 +64,9 @@ export const moduleLabels = {
   handovers: "Nurse Handovers (SBAR)",
   pac: "Pre-Anaesthetic Checks",
   fluid_io: "Fluid Intake/Output",
+  vital_records: "Birth & Death Records",
+  referrals: "Referrals & Commissions",
+  estimates: "Estimate Billing",
 };
 
 export const rolePermissions = {
@@ -70,6 +76,7 @@ export const rolePermissions = {
     billing: fullAccess, reports: fullAccess, notifications: fullAccess, settings: fullAccess,
     tasks: fullAccess, vitals: fullAccess, lab: fullAccess, pharmacy: fullAccess, radiology: fullAccess, ot: fullAccess, service_catalog: fullAccess,
     returns: fullAccess, medicine_indents: fullAccess, nursing_charges: fullAccess, handovers: fullAccess, pac: fullAccess, fluid_io: fullAccess,
+    vital_records: fullAccess, referrals: fullAccess, estimates: fullAccess,
   },
   hospital_admin: {
     dashboard: fullAccess, beds: fullAccess, admissions: fullAccess, patients: fullAccess,
@@ -77,6 +84,7 @@ export const rolePermissions = {
     billing: fullAccess, reports: fullAccess, notifications: fullAccess, settings: viewAndEdit,
     tasks: fullAccess, vitals: fullAccess, lab: fullAccess, pharmacy: fullAccess, radiology: fullAccess, ot: fullAccess, service_catalog: fullAccess,
     returns: fullAccess, medicine_indents: fullAccess, nursing_charges: fullAccess, handovers: fullAccess, pac: fullAccess, fluid_io: fullAccess,
+    vital_records: fullAccess, referrals: fullAccess, estimates: fullAccess,
   },
   head_nurse: {
     dashboard: viewOnly, beds: viewAndEdit, admissions: viewAndEdit, patients: viewAndEdit,
@@ -91,6 +99,7 @@ export const rolePermissions = {
     billing: viewOnly, reports: viewOnly, notifications: viewOnly, settings: viewOnly,
     tasks: viewAndEdit, vitals: viewAndCreate, lab: viewAndEdit, pharmacy: viewAndCreate, radiology: viewAndEdit, ot: viewAndEdit, service_catalog: viewOnly,
     returns: viewAndCreate, medicine_indents: viewAndCreate, nursing_charges: viewOnly, handovers: viewOnly, pac: fullAccess, fluid_io: viewAndCreate,
+    vital_records: viewAndEdit, estimates: viewOnly,
   },
   nurse: {
     dashboard: viewOnly, beds: viewAndEdit, admissions: viewAndEdit, patients: viewAndEdit,
@@ -105,6 +114,7 @@ export const rolePermissions = {
     billing: viewAndCreate, reports: noAccess, notifications: viewOnly, settings: viewOnly,
     vitals: noAccess, lab: viewAndCreate, pharmacy: viewOnly, radiology: viewAndCreate, ot: viewOnly, service_catalog: viewOnly,
     returns: viewAndCreate, medicine_indents: noAccess, nursing_charges: noAccess, handovers: noAccess, pac: noAccess, fluid_io: noAccess,
+    vital_records: viewAndEdit, referrals: viewOnly, estimates: viewAndEdit,
   },
   billing_staff: {
     dashboard: viewOnly, beds: noAccess, admissions: viewOnly, patients: viewOnly,
@@ -112,6 +122,7 @@ export const rolePermissions = {
     billing: fullAccess, reports: fullAccess, notifications: viewOnly, settings: viewOnly,
     vitals: noAccess, lab: viewOnly, pharmacy: viewOnly, radiology: viewOnly, ot: viewOnly, service_catalog: viewAndCreate,
     returns: fullAccess, medicine_indents: viewOnly, nursing_charges: viewOnly, handovers: noAccess, pac: noAccess, fluid_io: noAccess,
+    vital_records: viewOnly, referrals: fullAccess, estimates: fullAccess,
   },
   pharmacist: {
     dashboard: viewOnly, beds: noAccess, admissions: noAccess, patients: viewOnly,

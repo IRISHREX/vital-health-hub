@@ -46,6 +46,10 @@ const LabReportPreview = lazy(() => import("./pages/LabReportPreview"));
 const RadiologyReportPreview = lazy(() => import("./pages/RadiologyReportPreview"));
 const Scheduler = lazy(() => import("./pages/Scheduler"));
 const NursingOps = lazy(() => import("./pages/NursingOps"));
+const BirthDeathRecords = lazy(() => import("./pages/BirthDeathRecords"));
+const Referrals = lazy(() => import("./pages/Referrals"));
+const Estimates = lazy(() => import("./pages/Estimates"));
+const Attendance = lazy(() => import("./pages/Attendance"));
 const PublicLanding = lazy(() => import("./pages/public/PublicLanding"));
 
 // Standalone Portals
@@ -154,6 +158,16 @@ const App = () => (
                 <Route element={<AuthorizedRoute module="nursing_charges" />}>
                   <Route path="/nursing-ops" element={<Page><NursingOps /></Page>} />
                 </Route>
+                <Route element={<AuthorizedRoute module="vital_records" />}>
+                  <Route path="/vital-records" element={<Page><BirthDeathRecords /></Page>} />
+                </Route>
+                <Route element={<AuthorizedRoute module="referrals" />}>
+                  <Route path="/referrals" element={<Page><Referrals /></Page>} />
+                </Route>
+                <Route element={<AuthorizedRoute module="estimates" />}>
+                  <Route path="/estimates" element={<Page><Estimates /></Page>} />
+                </Route>
+                <Route path="/attendance" element={<Page><Attendance /></Page>} />
                 <Route element={<AuthorizedRoute module="tasks" />}>
                   <Route path="/tasks" element={<Page><Tasks /></Page>} />
                 </Route>

@@ -66,6 +66,10 @@ v1Router.use('/nursing-charges', require('./nursingCharges'));
 v1Router.use('/handovers', require('./handovers'));
 v1Router.use('/pac', require('./pac'));
 v1Router.use('/fluid-io', require('./fluidIO'));
+v1Router.use('/vital-records', require('./vitalRecords'));
+v1Router.use('/referrals', require('./referrals'));
+v1Router.use('/estimates', require('./estimates'));
+v1Router.use('/attendance', require('./attendance'));
 
 // Mount v1 routes under nh/api/v1
 router.use('/nh/api/v1', v1Router);

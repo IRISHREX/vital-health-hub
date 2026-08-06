@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useValidationResolver } from "@/hooks/useValidationResolver";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { registerApi } from "@/lib/auth";
@@ -47,8 +47,9 @@ export default function UserDialog({ isOpen, onClose, mode = "create", user }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const validationResolver = useValidationResolver(userSchema, "user_dialog");
   const form = useForm({
-    resolver: zodResolver(userSchema),
+    resolver: validationResolver,
     defaultValues: {
       firstName: "",
       lastName: "",

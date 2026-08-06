@@ -6,7 +6,8 @@ const {
   createInvoice,
   updateInvoice,
   deleteInvoice,
-  addPayment
+  addPayment,
+  refundInvoice
 } = require('../controllers/NH_invoiceController');
 const { authenticate, authorize } = require('../middleware/auth');
 
@@ -21,5 +22,8 @@ router.route('/:id')
 
 router.route('/:id/payments')
     .post(authenticate, authorize('hospital_admin', 'super_admin', 'receptionist', 'billing_staff'), addPayment);
+
+router.route('/:id/refunds')
+    .post(authenticate, authorize('hospital_admin', 'super_admin', 'billing_staff'), refundInvoice);
 
 module.exports = router;

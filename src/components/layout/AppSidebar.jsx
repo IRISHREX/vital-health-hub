@@ -19,6 +19,10 @@ import {
   ScanLine,
   Scissors,
   PackageSearch,
+  Baby,
+  Share2,
+  Calculator,
+  QrCode,
 } from "lucide-react";
 import {
   Sidebar,
@@ -60,10 +64,14 @@ const managementItems = [
   { title: "Facilities", url: "/facilities", icon: Building2, module: "facilities" },
   { title: "Catalog", url: "/service-catalog", icon: PackageSearch, module: "service_catalog", requireAction: "canView" },
   { title: "Billing", url: "/billing", icon: Receipt, module: "billing" },
+  { title: "Estimates", url: "/estimates", icon: Calculator, module: "estimates" },
+  { title: "Referrals", url: "/referrals", icon: Share2, module: "referrals" },
+  { title: "Birth & Death", url: "/vital-records", icon: Baby, module: "vital_records" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];
 
 const systemItems = [
+  { title: "Attendance", url: "/attendance", icon: QrCode, alwaysVisible: true },
   { title: "Notifications", url: "/notifications", icon: Bell, module: "notifications" },
   { title: "Settings", url: "/settings", icon: Settings, module: "settings" },
 ];
@@ -86,7 +94,10 @@ export function AppSidebar() {
   };
 
   const filterByRole = (items) =>
-    items.filter((item) => (item.requireAction ? can(item.module, item.requireAction) : canView(item.module)));
+    items.filter((item) => {
+      if (item.alwaysVisible) return true;
+      return item.requireAction ? can(item.module, item.requireAction) : canView(item.module);
+    });
 
   return (
     <Sidebar className="border-r-0 bg-gradient-sidebar">
