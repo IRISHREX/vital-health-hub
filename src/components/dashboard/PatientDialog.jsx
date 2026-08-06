@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useValidationResolver } from "@/hooks/useValidationResolver";
 import { z } from "zod";
 import { phoneSchema } from "@/lib/phoneValidation";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -138,8 +138,9 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
     `${entity?.firstName || ""} ${entity?.lastName || ""}`.trim();
 
   // Add nurse fields to form defaultValues
+  const validationResolver = useValidationResolver(patientSchema, "patient_dialog");
   const form = useForm({
-    resolver: zodResolver(patientSchema),
+    resolver: validationResolver,
     defaultValues: {
       firstName: "",
       lastName: "",

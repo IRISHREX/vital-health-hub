@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useValidationResolver } from "@/hooks/useValidationResolver";
 import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { assignNurse, createBed, updateBed } from "@/lib/beds";
@@ -86,8 +86,9 @@ export default function BedDialog({ isOpen, onClose, bed, mode, assignMode = fal
     ? [{ _id: user?.id || user?._id, firstName: user?.firstName, lastName: user?.lastName }]
     : nurses;
 
+  const validationResolver = useValidationResolver(bedSchema, "bed_dialog");
   const form = useForm({
-    resolver: zodResolver(bedSchema),
+    resolver: validationResolver,
     defaultValues: {
       bedNumber: "",
       bedType: "general",
