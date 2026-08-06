@@ -1204,6 +1204,11 @@ export default function Billing() {
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
                               {(permissions.canCreate || permissions.canEdit) && Number(inv.dueAmount || 0) > 0 && <Button size="sm" variant="outline" onClick={() => openPayment({ mode: "single", invoice: inv })}>Pay</Button>}
+                              {enableRefunds && permissions.canEdit && getRefundableAmount(inv) > 0 && inv.status !== "cancelled" && (
+                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openRefund(inv)}>
+                                  <IndianRupee className="mr-1 h-3 w-3" />Refund
+                                </Button>
+                              )}
                               {permissions.canEdit && <Button size="sm" variant="ghost" onClick={() => openEditDialog(inv)}><Pencil className="mr-1 h-3 w-3" />Edit</Button>}
                             </div>
                           </TableCell>
