@@ -1122,6 +1122,16 @@ export default function Billing() {
         </DialogContent>
       </Dialog>
 
+      <RefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        invoice={refundTarget}
+        allowedMethods={allowedPaymentMethods}
+        onRefunded={refreshInvoices}
+      />
+
+
+
       <Dialog open={patientDialogOpen} onOpenChange={(open) => {
         setPatientDialogOpen(open);
         if (!open) setSelectedPatientId("");
