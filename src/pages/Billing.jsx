@@ -483,6 +483,10 @@ export default function Billing() {
   const [paymentForm, setPaymentForm] = useState({ amount: "", method: "cash", reference: "" });
   const [paying, setPaying] = useState(false);
 
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundTarget, setRefundTarget] = useState(null);
+
+
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [adjustmentRows, setAdjustmentRows] = useState([{ key: "", value: "" }]);
