@@ -22,6 +22,7 @@ import {
   Baby,
   Share2,
   Calculator,
+  QrCode,
 } from "lucide-react";
 import {
   Sidebar,
