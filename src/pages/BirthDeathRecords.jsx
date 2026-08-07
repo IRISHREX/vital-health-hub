@@ -15,6 +15,7 @@ import { useVisualAuth } from "@/hooks/useVisualAuth";
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, printBrandedHtml } from "@/lib/branding";
 import { buildDocumentCodes } from "@/lib/document-codes";
+import PatientAutocomplete from "@/components/shared/PatientAutocomplete";
 import * as api from "@/lib/vital-records";
 import { Pencil, Printer, CheckCircle2, X } from "lucide-react";
 
@@ -35,6 +36,8 @@ const statusLabel = {
 };
 
 const emptyBirth = {
+  patient: "",
+  patientLabel: "",
   babyName: "",
   gender: "other",
   dateOfBirth: "",
@@ -56,6 +59,8 @@ const emptyBirth = {
 };
 
 const emptyDeath = {
+  patient: "",
+  patientLabel: "",
   deceasedName: "",
   gender: "other",
   age: "",
@@ -269,6 +274,14 @@ function RecordsTab({ kind, permissions, hospitalSettings }) {
       if (value === undefined || value === null) return;
       next[key] = key.startsWith("date") ? String(value).slice(0, 10) : value;
     });
+    if (record.patient) {
+      const p = typeof record.patient === "object" ? record.patient : null;
+      next.patient = p?._id || record.patient;
+      if (p) {
+        const name = `${p.firstName || ""} ${p.lastName || ""}`.trim();
+        next.patientLabel = p.patientId ? `${name} (${p.patientId})` : name;
+      }
+    }
     setEditing(record);
     setForm(next);
     setFormOpen(true);
@@ -424,6 +437,39 @@ function RecordsTab({ kind, permissions, hospitalSettings }) {
 
           {isBirth ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="sm:col-span-3 rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <Label className="text-xs font-semibold text-foreground">Link Registered Patient / Mother (Optional)</Label>
+                <PatientAutocomplete
+                  value={form.patient || ""}
+                  selectedLabel={form.patientLabel || ""}
+                  placeholder="Type to search mother by name, phone, or UHID..."
+                  onSelect={(p) => {
+                    if (p) {
+                      const name = `${p.firstName || ""} ${p.lastName || ""}`.trim();
+                      let age = "";
+                      if (p.dateOfBirth) {
+                        age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+                      }
+                      setForm((prev) => ({
+                        ...prev,
+                        patient: p._id,
+                        patientLabel: p.patientId ? `${name} (${p.patientId})` : name,
+                        motherName: name || prev.motherName,
+                        motherAge: age !== "" ? age : prev.motherAge,
+                        phone: p.contactNumber || p.phone || prev.phone,
+                        address: p.address || prev.address,
+                      }));
+                    } else {
+                      setForm((prev) => ({
+                        ...prev,
+                        patient: "",
+                        patientLabel: "",
+                      }));
+                    }
+                  }}
+                />
+              </div>
+
               <div><Label>Baby Name</Label><Input value={form.babyName} onChange={(e) => field("babyName", e.target.value)} /></div>
               <div>
                 <Label>Sex</Label>
@@ -471,6 +517,40 @@ function RecordsTab({ kind, permissions, hospitalSettings }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="sm:col-span-3 rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <Label className="text-xs font-semibold text-foreground">Link Registered Patient (Optional)</Label>
+                <PatientAutocomplete
+                  value={form.patient || ""}
+                  selectedLabel={form.patientLabel || ""}
+                  placeholder="Type to search deceased patient by name, phone, or UHID..."
+                  onSelect={(p) => {
+                    if (p) {
+                      const name = `${p.firstName || ""} ${p.lastName || ""}`.trim();
+                      let age = "";
+                      if (p.dateOfBirth) {
+                        age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+                      }
+                      setForm((prev) => ({
+                        ...prev,
+                        patient: p._id,
+                        patientLabel: p.patientId ? `${name} (${p.patientId})` : name,
+                        deceasedName: name || prev.deceasedName,
+                        gender: p.gender || prev.gender,
+                        age: age !== "" ? age : prev.age,
+                        phone: p.contactNumber || p.phone || prev.phone,
+                        address: p.address || prev.address,
+                      }));
+                    } else {
+                      setForm((prev) => ({
+                        ...prev,
+                        patient: "",
+                        patientLabel: "",
+                      }));
+                    }
+                  }}
+                />
+              </div>
+
               <div className="sm:col-span-2"><Label>Name of Deceased *</Label><Input value={form.deceasedName} onChange={(e) => field("deceasedName", e.target.value)} /></div>
               <div>
                 <Label>Sex</Label>
