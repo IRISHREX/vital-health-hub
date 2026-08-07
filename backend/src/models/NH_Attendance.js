@@ -4,14 +4,19 @@ const punchSchema = new mongoose.Schema({
   at: { type: Date },
   location: { type: mongoose.Schema.Types.ObjectId, ref: 'AttendanceLocation' },
   locationName: { type: String, trim: true },
-  method: { type: String, enum: ['qr_scan', 'manual'], default: 'qr_scan' },
+  method: { type: String, enum: ['qr_scan', 'id_card', 'manual'], default: 'qr_scan' },
   latitude: { type: Number },
   longitude: { type: Number },
   markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { _id: false });
 
 const attendanceSchema = new mongoose.Schema({
+  // `user` is the attendance subject key. For employees without a login account
+  // the linked Employee id is used as the key so the (user, day) uniqueness and
+  // all existing queries keep working.
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', index: true },
+  employeeCode: { type: String, trim: true },
   userName: { type: String, trim: true },
   role: { type: String, trim: true },
   // Local calendar day key (YYYY-MM-DD) so one doc per employee per day.
