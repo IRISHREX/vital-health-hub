@@ -1,5 +1,6 @@
 const AttendanceBase = require('../models/NH_Attendance');
 const AttendanceLocationBase = require('../models/NH_AttendanceLocation');
+const EmployeeBase = require('../models/NH_Employee');
 const UserBase = require('../models/NH_User');
 const { getModel } = require('../utils/tenantModel');
 
@@ -7,6 +8,7 @@ const M = (req) => ({
   Attendance: getModel(req, 'Attendance', AttendanceBase),
   AttendanceLocation: getModel(req, 'AttendanceLocation', AttendanceLocationBase),
   User: getModel(req, 'User', UserBase),
+  Employee: getModel(req, 'Employee', EmployeeBase),
 });
 
 const randomToken = () => AttendanceLocationBase.generateToken();
@@ -177,6 +179,101 @@ const scanAttendance = async (req, res) => {
   }
 };
 
+
+/**
+ * Kiosk flow: the attendance point operator scans an employee ID card QR.
+ * Card payload is `EMP|<employeeCode>|<cardToken>` (raw token also accepted).
+ * The employee's linked login is used as the attendance key when present,
+ * otherwise the employee id itself keys the day record.
+ */
+const parseCardPayload = (raw) => {
+  const value = String(raw || '').trim();
+  if (!value) return null;
+  const parts = value.split('|');
+  if (parts[0] === 'EMP' && parts.length >= 3) {
+    return { employeeCode: parts[1], cardToken: parts[2] };
+  }
+  return { employeeCode: null, cardToken: value };
+};
+
+const scanEmployeeCard = async (req, res) => {
+  try {
+    const { Attendance, AttendanceLocation, Employee } = M(req);
+    const { employeeToken, locationToken, latitude, longitude } = req.body || {};
+    const card = parseCardPayload(employeeToken);
+    if (!card) return res.status(400).json({ message: 'Scan a valid employee ID card' });
+
+    const employee = await Employee.findOne({ cardToken: card.cardToken });
+    if (!employee) return res.status(404).json({ message: 'This ID card is not recognised' });
+    if (!employee.isActive) return res.status(400).json({ message: `${employee.firstName} is no longer active` });
+    if (card.employeeCode && card.employeeCode !== employee.employeeCode) {
+      return res.status(400).json({ message: 'ID card data does not match our records' });
+    }
+
+    let location = null;
+    if (locationToken) {
+      location = await AttendanceLocation.findOne({ token: String(locationToken).trim() });
+      if (!location) return res.status(404).json({ message: 'Attendance point QR is not recognised' });
+      if (!location.isActive) return res.status(400).json({ message: `${location.name} is no longer active` });
+    }
+
+    const now = new Date();
+    const day = dayKey(now);
+    const subjectId = employee.user || employee._id;
+    const fullName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
+    const punch = {
+      at: now,
+      location: location?._id,
+      locationName: location?.name,
+      method: 'id_card',
+      latitude,
+      longitude,
+      markedBy: req.user._id,
+    };
+
+    let record = await Attendance.findOne({ user: subjectId, day });
+    if (!record) {
+      record = await Attendance.create({
+        user: subjectId,
+        employee: employee._id,
+        employeeCode: employee.employeeCode,
+        userName: fullName,
+        role: employee.designation || employee.department,
+        day,
+        checkIn: punch,
+        status: 'checked_in',
+      });
+      return res.status(201).json({ action: 'checked_in', employee: fullName, record, location: location?.name });
+    }
+
+    if (!record.employee) {
+      record.employee = employee._id;
+      record.employeeCode = employee.employeeCode;
+    }
+
+    if (!record.checkIn?.at) {
+      record.checkIn = punch;
+      record.status = 'checked_in';
+      await record.save();
+      return res.json({ action: 'checked_in', employee: fullName, record, location: location?.name });
+    }
+
+    const lastPunchAt = record.checkOut?.at || record.checkIn?.at;
+    if (lastPunchAt && now - new Date(lastPunchAt) < 2 * 60 * 1000) {
+      return res.json({ action: 'duplicate', employee: fullName, message: 'Already recorded a moment ago', record });
+    }
+
+    record.checkOut = punch;
+    const minutes = Math.max(0, Math.round((now - new Date(record.checkIn.at)) / 60000));
+    record.totalMinutes = minutes;
+    record.status = minutes < HALF_DAY_MINUTES ? 'half_day' : 'present';
+    await record.save();
+    return res.json({ action: 'checked_out', employee: fullName, record, location: location?.name });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 // ---------- Reads ----------
 
 const buildDayRange = ({ from, to, day }) => {
@@ -258,6 +355,7 @@ module.exports = {
   rotateLocationToken,
   deleteLocation,
   scanAttendance,
+  scanEmployeeCard,
   listAttendance,
   getMyAttendance,
   upsertManualAttendance,

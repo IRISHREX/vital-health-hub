@@ -47,6 +47,10 @@ const Referrer = require('./NH_Referrer');
 const ReferralCommission = require('./NH_ReferralCommission');
 const Estimate = require('./NH_Estimate');
 const Attendance = require('./NH_Attendance');
+const Employee = require('./NH_Employee');
+const LeaveRequest = require('./NH_LeaveRequest');
+const PayrollRun = require('./NH_PayrollRun');
+const Expense = require('./NH_Expense');
 const AttendanceLocation = require('./NH_AttendanceLocation');
 
 module.exports = {
@@ -98,4 +102,8 @@ module.exports = {
   Estimate,
   Attendance,
   AttendanceLocation,
+  Employee,
+  LeaveRequest,
+  PayrollRun,
+  Expense,
 };
