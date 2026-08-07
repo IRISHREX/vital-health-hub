@@ -37,32 +37,40 @@ export const generateBarcodeDataUrl = (text, opts = {}) => {
   }
 };
 
-/** Generate a QR code as a PNG data URL. Uses qrcode's sync toCanvas path. */
+/** Generate a QR code as a PNG data URL synchronously. */
 export const generateQrDataUrl = (text, opts = {}) => {
   if (typeof document === "undefined") return "";
   const raw = String(text || "").trim();
   if (!raw) return "";
   try {
+    const qr = QRCode.create(raw, { errorCorrectionLevel: opts.errorCorrectionLevel || "M" });
+    const modules = qr.modules;
+    const size = modules.size;
+    const margin = opts.margin ?? 2;
+    const totalCells = size + margin * 2;
+    const requestedWidth = opts.width ?? 180;
+    const cellSize = Math.max(1, Math.floor(requestedWidth / totalCells));
+    const canvasWidth = totalCells * cellSize;
+
     const canvas = document.createElement("canvas");
-    let ok = false;
-    QRCode.toCanvas(
-      canvas,
-      raw,
-      {
-        width: opts.width ?? 110,
-        margin: opts.margin ?? 1,
-        errorCorrectionLevel: opts.errorCorrectionLevel || "M",
-        color: {
-          dark: opts.dark || "#111827",
-          light: opts.light || "#ffffff",
-        },
-      },
-      (err) => {
-        if (!err) ok = true;
+    canvas.width = canvasWidth;
+    canvas.height = canvasWidth;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = opts.light || "#ffffff";
+    ctx.fillRect(0, 0, canvasWidth, canvasWidth);
+
+    ctx.fillStyle = opts.dark || "#111827";
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (modules.get(r, c)) {
+          ctx.fillRect((c + margin) * cellSize, (r + margin) * cellSize, cellSize, cellSize);
+        }
       }
-    );
-    return ok ? canvas.toDataURL("image/png") : "";
-  } catch {
+    }
+    return canvas.toDataURL("image/png");
+  } catch (err) {
+    console.error("QR Generation error:", err);
     return "";
   }
 };

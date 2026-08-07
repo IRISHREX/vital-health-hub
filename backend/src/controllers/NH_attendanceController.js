@@ -106,18 +106,49 @@ const HALF_DAY_MINUTES = 240;
 
 const minutesSinceMidnight = (date) => date.getHours() * 60 + date.getMinutes();
 
+const extractToken = (raw) => {
+  let val = String(raw || '').trim();
+  if (!val) return '';
+  if (val.startsWith('http://') || val.startsWith('https://')) {
+    try {
+      const url = new URL(val);
+      const tokenParam = url.searchParams.get('token') || url.searchParams.get('code');
+      if (tokenParam) return tokenParam.trim();
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts.length > 0) return parts[parts.length - 1].trim();
+    } catch (e) {}
+  }
+  return val;
+};
+
 /**
- * Employee scans the location poster QR. First scan of the day = check-in,
+ * Employee scans the location poster QR or ID card QR. First scan of the day = check-in,
  * next scan = check-out. Idempotent within a 2 minute window to absorb
  * accidental double scans.
  */
 const scanAttendance = async (req, res) => {
   try {
-    const { Attendance, AttendanceLocation } = M(req);
-    const { token, latitude, longitude, mode } = req.body || {};
+    const { Attendance, AttendanceLocation, Employee } = M(req);
+    const { token: rawToken, latitude, longitude, mode } = req.body || {};
+    const token = extractToken(rawToken);
     if (!token) return res.status(400).json({ message: 'Scan a valid attendance QR code' });
 
-    const location = await AttendanceLocation.findOne({ token: String(token).trim() });
+    // Check if payload is an Employee ID Card QR (e.g. EMP|EMP-001|cardToken or raw cardToken)
+    let isEmployeeCard = token.startsWith('EMP|');
+    if (!isEmployeeCard) {
+      const card = parseCardPayload(token);
+      if (card && card.cardToken) {
+        const empExists = await Employee.exists({ cardToken: card.cardToken });
+        if (empExists) isEmployeeCard = true;
+      }
+    }
+
+    if (isEmployeeCard) {
+      req.body.employeeToken = token;
+      return scanEmployeeCard(req, res);
+    }
+
+    const location = await AttendanceLocation.findOne({ token });
     if (!location) return res.status(404).json({ message: 'This QR code is not recognised' });
     if (!location.isActive) return res.status(400).json({ message: `${location.name} is no longer active for attendance` });
 
