@@ -17,9 +17,37 @@ import { Plus, Search, Building2, Pencil, Ban, Play, Trash2, Settings2, Eye, Ext
 import { isValidPhone } from '@/lib/phoneValidation';
 
 const ALL_MODULES = [
-  'dashboard', 'beds', 'admissions', 'patients', 'doctors', 'nurses',
-  'appointments', 'scheduler', 'facilities', 'billing', 'reports', 'notifications',
-  'settings', 'tasks', 'vitals', 'lab', 'pharmacy', 'radiology', 'ot', 'service_catalog'
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'beds', label: 'Bed Management' },
+  { id: 'admissions', label: 'Admissions' },
+  { id: 'patients', label: 'Patients' },
+  { id: 'doctors', label: 'Doctors' },
+  { id: 'nurses', label: 'Nurses' },
+  { id: 'appointments', label: 'Appointments' },
+  { id: 'scheduler', label: 'Scheduler' },
+  { id: 'facilities', label: 'Facilities' },
+  { id: 'billing', label: 'Billing' },
+  { id: 'pharmacy', label: 'Pharmacy' },
+  { id: 'reports', label: 'Reports' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'settings', label: 'Settings' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'vitals', label: 'Vitals' },
+  { id: 'lab', label: 'Pathology Lab' },
+  { id: 'radiology', label: 'Radiology' },
+  { id: 'ot', label: 'Operating Theatre' },
+  { id: 'service_catalog', label: 'Service Catalog' },
+  { id: 'returns', label: 'Returns & Refunds' },
+  { id: 'medicine_indents', label: 'Ward Medicine Indents' },
+  { id: 'nursing_charges', label: 'Nursing Charges' },
+  { id: 'handovers', label: 'Nurse Handovers (SBAR)' },
+  { id: 'pac', label: 'Pre-Anaesthetic Checks' },
+  { id: 'fluid_io', label: 'Fluid Intake/Output' },
+  { id: 'vital_records', label: 'Birth & Death Records' },
+  { id: 'referrals', label: 'Referrals & Commissions' },
+  { id: 'estimates', label: 'Estimate Billing' },
+  { id: 'hr', label: 'HR & Payroll' },
+  { id: 'expenses', label: 'Expenses & Profitability' },
 ];
 
 const ORG_TYPES = [
@@ -258,20 +286,32 @@ export default function Organizations() {
 
       {/* Module Control Dialog */}
       <Dialog open={!!moduleDialogOrg} onOpenChange={() => setModuleDialogOrg(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Module Control – {moduleDialogOrg?.name}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-3 gap-2">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Module Control – {moduleDialogOrg?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-between pb-2 border-b border-border">
+            <span className="text-xs text-muted-foreground">{selectedModules.length} of {ALL_MODULES.length} modules enabled</span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setSelectedModules(ALL_MODULES.map(m => m.id))}>Select All</Button>
+              <Button size="sm" variant="outline" onClick={() => setSelectedModules(['dashboard', 'patients', 'beds', 'admissions'])}>Reset Default</Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {ALL_MODULES.map((mod) => (
-              <label key={mod} className="flex items-center gap-2 rounded-lg border border-border p-2 cursor-pointer hover:bg-accent">
-                <Checkbox checked={selectedModules.includes(mod)} onCheckedChange={(c) => {
-                  setSelectedModules(prev => c ? [...prev, mod] : prev.filter(m => m !== mod));
-                }} />
-                <span className="text-sm capitalize">{mod}</span>
+              <label key={mod.id} className="flex items-center gap-2 rounded-lg border border-border p-2 cursor-pointer hover:bg-accent">
+                <Checkbox
+                  checked={selectedModules.includes(mod.id)}
+                  onCheckedChange={(c) => {
+                    setSelectedModules(prev => c ? [...prev, mod.id] : prev.filter(m => m !== mod.id));
+                  }}
+                />
+                <span className="text-xs font-medium text-foreground">{mod.label}</span>
               </label>
             ))}
           </div>
-          <Button onClick={() => moduleMut.mutate({ id: moduleDialogOrg._id, modules: selectedModules })} disabled={moduleMut.isPending}>
-            Save Modules
+          <Button onClick={() => moduleMut.mutate({ id: moduleDialogOrg._id, modules: selectedModules })} disabled={moduleMut.isPending} className="mt-4">
+            {moduleMut.isPending ? 'Saving...' : 'Save Enabled Modules'}
           </Button>
         </DialogContent>
       </Dialog>

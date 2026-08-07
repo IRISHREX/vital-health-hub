@@ -34,7 +34,13 @@ const organizationSchema = new mongoose.Schema(
     // Module access - controlled by grandmaster
     enabledModules: {
       type: [String],
-      default: ['dashboard', 'patients', 'beds', 'admissions'],
+      default: [
+        'dashboard', 'beds', 'admissions', 'patients', 'doctors', 'nurses',
+        'appointments', 'scheduler', 'facilities', 'billing', 'reports', 'notifications',
+        'settings', 'tasks', 'vitals', 'lab', 'pharmacy', 'radiology', 'ot',
+        'service_catalog', 'returns', 'medicine_indents', 'nursing_charges', 'handovers',
+        'pac', 'fluid_io', 'vital_records', 'referrals', 'estimates', 'hr', 'expenses'
+      ],
       enum: [
         'dashboard',
         'beds',
@@ -69,6 +75,8 @@ const organizationSchema = new mongoose.Schema(
         'referrals',
         'estimates',
         'attendance',
+        'hr',
+        'expenses',
       ],
     },
 

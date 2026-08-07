@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  getOrganization, getOrgSettingsConfig, updateOrgSettingsTabs,
+  getOrganization, getOrgSettingsConfig, updateOrgSettingsTabs, updateOrgModules,
   updateOrgPaymentConfig, updateOrgBulkPaymentConfig, impersonateOrg,
   proxyList, proxyDelete, proxyUpdate,
 } from '@/lib/grandmaster-api';
@@ -24,7 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   ArrowLeft, Eye, Settings2, CreditCard, Database, Shield,
-  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil, ShieldAlert
+  Loader2, Search, Trash2, RefreshCw, ExternalLink, Pencil, ShieldAlert, CheckCircle2
 } from 'lucide-react';
 
 // Server-managed fields that must never be edited via the JSON editor.
@@ -46,6 +46,40 @@ const ALL_SETTINGS_TABS = [
   { value: 'module_operations', label: 'Module Operations' },
 ];
 
+const ALL_SYSTEM_MODULES = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'beds', label: 'Bed Management' },
+  { id: 'admissions', label: 'Admissions' },
+  { id: 'patients', label: 'Patients' },
+  { id: 'doctors', label: 'Doctors' },
+  { id: 'nurses', label: 'Nurses' },
+  { id: 'appointments', label: 'Appointments' },
+  { id: 'scheduler', label: 'Scheduler' },
+  { id: 'facilities', label: 'Facilities' },
+  { id: 'billing', label: 'Billing' },
+  { id: 'pharmacy', label: 'Pharmacy' },
+  { id: 'reports', label: 'Reports' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'settings', label: 'Settings' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'vitals', label: 'Vitals' },
+  { id: 'lab', label: 'Pathology Lab' },
+  { id: 'radiology', label: 'Radiology' },
+  { id: 'ot', label: 'Operating Theatre' },
+  { id: 'service_catalog', label: 'Service Catalog' },
+  { id: 'returns', label: 'Returns & Refunds' },
+  { id: 'medicine_indents', label: 'Ward Medicine Indents' },
+  { id: 'nursing_charges', label: 'Nursing Charges' },
+  { id: 'handovers', label: 'Nurse Handovers (SBAR)' },
+  { id: 'pac', label: 'Pre-Anaesthetic Checks' },
+  { id: 'fluid_io', label: 'Fluid Intake/Output' },
+  { id: 'vital_records', label: 'Birth & Death Records' },
+  { id: 'referrals', label: 'Referrals & Commissions' },
+  { id: 'estimates', label: 'Estimate Billing' },
+  { id: 'hr', label: 'HR & Payroll' },
+  { id: 'expenses', label: 'Expenses & Profitability' },
+];
+
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' },
   { value: 'card', label: 'Card' },
@@ -62,14 +96,38 @@ const BILLABLE_MODULES = ['billing', 'lab', 'pharmacy', 'radiology', 'ot', 'opd'
 const DATA_RESOURCES = [
   { value: 'patients', label: 'Patients' },
   { value: 'users', label: 'Users' },
-  { value: 'beds', label: 'Beds' },
-  { value: 'admissions', label: 'Admissions' },
   { value: 'doctors', label: 'Doctors' },
   { value: 'appointments', label: 'Appointments' },
+  { value: 'admissions', label: 'Admissions' },
+  { value: 'beds', label: 'Beds' },
   { value: 'invoices', label: 'Invoices' },
+  { value: 'estimates', label: 'Estimate Billing' },
+  { value: 'returns', label: 'Returns & Refunds' },
+  { value: 'billing_ledger', label: 'Billing Ledger' },
+  { value: 'prescriptions', label: 'Prescriptions' },
+  { value: 'medicines', label: 'Pharmacy Medicines' },
+  { value: 'ward_indents', label: 'Ward Medicine Indents' },
   { value: 'labtests', label: 'Lab Tests' },
+  { value: 'radiology', label: 'Radiology Orders' },
+  { value: 'surgeries', label: 'Surgeries / OT' },
+  { value: 'pac_requests', label: 'Pre-Anaesthetic Checks (PAC)' },
+  { value: 'nursing_charges', label: 'Nursing Charges' },
+  { value: 'nurse_handovers', label: 'Nurse Handovers (SBAR)' },
+  { value: 'fluid_io', label: 'Fluid Intake/Output' },
   { value: 'vitals', label: 'Vitals' },
+  { value: 'birth_records', label: 'Birth Records' },
+  { value: 'death_records', label: 'Death Records' },
+  { value: 'referrals', label: 'Referrals & Commissions' },
+  { value: 'referrers', label: 'Referrers' },
+  { value: 'employees', label: 'Employees (HR)' },
+  { value: 'payroll', label: 'Payroll Runs' },
+  { value: 'leave_requests', label: 'Leave Requests' },
+  { value: 'attendance', label: 'Attendance' },
+  { value: 'expenses', label: 'Expenses & Profitability' },
+  { value: 'service_catalog', label: 'Service Catalog' },
+  { value: 'service_orders', label: 'Service Orders' },
   { value: 'tasks', label: 'Tasks' },
+  { value: 'notifications', label: 'Notifications' },
 ];
 
 export default function OrgControlPanel() {
@@ -117,6 +175,19 @@ export default function OrgControlPanel() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gm-org-settings', id] });
       toast({ title: 'Settings tabs updated' });
+    },
+    onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
+  // ─── Enabled Modules State ───
+  const [enabledModulesState, setEnabledModulesState] = useState(null);
+  const currentEnabledModules = enabledModulesState ?? (org.enabledModules || []);
+
+  const enabledModulesMut = useMutation({
+    mutationFn: (modules) => updateOrgModules(id, modules),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['gm-org', id] });
+      toast({ title: 'Enabled modules updated successfully' });
     },
     onError: (err) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
   });
@@ -311,11 +382,66 @@ export default function OrgControlPanel() {
         </TabsList>
 
         {/* ═══ Settings Control Tab ═══ */}
-        <TabsContent value="settings">
+        <TabsContent value="settings" className="space-y-6">
+          {/* Enabled Hospital Modules Card */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-lg font-semibold">Enabled Hospital Modules</CardTitle>
+                <CardDescription>
+                  Configure which modules and features are active and accessible for this organization ({currentEnabledModules.length} of {ALL_SYSTEM_MODULES.length} enabled)
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setEnabledModulesState(ALL_SYSTEM_MODULES.map(m => m.id))}>
+                  Select All
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setEnabledModulesState(['dashboard', 'patients', 'beds', 'admissions'])}>
+                  Reset Default
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {ALL_SYSTEM_MODULES.map((mod) => {
+                  const isChecked = currentEnabledModules.includes(mod.id);
+                  return (
+                    <label
+                      key={mod.id}
+                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                        isChecked ? 'border-primary/50 bg-primary/5' : 'border-border hover:bg-accent'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={(checked) => {
+                          const updated = checked
+                            ? [...currentEnabledModules, mod.id]
+                            : currentEnabledModules.filter(m => m !== mod.id);
+                          setEnabledModulesState(updated);
+                        }}
+                      />
+                      <span className="text-sm font-medium text-foreground">{mod.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <Button
+                onClick={() => enabledModulesMut.mutate(currentEnabledModules)}
+                disabled={enabledModulesMut.isPending || !canChangeSettings}
+                title={!canChangeSettings ? 'Requires Grandmaster role' : undefined}
+              >
+                {enabledModulesMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Enabled Modules
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Settings Tab Visibility */}
           <Card>
             <CardHeader>
-              <CardTitle>Settings Tab Visibility</CardTitle>
-              <CardDescription>Control which settings tabs this hospital can see and access</CardDescription>
+              <CardTitle className="text-lg font-semibold">Settings Tab Visibility</CardTitle>
+              <CardDescription>Control which internal settings tabs this hospital can see and access</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
