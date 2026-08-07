@@ -23,7 +23,7 @@ const leaveBalanceSchema = new mongoose.Schema({
 }, { _id: false });
 
 const employeeSchema = new mongoose.Schema({
-  employeeCode: { type: String, required: true, trim: true, index: true },
+  employeeCode: { type: String, required: true, trim: true },
   // Optional login account. Employees without a login can still be paid and
   // marked present through their ID card.
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -66,7 +66,7 @@ const employeeSchema = new mongoose.Schema({
   leaveBalance: { type: leaveBalanceSchema, default: () => ({}) },
 
   // Secret embedded in the printed ID card QR. Rotatable if a card is lost.
-  cardToken: { type: String, required: true, unique: true, index: true },
+  cardToken: { type: String, required: true, unique: true },
   cardIssuedAt: { type: Date },
 
   isActive: { type: Boolean, default: true },

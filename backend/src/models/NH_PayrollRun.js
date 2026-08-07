@@ -34,7 +34,7 @@ const payslipSchema = new mongoose.Schema({
 const payrollRunSchema = new mongoose.Schema({
   runNumber: { type: String, trim: true, index: true },
   // Period key YYYY-MM keeps one run per month.
-  period: { type: String, required: true, index: true },
+  period: { type: String, required: true },
   month: { type: Number, required: true, min: 1, max: 12 },
   year: { type: Number, required: true },
   status: { type: String, enum: ['draft', 'finalized', 'paid', 'cancelled'], default: 'draft' },

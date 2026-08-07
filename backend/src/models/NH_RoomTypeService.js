@@ -42,6 +42,4 @@ const roomTypeServiceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-roomTypeServiceSchema.index({ roomType: 1 }, { unique: true });
-
 module.exports = mongoose.model('RoomTypeService', roomTypeServiceSchema);

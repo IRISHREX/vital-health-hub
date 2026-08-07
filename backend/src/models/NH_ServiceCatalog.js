@@ -62,7 +62,6 @@ serviceCatalogSchema.pre('validate', async function (next) {
 });
 
 serviceCatalogSchema.index({ category: 1, isActive: 1 });
-serviceCatalogSchema.index({ serviceId: 1 }, { unique: true });
 serviceCatalogSchema.index({ name: 'text', description: 'text' });
 
 module.exports = mongoose.model('ServiceCatalog', serviceCatalogSchema);
