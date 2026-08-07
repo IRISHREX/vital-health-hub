@@ -12,7 +12,7 @@ const qs = (params) => {
 export const listExpenses = (params) => apiClient.get(`/expenses${qs(params)}`);
 export const createExpense = (data) => apiClient.post('/expenses', data);
 export const updateExpense = (id, data) => apiClient.put(`/expenses/${id}`, data);
-export const cancelExpense = (id, data) => apiClient.delete(`/expenses/${id}`, data);
+export const cancelExpense = (id) => apiClient.delete(`/expenses/${id}`);
 export const getProfitAndLoss = (params) => apiClient.get(`/expenses/pnl${qs(params)}`);
 export const getExpenseMeta = () => apiClient.get('/expenses/meta');
 

@@ -14,7 +14,7 @@ export const listEmployees = (params) => apiClient.get(`/hr/employees${qs(params
 export const getEmployee = (id) => apiClient.get(`/hr/employees/${id}`);
 export const createEmployee = (data) => apiClient.post('/hr/employees', data);
 export const updateEmployee = (id, data) => apiClient.put(`/hr/employees/${id}`, data);
-export const deactivateEmployee = (id, data) => apiClient.delete(`/hr/employees/${id}`, data);
+export const deactivateEmployee = (id) => apiClient.delete(`/hr/employees/${id}`);
 export const rotateEmployeeCard = (id) => apiClient.post(`/hr/employees/${id}/rotate-card`, {});
 export const markCardIssued = (id) => apiClient.post(`/hr/employees/${id}/card-issued`, {});
 
