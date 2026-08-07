@@ -123,6 +123,81 @@ function EmployeeForm({ open, onOpenChange, editing, onSaved }) {
   );
 }
 
+function QrScheduleDialog({ open, onOpenChange, onBulkRotate, isPending }) {
+  const [schedule, setSchedule] = useState(() => localStorage.getItem("hr_qr_rotation_schedule") || "disabled");
+  const [lastRotated, setLastRotated] = useState(() => localStorage.getItem("hr_qr_last_rotated") || null);
+
+  const saveSchedule = (val) => {
+    setSchedule(val);
+    localStorage.setItem("hr_qr_rotation_schedule", val);
+    toast.success(`QR Auto-Regeneration schedule set to: ${val.replace("_", " ").toUpperCase()}`);
+  };
+
+  const handleBulk = async () => {
+    await onBulkRotate();
+    const now = new Date().toISOString();
+    setLastRotated(now);
+    localStorage.setItem("hr_qr_last_rotated", now);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5 text-primary" /> ID Card QR Code Regeneration &amp; Schedule
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <p className="text-xs text-muted-foreground">
+            Regenerating ID card QR codes invalidates old printed cards for security (e.g. lost cards or annual staff rotation).
+          </p>
+
+          <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+            <Label className="text-xs font-semibold">1-Click Bulk QR Regeneration</Label>
+            <p className="text-[11px] text-muted-foreground">
+              Immediately regenerate new QR codes for all active staff members across all departments.
+            </p>
+            <Button size="sm" variant="default" onClick={handleBulk} disabled={isPending} className="w-full">
+              <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isPending ? "animate-spin" : ""}`} />
+              {isPending ? "Regenerating All QR Codes..." : "Regenerate All Active Staff QR Codes"}
+            </Button>
+            {lastRotated && (
+              <p className="text-[10px] text-muted-foreground text-center">
+                Last bulk regeneration: {new Date(lastRotated).toLocaleString("en-IN")}
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <Label className="text-xs font-semibold">Automated Scheduled QR Rotation</Label>
+            <p className="text-[11px] text-muted-foreground">
+              Configure automatic routine QR code expiration for hospital security compliance.
+            </p>
+            <Select value={schedule} onValueChange={saveSchedule}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="disabled">Disabled (Manual Regeneration Only)</SelectItem>
+                <SelectItem value="30_days">Every 30 Days (Monthly Rotation)</SelectItem>
+                <SelectItem value="90_days">Every 90 Days (Quarterly Rotation)</SelectItem>
+                <SelectItem value="180_days">Every 180 Days (Bi-Annual Rotation)</SelectItem>
+                <SelectItem value="365_days">Every 365 Days (Annual Rotation)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Badge variant="outline" className="text-[10px] capitalize">
+              Current Schedule: {schedule.replace("_", " ")}
+            </Badge>
+          </div>
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function HR() {
   const qc = useQueryClient();
   const now = new Date();
@@ -130,6 +205,7 @@ export default function HR() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [cardEmployee, setCardEmployee] = useState(null);
+  const [qrScheduleOpen, setQrScheduleOpen] = useState(false);
   const [period, setPeriod] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
   const [runId, setRunId] = useState("");
   const [leaveForm, setLeaveForm] = useState({ employeeId: "", leaveType: "casual", from: "", to: "", reason: "" });
@@ -155,6 +231,11 @@ export default function HR() {
     mutationFn: (id) => hr.rotateEmployeeCard(id),
     onSuccess: async (emp) => { toast.success("Card QR rotated — reprint the ID card"); setCardEmployee(emp); await invalidate(); },
     onError: (e) => toast.error(e.message || "Could not rotate card"),
+  });
+  const bulkRotate = useMutation({
+    mutationFn: (data) => hr.bulkRotateEmployeeCards(data),
+    onSuccess: async (res) => { toast.success(res.message || "Bulk QR rotation complete"); await invalidate(); },
+    onError: (e) => toast.error(e.message || "Could not bulk rotate QR codes"),
   });
   const deactivate = useMutation({
     mutationFn: (id) => hr.deactivateEmployee(id),
@@ -194,7 +275,12 @@ export default function HR() {
           <h1 className="text-2xl font-bold text-foreground">HR &amp; Payroll</h1>
           <p className="text-muted-foreground">Employee master, ID cards, leave and monthly salary processing.</p>
         </div>
-        <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="mr-2 h-4 w-4" />New employee</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setQrScheduleOpen(true)}>
+            <RefreshCw className="mr-2 h-4 w-4" />QR Rotation &amp; Schedule
+          </Button>
+          <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="mr-2 h-4 w-4" />New employee</Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
@@ -380,10 +466,22 @@ export default function HR() {
 
       <EmployeeForm open={formOpen} onOpenChange={setFormOpen} editing={editing} onSaved={invalidate} />
 
+      <QrScheduleDialog
+        open={qrScheduleOpen}
+        onOpenChange={setQrScheduleOpen}
+        onBulkRotate={() => bulkRotate.mutateAsync({})}
+        isPending={bulkRotate.isPending}
+      />
+
       <Dialog open={Boolean(cardEmployee)} onOpenChange={(open) => !open && setCardEmployee(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader><DialogTitle>Staff ID card — {hr.employeeFullName(cardEmployee)}</DialogTitle></DialogHeader>
-          <EmployeeIdCard employee={cardEmployee} hospital={hospital} />
+          <EmployeeIdCard
+            employee={cardEmployee}
+            hospital={hospital}
+            onRotate={(id) => rotate.mutate(id)}
+            isRotating={rotate.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>

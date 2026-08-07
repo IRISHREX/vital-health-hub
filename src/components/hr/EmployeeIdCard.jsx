@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
+import { Printer, RefreshCw } from "lucide-react";
 import { generateQrDataUrl, generateBarcodeDataUrl } from "@/lib/document-codes";
 import { buildCardPayload, employeeFullName, titleCase } from "@/lib/hr";
 
@@ -9,7 +9,7 @@ import { buildCardPayload, employeeFullName, titleCase } from "@/lib/hr";
  * attendance QR on the back. Scanning the QR at an attendance point marks
  * the employee present.
  */
-export function EmployeeIdCard({ employee, hospital }) {
+export function EmployeeIdCard({ employee, hospital, onRotate, isRotating }) {
   const cardRef = useRef(null);
   const payload = useMemo(() => buildCardPayload(employee), [employee]);
   const qr = useMemo(() => generateQrDataUrl(payload, { width: 220 }), [payload]);
@@ -96,9 +96,17 @@ export function EmployeeIdCard({ employee, hospital }) {
         </div>
       </div>
 
-      <Button variant="outline" onClick={print}>
-        <Printer className="mr-2 h-4 w-4" />Print ID card
-      </Button>
+      <div className="flex flex-wrap gap-2 pt-2">
+        <Button variant="outline" onClick={print}>
+          <Printer className="mr-2 h-4 w-4" />Print ID card
+        </Button>
+        {onRotate && (
+          <Button variant="secondary" onClick={() => onRotate(employee._id)} disabled={isRotating}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRotating ? "animate-spin" : ""}`} />
+            {isRotating ? "Regenerating QR..." : "Regenerate QR Code"}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

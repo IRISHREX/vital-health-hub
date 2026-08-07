@@ -18,6 +18,7 @@ router.route('/employees/:id')
   .put(authenticate, authorize(...ADMIN), c.updateEmployee)
   .delete(authenticate, authorize(...ADMIN), c.deactivateEmployee);
 
+router.post('/employees/bulk-rotate-cards', authenticate, authorize(...ADMIN), c.bulkRotateEmployeeCards);
 router.post('/employees/:id/rotate-card', authenticate, authorize(...ADMIN), c.rotateEmployeeCard);
 router.post('/employees/:id/card-issued', authenticate, authorize(...ADMIN), c.markCardIssued);
 

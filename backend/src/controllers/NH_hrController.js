@@ -216,6 +216,31 @@ const rotateEmployeeCard = async (req, res) => {
   }
 };
 
+/** Bulk rotate ID card secrets for multiple employees (scheduled or manual reset). */
+const bulkRotateEmployeeCards = async (req, res) => {
+  try {
+    const { Employee } = M(req);
+    const { department, module: empModule } = req.body || {};
+    const query = { isActive: true };
+    if (department) query.department = department;
+    if (empModule) query.module = empModule;
+
+    const employees = await Employee.find(query);
+    let count = 0;
+    const now = new Date();
+    for (const emp of employees) {
+      emp.cardToken = EmployeeBase.generateCardToken();
+      emp.cardIssuedAt = now;
+      emp.lastUpdatedBy = req.user._id;
+      await emp.save();
+      count++;
+    }
+    res.json({ success: true, count, rotatedAt: now, message: `Successfully regenerated QR codes for ${count} employees.` });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 /** Mark the card as issued/printed (audit of physical handover). */
 const markCardIssued = async (req, res) => {
   try {
@@ -546,6 +571,7 @@ module.exports = {
   updateEmployee,
   deactivateEmployee,
   rotateEmployeeCard,
+  bulkRotateEmployeeCards,
   markCardIssued,
   listLeaveRequests,
   createLeaveRequest,

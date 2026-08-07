@@ -16,6 +16,7 @@ export const createEmployee = (data) => apiClient.post('/hr/employees', data);
 export const updateEmployee = (id, data) => apiClient.put(`/hr/employees/${id}`, data);
 export const deactivateEmployee = (id) => apiClient.delete(`/hr/employees/${id}`);
 export const rotateEmployeeCard = (id) => apiClient.post(`/hr/employees/${id}/rotate-card`, {});
+export const bulkRotateEmployeeCards = (data) => apiClient.post('/hr/employees/bulk-rotate-cards', data || {});
 export const markCardIssued = (id) => apiClient.post(`/hr/employees/${id}/card-issued`, {});
 
 // ---- Leave ----
