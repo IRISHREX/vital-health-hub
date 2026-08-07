@@ -50,6 +50,8 @@ const BirthDeathRecords = lazy(() => import("./pages/BirthDeathRecords"));
 const Referrals = lazy(() => import("./pages/Referrals"));
 const Estimates = lazy(() => import("./pages/Estimates"));
 const Attendance = lazy(() => import("./pages/Attendance"));
+const HR = lazy(() => import("./pages/HR"));
+const Expenses = lazy(() => import("./pages/Expenses"));
 const PublicLanding = lazy(() => import("./pages/public/PublicLanding"));
 
 // Standalone Portals
@@ -168,6 +170,12 @@ const App = () => (
                   <Route path="/estimates" element={<Page><Estimates /></Page>} />
                 </Route>
                 <Route path="/attendance" element={<Page><Attendance /></Page>} />
+                <Route element={<AuthorizedRoute module="hr" />}>
+                  <Route path="/hr" element={<Page><HR /></Page>} />
+                </Route>
+                <Route element={<AuthorizedRoute module="expenses" />}>
+                  <Route path="/expenses" element={<Page><Expenses /></Page>} />
+                </Route>
                 <Route element={<AuthorizedRoute module="tasks" />}>
                   <Route path="/tasks" element={<Page><Tasks /></Page>} />
                 </Route>

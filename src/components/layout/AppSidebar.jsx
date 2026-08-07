@@ -23,6 +23,8 @@ import {
   Share2,
   Calculator,
   QrCode,
+  IdCard,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -67,6 +69,8 @@ const managementItems = [
   { title: "Estimates", url: "/estimates", icon: Calculator, module: "estimates" },
   { title: "Referrals", url: "/referrals", icon: Share2, module: "referrals" },
   { title: "Birth & Death", url: "/vital-records", icon: Baby, module: "vital_records" },
+  { title: "HR & Payroll", url: "/hr", icon: IdCard, module: "hr" },
+  { title: "Expenses", url: "/expenses", icon: Wallet, module: "expenses" },
   { title: "Reports", url: "/reports", icon: BarChart3, module: "reports" },
 ];
 
