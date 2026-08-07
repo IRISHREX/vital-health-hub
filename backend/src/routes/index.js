@@ -70,6 +70,8 @@ v1Router.use('/vital-records', require('./vitalRecords'));
 v1Router.use('/referrals', require('./referrals'));
 v1Router.use('/estimates', require('./estimates'));
 v1Router.use('/attendance', require('./attendance'));
+v1Router.use('/hr', require('./hr'));
+v1Router.use('/expenses', require('./expenses'));
 
 // Mount v1 routes under nh/api/v1
 router.use('/nh/api/v1', v1Router);

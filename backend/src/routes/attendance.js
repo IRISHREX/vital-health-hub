@@ -9,6 +9,8 @@ const ADMIN_ROLES = ['super_admin', 'hospital_admin'];
 // Any authenticated employee can scan a posted location QR to punch in/out.
 router.post('/scan', authenticate, c.scanAttendance);
 router.get('/me', authenticate, c.getMyAttendance);
+// Kiosk: an operator scans an employee ID card QR at a posted location.
+router.post('/card-scan', authenticate, c.scanEmployeeCard);
 
 router.route('/locations')
   .get(authenticate, c.listLocations)
