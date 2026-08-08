@@ -31,35 +31,41 @@ const syncAppointmentInvoice = async ({ Invoice, appointment, userId }) => {
 
     let invoice = await Invoice.findOne({ appointment: appointment._id });
 
+    // Cancelled/refunded appointments contribute nothing to billing —
+    // zero the fee out entirely so the OPD bill/ledger never charges for them.
+    const effectiveFee = isCancelled ? 0 : fee;
+
     const item = {
       description: `Consultation Fee`,
       category: 'doctor_fee',
       quantity: 1,
-      unitPrice: fee,
+      unitPrice: effectiveFee,
       discount: 0,
       tax: 0,
-      amount: fee,
+      amount: effectiveFee,
     };
 
     if (!invoice) {
+      // Don't create a payable invoice for cancelled/refunded appointments.
+      if (isCancelled) return;
       invoice = new Invoice({
         patient: appointment.patient,
         appointment: appointment._id,
         type,
         items: [item],
-        subtotal: fee,
+        subtotal: effectiveFee,
         discountAmount: 0,
         totalTax: 0,
-        totalAmount: fee,
-        paidAmount: isPaid ? fee : 0,
-        dueAmount: isPaid ? 0 : fee,
-        status: isCancelled ? 'cancelled' : (isPaid ? 'paid' : 'pending'),
+        totalAmount: effectiveFee,
+        paidAmount: isPaid ? effectiveFee : 0,
+        dueAmount: isPaid ? 0 : effectiveFee,
+        status: isPaid ? 'paid' : 'pending',
         dueDate,
         generatedBy: userId,
         notes: `Auto-generated for appointment ${appointment._id}`,
         ...(isPaid ? {
           payments: [{
-            amount: fee,
+            amount: effectiveFee,
             method: paymentMode,
             paidAt: new Date(),
             receivedBy: userId,
@@ -72,30 +78,31 @@ const syncAppointmentInvoice = async ({ Invoice, appointment, userId }) => {
 
     // Update existing invoice to reflect latest appointment state.
     invoice.items = [item];
-    invoice.subtotal = fee;
-    invoice.totalAmount = fee;
+    invoice.subtotal = effectiveFee;
+    invoice.totalAmount = effectiveFee;
 
     if (isCancelled) {
       invoice.status = 'cancelled';
       invoice.paidAmount = 0;
       invoice.dueAmount = 0;
+      invoice.payments = [];
     } else if (isPaid) {
       // Record payment if not already reflected.
-      const alreadyPaid = Number(invoice.paidAmount || 0) >= fee;
+      const alreadyPaid = Number(invoice.paidAmount || 0) >= effectiveFee;
       if (!alreadyPaid) {
         invoice.payments = invoice.payments || [];
         invoice.payments.push({
-          amount: fee - Number(invoice.paidAmount || 0),
+          amount: effectiveFee - Number(invoice.paidAmount || 0),
           method: paymentMode,
           paidAt: new Date(),
           receivedBy: userId,
         });
-        invoice.paidAmount = fee;
+        invoice.paidAmount = effectiveFee;
       }
       invoice.dueAmount = 0;
     } else {
       invoice.paidAmount = 0;
-      invoice.dueAmount = fee;
+      invoice.dueAmount = effectiveFee;
     }
 
     invoice.lastUpdatedBy = userId;
@@ -493,6 +500,11 @@ exports.updateStatus = async (req, res, next) => {
       throw new AppError('Appointment not found', 404);
     }
 
+    // Keep the OPD invoice/ledger in sync — cancelled/refunded appointments
+    // must not remain billable.
+    const { Invoice } = getModels(req);
+    await syncAppointmentInvoice({ Invoice, appointment, userId: req.user._id });
+
     res.json({
       success: true,
       message: 'Appointment status updated',
@@ -524,6 +536,11 @@ exports.cancelAppointment = async (req, res, next) => {
     if (!appointment) {
       throw new AppError('Appointment not found', 404);
     }
+
+    // Keep the OPD invoice/ledger in sync — cancelled appointments must not
+    // remain billable.
+    const { Invoice } = getModels(req);
+    await syncAppointmentInvoice({ Invoice, appointment, userId: req.user._id });
 
     res.json({
       success: true,
