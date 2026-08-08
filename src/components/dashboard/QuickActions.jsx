@@ -58,7 +58,7 @@ const defaultActionKeys = [
   "emergency"
 ];
 
-export function QuickActions() {
+export function QuickActions({ onActionClick }) {
   const { canView, canCreate } = useVisualAuth();
   const [isManaging, setIsManaging] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState(() => {
@@ -147,7 +147,7 @@ export function QuickActions() {
               className="h-auto w-full flex-col gap-2 py-4"
               asChild
             >
-              <Link to={action.href}>
+              <Link to={action.href} onClick={() => onActionClick?.(action)}>
                 <action.icon className="h-5 w-5" />
                 <span className="text-center text-xs text-wrap">{action.label}</span>
               </Link>

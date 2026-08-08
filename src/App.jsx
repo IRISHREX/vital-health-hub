@@ -133,6 +133,7 @@ const App = () => (
               <Route element={<DashboardLayout />}>
                 <Route element={<AuthorizedRoute module="dashboard" />}>
                   <Route path="/" element={<Page fallbackMessage="Dashboard failed to load."><Dashboard /></Page>} />
+                  <Route path="/dashboard" element={<Page fallbackMessage="Dashboard failed to load."><Dashboard /></Page>} />
                 </Route>
                 <Route element={<AuthorizedRoute module="beds" />}>
                   <Route path="/beds" element={<Page><Beds /></Page>} />

@@ -10,8 +10,10 @@ import { getPharmacyStats } from "@/lib/pharmacy";
 import { getDoctors } from "@/lib/doctors";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, X } from "lucide-react";
+import { Search, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { QuickActions } from "@/components/dashboard/QuickActions";
 import {
   LayoutDashboard, Bed, Hospital, Users, Stethoscope,
   Calendar, ClipboardList, Scissors, FlaskConical, ScanLine,
@@ -19,7 +21,8 @@ import {
 } from "lucide-react";
 
 const allModules = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard", color: "from-blue-500 to-blue-600", desc: "Overview & KPIs", statKey: "dashboard" },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, module: "dashboard", color: "from-blue-500 to-blue-600", desc: "Overview & KPIs", statKey: "dashboard" },
+  { title: "Quick Actions", url: "#quick-actions", icon: Zap, module: "dashboard", color: "from-amber-500 to-rose-600", desc: "Common tasks & shortcuts", statKey: null, isQuickActions: true },
   { title: "Bed Management", url: "/beds", icon: Bed, module: "beds", color: "from-teal-500 to-teal-600", desc: "Manage beds & wards", statKey: "beds" },
   { title: "Admissions", url: "/admissions", icon: Hospital, module: "admissions", color: "from-indigo-500 to-indigo-600", desc: "Patient admissions", statKey: "admissions" },
   { title: "Patients", url: "/patients", icon: Users, module: "patients", color: "from-emerald-500 to-emerald-600", desc: "Patient records", statKey: "patients" },
@@ -54,6 +57,7 @@ export function WidgetHome({ isOverlay = false }) {
   const { setWidgetOverlayOpen } = useLayoutMode();
   const [search, setSearch] = useState("");
   const [stats, setStats] = useState({});
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
 
   // Fetch quick stats
   useEffect(() => {
@@ -155,6 +159,27 @@ export function WidgetHome({ isOverlay = false }) {
       >
         {visible.map((mod) => {
           const stat = mod.statKey ? stats[mod.statKey] : null;
+
+          if (mod.isQuickActions) {
+            return (
+              <motion.div key={mod.title} variants={item}>
+                <button
+                  type="button"
+                  onClick={() => setQuickActionsOpen(true)}
+                  className="group relative flex w-full flex-col items-center gap-2.5 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:border-primary/30 text-left cursor-pointer"
+                >
+                  <div className={`flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${mod.color} shadow-md transition-transform duration-200 group-hover:scale-110`}>
+                    <mod.icon className="h-7 w-7 text-white" strokeWidth={2} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground leading-tight">{mod.title}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{mod.desc}</p>
+                  </div>
+                </button>
+              </motion.div>
+            );
+          }
+
           return (
             <motion.div key={mod.url + mod.title} variants={item}>
               <Link
@@ -187,6 +212,15 @@ export function WidgetHome({ isOverlay = false }) {
           );
         })}
       </motion.div>
+
+      <Dialog open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
+        <DialogContent className="max-w-2xl p-4 sm:p-6 sm:rounded-2xl border-border bg-card">
+          <QuickActions onActionClick={() => {
+            setQuickActionsOpen(false);
+            if (isOverlay) setWidgetOverlayOpen(false);
+          }} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
