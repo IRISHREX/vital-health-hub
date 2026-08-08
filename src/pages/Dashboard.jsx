@@ -40,6 +40,7 @@ import { BedOccupancyChart } from "@/components/dashboard/BedOccupancyChart";
 import { AdmissionChart } from "@/components/dashboard/AdmissionChart";
 import { RecentPatients } from "@/components/dashboard/RecentPatients";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { FinancialChartWidget } from "@/components/dashboard/FinancialChartWidget";
 import {
   ResponsiveContainer,
   BarChart,
@@ -79,9 +80,7 @@ const WIDGET_TONES = [
 ];
 
 const DEFAULT_WIDGETS = [
-  { id: "view:admin", title: "Admin View", defaultW: 3, defaultH: 1, adminOnly: true },
-  { id: "view:doctor", title: "Doctor View", defaultW: 3, defaultH: 1, module: "doctors" },
-  { id: "view:nurse", title: "Nurse View", defaultW: 3, defaultH: 1, module: "nurses" },
+  { id: "financialOverview", title: "Financial Overview (Expense, Revenue, Due & Paid)", defaultW: 8, defaultH: 3, module: "billing" },
   { id: "totalBeds", title: "Total Beds", defaultW: 3, defaultH: 1, module: "beds" },
   { id: "admittedPatients", title: "Admitted Patients", defaultW: 3, defaultH: 1, module: "admissions" },
   { id: "availableDoctors", title: "Available Doctors", defaultW: 3, defaultH: 1, module: "doctors" },
@@ -424,14 +423,8 @@ export default function Dashboard() {
   );
 
   const renderWidgetBody = (widgetId) => {
-    if (widgetId === "view:admin") {
-      return renderMetric("Admin View", getViewValue("admin"), "Open", LayoutGrid, "text-primary");
-    }
-    if (widgetId === "view:doctor") {
-      return renderMetric("Doctor View", getViewValue("doctor"), "Open", Stethoscope, "text-accent");
-    }
-    if (widgetId === "view:nurse") {
-      return renderMetric("Nurse View", getViewValue("nurse"), "Open", UserCog, "text-status-available");
+    if (widgetId === "financialOverview") {
+      return <FinancialChartWidget />;
     }
 
     if (widgetId === "totalBeds") return renderMetric("Total Beds", Number(stats.totalBeds || 0), `${Number(stats.availableBeds || 0)} available`, Bed);
@@ -664,7 +657,7 @@ export default function Dashboard() {
                         )}
                       </div>
                     </div>
-                    <div className="relative h-[calc(100%-65px)] overflow-auto">
+                    <div className="relative h-[calc(100%-36px)] overflow-auto">
                       {renderWidgetBody(widgetId)}
                       {editMode && (
                         <button
