@@ -72,12 +72,43 @@ exports.getPatients = async (req, res, next) => {
     if (status) query.status = status;
     if (registrationType) query.registrationType = registrationType;
     if (search) {
-      query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { patientId: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+      const trimmedSearch = String(search).trim();
+      const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = escapeRegex(trimmedSearch);
+      const tokens = trimmedSearch.split(/\s+/).filter(Boolean).map(escapeRegex);
+
+      const orConditions = [
+        { firstName: { $regex: escaped, $options: 'i' } },
+        { lastName: { $regex: escaped, $options: 'i' } },
+        { patientId: { $regex: escaped, $options: 'i' } },
+        { phone: { $regex: escaped, $options: 'i' } },
+        { email: { $regex: escaped, $options: 'i' } },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $concat: [{ $ifNull: ['$firstName', ''] }, ' ', { $ifNull: ['$lastName', ''] }] },
+              regex: escaped,
+              options: 'i'
+            }
+          }
+        }
       ];
+
+      // If the search has multiple tokens (e.g. "Mim Akter"), also match when each
+      // token appears somewhere across firstName/lastName/email (order independent).
+      if (tokens.length > 1) {
+        orConditions.push({
+          $and: tokens.map((token) => ({
+            $or: [
+              { firstName: { $regex: token, $options: 'i' } },
+              { lastName: { $regex: token, $options: 'i' } },
+              { email: { $regex: token, $options: 'i' } }
+            ]
+          }))
+        });
+      }
+
+      query.$or = orConditions;
     }
 
     const total = await Patient.countDocuments(query);
