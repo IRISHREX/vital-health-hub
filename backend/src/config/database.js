@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
 const config = require('./index');
+
+// Resolve MongoDB SRV records via reliable public DNS if local network DNS blocks querySrv
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  // Fallback silently if custom DNS servers cannot be set
+}
 
 const connectDB = async () => {
   try {

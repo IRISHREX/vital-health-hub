@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import {
   listApprovalRules, createApprovalRule, updateApprovalRule, deleteApprovalRule,
   listApprovalRequests, respondApprovalRequest, reassignApprovalRequest, findApplicableRule,
-  APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES
+  APPROVAL_MODULES, APPROVAL_ACTIONS, APPROVAL_ROLES, MODULE_ACTION_RECOMMENDATIONS
 } from "@/lib/approvals";
 import { UserCog } from "lucide-react";
 
@@ -24,9 +24,9 @@ const emptyRule = {
   name: "",
   description: "",
   enabled: true,
-  module: "patients",
-  action: "delete",
-  actionLabel: "",
+  module: "billing",
+  action: "refund",
+  actionLabel: "REFUND",
   approverType: "role",
   approverEmail: "",
   approverRole: "hospital_admin",
@@ -146,21 +146,60 @@ function RuleDialog({ rule, onSave, trigger }) {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label>Module</Label>
-              <Select value={data.module} onValueChange={(v) => setData({ ...data, module: v })}>
+              <Select
+                value={data.module}
+                onValueChange={(v) => {
+                  const recs = MODULE_ACTION_RECOMMENDATIONS[v] || APPROVAL_ACTIONS;
+                  const newAction = recs.includes(data.action) ? data.action : recs[0] || "custom";
+                  setData({
+                    ...data,
+                    module: v,
+                    action: newAction,
+                    actionLabel: data.actionLabel || (newAction !== "custom" ? newAction.toUpperCase() : "")
+                  });
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{APPROVAL_MODULES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {APPROVAL_MODULES.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Action</Label>
-              <Select value={data.action} onValueChange={(v) => setData({ ...data, action: v })}>
+              <Select
+                value={data.action}
+                onValueChange={(v) => {
+                  setData({
+                    ...data,
+                    action: v,
+                    actionLabel: v !== "custom" ? v.toUpperCase() : (data.actionLabel || "")
+                  });
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{APPROVAL_ACTIONS.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {(MODULE_ACTION_RECOMMENDATIONS[data.module] || APPROVAL_ACTIONS).map((a) => (
+                    <SelectItem key={a} value={a}>
+                      {a === 'refund' ? 'refund (e.g. billing refund approval)' :
+                       a === 'settings_change' ? 'settings_change (e.g. setting approval)' :
+                       a === 'discount' ? 'discount (billing discount approval)' :
+                       a === 'void' ? 'void (void bill approval)' :
+                       a === 'approve' ? 'approve (payroll/expense approval)' : a}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Action Label (optional)</Label>
-              <Input value={data.actionLabel} onChange={(e) => setData({ ...data, actionLabel: e.target.value })} placeholder="e.g. discharge" />
+              <Input
+                value={data.actionLabel}
+                onChange={(e) => setData({ ...data, actionLabel: e.target.value })}
+                placeholder="e.g. REFUND, DISCHARGE"
+              />
             </div>
           </div>
 

@@ -29,14 +29,19 @@ const approvalRuleSchema = new mongoose.Schema(
       enum: [
         'dashboard', 'beds', 'admissions', 'patients', 'doctors',
         'nurses', 'appointments', 'facilities', 'billing', 'reports',
-        'notifications', 'settings', 'tasks', 'lab', 'pharmacy',
-        'radiology', 'ot', 'invoices'
+        'notifications', 'settings', 'tasks', 'vitals', 'lab', 'pharmacy',
+        'radiology', 'ot', 'invoices', 'scheduler', 'payroll', 'expenses',
+        'estimates', 'services', 'blood_bank', 'ambulance', 'referrals'
       ]
     },
     action: {
       type: String,
       required: true,
-      enum: ['create', 'edit', 'delete', 'custom']
+      enum: [
+        'create', 'edit', 'delete', 'refund', 'discount', 'void',
+        'cancel', 'export', 'import', 'publish', 'settings_change',
+        'access_request', 'override', 'bulk_delete', 'approve', 'custom'
+      ]
     },
     // Optional finer-grained label (e.g. "discharge", "refund")
     actionLabel: { type: String, default: '', trim: true },

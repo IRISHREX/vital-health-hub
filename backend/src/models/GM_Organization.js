@@ -77,6 +77,11 @@ const organizationSchema = new mongoose.Schema(
         'attendance',
         'hr',
         'expenses',
+        'payroll',
+        'services',
+        'blood_bank',
+        'ambulance',
+        'invoices',
       ],
     },
 
