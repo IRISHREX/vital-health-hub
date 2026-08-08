@@ -10,6 +10,8 @@ const qs = (p) => {
 };
 
 export const scanAttendance = (data) => apiClient.post('/attendance/scan', data);
+// Kiosk: an operator scans an employee ID card QR (payload: employeeToken, optional locationToken).
+export const scanEmployeeCard = (data) => apiClient.post('/attendance/card-scan', data);
 export const getMyAttendance = () => apiClient.get('/attendance/me');
 export const listAttendance = (params) => apiClient.get(`/attendance${qs(params)}`);
 export const upsertManualAttendance = (data) => apiClient.post('/attendance', data);

@@ -496,7 +496,13 @@ export default function AppointmentDialog({ isOpen, onClose, appointment, mode }
                         </FormControl>
                         <SelectContent>
                           {options.map((s) => (
-                            <SelectItem key={s} value={s}>{label[s] || s}</SelectItem>
+                            <SelectItem
+                              key={s}
+                              value={s}
+                              disabled={s === "confirmed" && isPaymentPending}
+                            >
+                              {label[s] || s}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

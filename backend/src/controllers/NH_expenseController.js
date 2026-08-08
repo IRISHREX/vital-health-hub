@@ -61,12 +61,15 @@ const listExpenses = async (req, res) => {
     const { Expense } = M(req);
     const { limit, page, skip } = parsePaging(req.query);
     const query = buildQuery(req.query);
+    // Cancelled expenses never count towards spend totals — keep this
+    // consistent with the P&L aggregate below, which also excludes them.
+    const totalsMatch = { ...query, status: { $ne: 'cancelled' } };
     const [items, total, totals] = await Promise.all([
       Expense.find(query).populate('recordedBy', 'firstName lastName role')
         .sort({ date: -1, createdAt: -1 }).skip(skip).limit(limit),
       Expense.countDocuments(query),
       Expense.aggregate([
-        { $match: query },
+        { $match: totalsMatch },
         { $group: { _id: null, amount: { $sum: '$totalAmount' } } },
       ]),
     ]);
@@ -76,7 +79,9 @@ const listExpenses = async (req, res) => {
       page,
       limit,
       pages: Math.ceil(total / limit) || 1,
+      // Total spend excluding cancelled entries (see totalsMatch above).
       totalAmount: round2(totals[0]?.amount || 0),
+      totalAmountLabel: 'Total expense (excl. cancelled)',
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -90,6 +95,9 @@ const createExpense = async (req, res) => {
     if (!description?.trim()) return res.status(400).json({ message: 'Description is required' });
     if (amount === undefined || Number(amount) < 0 || Number.isNaN(Number(amount))) {
       return res.status(400).json({ message: 'A valid amount is required' });
+    }
+    if (req.body.category === 'custom' && !String(req.body.customCategory || '').trim()) {
+      return res.status(400).json({ message: 'Custom category label is required' });
     }
     const expense = await Expense.create({
       ...req.body,
@@ -161,7 +169,21 @@ const getProfitAndLoss = async (req, res) => {
       ]),
       Expense.aggregate([
         { $match: expenseMatch },
-        { $group: { _id: '$category', amount: { $sum: '$totalAmount' } } },
+        {
+          $group: {
+            // Group custom expenses by their free-text label so the P&L
+            // breakdown shows "Diwali Bonus" instead of a generic "Custom" bucket.
+            _id: {
+              $cond: [
+                { $eq: ['$category', 'custom'] },
+                { $ifNull: ['$customCategory', 'Custom (unlabelled)'] },
+                '$category',
+              ],
+            },
+            amount: { $sum: '$totalAmount' },
+            isCustom: { $max: { $eq: ['$category', 'custom'] } },
+          },
+        },
         { $sort: { amount: -1 } },
       ]),
       Invoice.aggregate([
@@ -216,7 +238,11 @@ const getProfitAndLoss = async (req, res) => {
       },
       expense: {
         total: totalExpense,
-        byCategory: expenseByCategory.map((c) => ({ category: c._id || 'other', amount: round2(c.amount) })),
+        byCategory: expenseByCategory.map((c) => ({
+          category: c._id || 'other',
+          amount: round2(c.amount),
+          isCustom: !!c.isCustom,
+        })),
       },
       profit: round2(totalRevenue - totalExpense),
       margin: totalRevenue > 0 ? round2(((totalRevenue - totalExpense) / totalRevenue) * 100) : 0,

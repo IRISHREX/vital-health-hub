@@ -19,10 +19,14 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 const monthStart = () => `${new Date().toISOString().slice(0, 7)}-01`;
 
 const emptyExpense = {
-  date: todayKey(), module: "general", category: "other", description: "",
-  vendorName: "", invoiceReference: "", amount: 0, taxAmount: 0,
+  date: todayKey(), module: "general", category: "other", customCategory: "",
+  description: "", vendorName: "", invoiceReference: "", amount: 0, taxAmount: 0,
   paymentMode: "cash", status: "paid", notes: "",
 };
+
+/** Display label for a category, resolving free-text custom labels. */
+const categoryLabel = (row) =>
+  row?.category === "custom" ? (row?.customCategory || "Custom") : ex.titleCase(row?.category);
 
 export default function Expenses() {
   const qc = useQueryClient();
@@ -111,7 +115,13 @@ export default function Expenses() {
 
         <TabsContent value="ledger">
           <Card>
-            <CardHeader><CardTitle className="text-base">{items.length} entries · {money(listQ.data?.totalAmount)}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{items.length} entries</CardTitle>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-sm text-muted-foreground">Total expense (excl. cancelled)</span>
+                <span className="text-2xl font-bold text-foreground">{money(listQ.data?.totalAmount)}</span>
+              </div>
+            </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader><TableRow>
@@ -127,7 +137,7 @@ export default function Expenses() {
                       <TableCell className="font-mono text-xs">{row.expenseNumber || "—"}</TableCell>
                       <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
                       <TableCell>{ex.titleCase(row.module)}</TableCell>
-                      <TableCell>{ex.titleCase(row.category)}</TableCell>
+                      <TableCell>{categoryLabel(row)}</TableCell>
                       <TableCell className="max-w-[240px] truncate">{row.description}</TableCell>
                       <TableCell>{row.vendorName || "—"}</TableCell>
                       <TableCell>{money(row.totalAmount)}</TableCell>
@@ -176,7 +186,7 @@ export default function Expenses() {
             <CardContent className="grid gap-2 sm:grid-cols-3">
               {(pnl?.expense?.byCategory || []).map((c) => (
                 <div key={c.category} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                  <span>{ex.titleCase(c.category)}</span><span className="font-semibold">{money(c.amount)}</span>
+                  <span>{c.isCustom ? c.category : ex.titleCase(c.category)}</span><span className="font-semibold">{money(c.amount)}</span>
                 </div>
               ))}
             </CardContent>
@@ -200,9 +210,15 @@ export default function Expenses() {
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => set("category", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{ex.EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{ex.titleCase(c)}</SelectItem>)}</SelectContent>
+                <SelectContent>{ex.EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c === "custom" ? "Custom…" : ex.titleCase(c)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            {form.category === "custom" && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Custom category label *</Label>
+                <Input value={form.customCategory} onChange={(e) => set("customCategory", e.target.value)} placeholder="e.g. Diwali Bonus" />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Payment mode</Label>
               <Select value={form.paymentMode} onValueChange={(v) => set("paymentMode", v)}>
@@ -235,6 +251,7 @@ export default function Expenses() {
                   onClick={() => {
                     if (!form.description.trim()) return toast.error("Description is required");
                     if (!(Number(form.amount) > 0)) return toast.error("Amount must be greater than zero");
+                    if (form.category === "custom" && !form.customCategory.trim()) return toast.error("Custom category label is required");
                     save.mutate(form);
                   }}
                 >{save.isPending ? "Saving..." : "Save expense"}</Button>

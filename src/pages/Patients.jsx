@@ -41,6 +41,7 @@ export default function Patients() {
   const { play } = useSound();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -98,13 +99,21 @@ export default function Patients() {
     }
   };
 
+  // Debounce the raw search input before it hits the API
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (debouncedSearchQuery) params.set("search", debouncedSearchQuery);
       if (typeFilter !== "all") params.set("registrationType", typeFilter);
 
       const [patientsData, doctorsData, bedsData] = await Promise.all([
@@ -123,16 +132,16 @@ export default function Patients() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchQuery, typeFilter]);
+  }, [page, limit, debouncedSearchQuery, typeFilter]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Debounce search: reset to page 1 on search change
+  // Reset to page 1 whenever the (debounced) search or filter changes
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, typeFilter]);
+  }, [debouncedSearchQuery, typeFilter]);
 
   const getDoctorName = (doctorId) => {
     if (!doctorId) return "-";

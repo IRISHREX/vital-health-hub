@@ -8,7 +8,10 @@ const EXPENSE_MODULES = [
 const EXPENSE_CATEGORIES = [
   'salary', 'consumables', 'medicines', 'equipment', 'maintenance', 'rent',
   'utilities', 'marketing', 'insurance', 'taxes', 'outsourced_services',
-  'housekeeping', 'transport', 'refund', 'commission', 'other',
+  'housekeeping', 'transport', 'refund', 'commission',
+  'medicine_purchase', 'employee_salary', 'electricity_bill', 'water_bill',
+  'internet_telephone', 'equipment_purchase', 'lab_reagents', 'oxygen_supply',
+  'ambulance_fuel', 'laundry', 'security', 'custom', 'other',
 ];
 
 const expenseSchema = new mongoose.Schema({
@@ -16,6 +19,8 @@ const expenseSchema = new mongoose.Schema({
   date: { type: Date, required: true, default: Date.now, index: true },
   module: { type: String, enum: EXPENSE_MODULES, default: 'general', index: true },
   category: { type: String, enum: EXPENSE_CATEGORIES, default: 'other', index: true },
+  // Free-text label used only when category === 'custom'.
+  customCategory: { type: String, trim: true },
   description: { type: String, required: true, trim: true },
   vendorName: { type: String, trim: true },
   invoiceReference: { type: String, trim: true },
@@ -34,11 +39,19 @@ const expenseSchema = new mongoose.Schema({
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
-expenseSchema.pre('save', function computeTotal(next) {
+// Always recompute totalAmount from amount + taxAmount, on create AND update,
+// so list totals / P&L aggregates (which $sum totalAmount) never go stale.
+function computeTotal(next) {
   this.totalAmount = Number(this.amount || 0) + Number(this.taxAmount || 0);
   if (this.status === 'paid' && !this.paidAt) this.paidAt = this.date || new Date();
+  if (this.category === 'custom' && !String(this.customCategory || '').trim()) {
+    return next(new Error('Custom category label is required when category is "custom"'));
+  }
   next();
-});
+}
+
+expenseSchema.pre('validate', computeTotal);
+expenseSchema.pre('save', computeTotal);
 
 expenseSchema.index({ date: -1, module: 1 });
 

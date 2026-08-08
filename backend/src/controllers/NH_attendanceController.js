@@ -218,12 +218,23 @@ const scanAttendance = async (req, res) => {
  * otherwise the employee id itself keys the day record.
  */
 const parseCardPayload = (raw) => {
-  const value = String(raw || '').trim();
+  const value = extractToken(raw);
   if (!value) return null;
+  // Canonical pipe format: EMP|<employeeCode>|<cardToken>
   const parts = value.split('|');
   if (parts[0] === 'EMP' && parts.length >= 3) {
     return { employeeCode: parts[1], cardToken: parts[2] };
   }
+  // JSON blob: { type: "employee_card", employeeCode, cardToken }
+  if (value.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed?.cardToken) {
+        return { employeeCode: parsed.employeeCode || null, cardToken: String(parsed.cardToken) };
+      }
+    } catch (e) { /* fall through to raw token */ }
+  }
+  // Fallback: treat the whole (extracted) string as a raw card token.
   return { employeeCode: null, cardToken: value };
 };
 

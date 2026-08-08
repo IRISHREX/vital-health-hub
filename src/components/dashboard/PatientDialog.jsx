@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useValidationResolver } from "@/hooks/useValidationResolver";
+import { useValidationPreferences } from "@/lib/ValidationPreferencesContext";
+import { isFieldRequiredByPreferences } from "@/lib/validationPreferences";
 import { z } from "zod";
 import { phoneSchema } from "@/lib/phoneValidation";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -113,6 +115,8 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const dobMode = useDOBMode("patient_dialog");
+  const { preferences: validationPreferences } = useValidationPreferences();
+  const isFieldRequired = (fieldName) => isFieldRequiredByPreferences(validationPreferences, "patient_dialog", fieldName);
   const [patientSchema] = useState(() => createPatientSchema(dobMode));
 
   const { data: doctorsData } = useQuery({
@@ -401,7 +405,14 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
+                    <FormLabel>
+                      Last Name{" "}
+                      {isFieldRequired("lastName") ? (
+                        <span className="text-destructive">*</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">(optional)</span>
+                      )}
+                    </FormLabel>
                     <FormControl>
                       <Input placeholder="Doe" {...field} />
                     </FormControl>
@@ -454,7 +465,14 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
                 name="contactNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact Number <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
+                    <FormLabel>
+                      Contact Number{" "}
+                      {isFieldRequired("contactNumber") ? (
+                        <span className="text-destructive">*</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">(optional)</span>
+                      )}
+                    </FormLabel>
                     <FormControl>
                       <Input placeholder="+91 98765 43210" {...field} />
                     </FormControl>
@@ -482,7 +500,14 @@ export default function PatientDialog({ isOpen, onClose, patient, mode }) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
+                  <FormLabel>
+                    Address{" "}
+                    {isFieldRequired("address") ? (
+                      <span className="text-destructive">*</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">(optional)</span>
+                    )}
+                  </FormLabel>
                   <FormControl>
                     <Textarea placeholder="Full address..." {...field} />
                   </FormControl>

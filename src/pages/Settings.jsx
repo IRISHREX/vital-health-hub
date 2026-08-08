@@ -102,6 +102,7 @@ import SoundSettings from "@/components/settings/SoundSettings";
 import { useRowActionsStyle } from "@/hooks/useRowActionsStyle";
 import DOBAgeSetting from "@/components/settings/DOBAgeSetting";
 import BrandingSettings from "@/components/settings/BrandingSettings";
+import PersonalPermissionsPanel from "@/components/permissions/PersonalPermissionsPanel";
 import { normalizeValidationPreferences, validationFormRegistry } from "@/lib/validationPreferences";
 
 const assignmentRoleOptions = ["super_admin", "hospital_admin", "doctor", "head_nurse", "nurse"];
@@ -649,6 +650,20 @@ export default function Settings() {
         fields: {
           ...(next.forms[formId]?.fields || {}),
           [fieldKey]: enabled,
+        },
+      };
+      return next;
+    });
+  };
+
+  const updateValidationFieldRequired = (formId, fieldKey, required) => {
+    setValidationPreferencesDraft((prev) => {
+      const next = normalizeValidationPreferences(prev);
+      next.forms[formId] = {
+        ...next.forms[formId],
+        required: {
+          ...(next.forms[formId]?.required || {}),
+          [fieldKey]: required,
         },
       };
       return next;
@@ -2198,6 +2213,12 @@ export default function Settings() {
                       <BellRing className="h-4 w-4" />
                       Requests & Notifications
                     </TabsTrigger>
+                    {isAdmin && (
+                      <TabsTrigger value="personal" className={settingsTabTriggerClass}>
+                        <Shield className="h-4 w-4" />
+                        Permission Management
+                      </TabsTrigger>
+                    )}
                   </TabsList>
 
                   <TabsContent value="matrix" className="space-y-4">
@@ -2538,6 +2559,20 @@ export default function Settings() {
                       </div>
                     </div>
                   </TabsContent>
+
+                  {isAdmin && (
+                    <TabsContent value="personal" className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold">Personal Permission Management</p>
+                        <SettingInfo
+                          title="Permission Management"
+                          purpose="Grant or revoke fine-grained access other staff members have to resources you own (e.g. your prescriptions, schedule, patient tasks/vitals)."
+                          precaution="These are personal overrides layered on top of your role. They cannot exceed what your role and the Grandmaster module settings already allow."
+                        />
+                      </div>
+                      <PersonalPermissionsPanel roleType={user?.role === "doctor" ? "doctor" : "nurse"} userId={user?._id} role={user?.role} />
+                    </TabsContent>
+                  )}
                 </Tabs>
               </CardContent>
             </Card>
@@ -2664,16 +2699,29 @@ export default function Settings() {
 
                             <div className="grid gap-3 sm:grid-cols-2">
                               {formConfig.fields.map((field) => (
-                                <div key={`${formConfig.id}-${field.key}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
-                                  <div className="pr-3">
-                                    <p className="text-sm font-medium">{field.label}</p>
-                                    <p className="text-xs text-muted-foreground font-mono">{field.key}</p>
+                                <div key={`${formConfig.id}-${field.key}`} className="flex flex-col gap-2 rounded-md border px-3 py-2">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="pr-3">
+                                      <p className="text-sm font-medium">{field.label}</p>
+                                      <p className="text-xs text-muted-foreground font-mono">{field.key}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-muted-foreground">Show</span>
+                                      <Switch
+                                        checked={formState?.fields?.[field.key] ?? true}
+                                        onCheckedChange={(enabled) => updateValidationFieldState(formConfig.id, field.key, enabled)}
+                                        disabled={!validationPreferencesDraft.enabled || formState?.enabled === false}
+                                      />
+                                    </div>
                                   </div>
-                                  <Switch
-                                    checked={formState?.fields?.[field.key] ?? true}
-                                    onCheckedChange={(enabled) => updateValidationFieldState(formConfig.id, field.key, enabled)}
-                                    disabled={!validationPreferencesDraft.enabled || formState?.enabled === false}
-                                  />
+                                  <div className="flex items-center justify-between gap-3 border-t pt-2">
+                                    <span className="text-xs text-muted-foreground">Required (blocks submit if empty)</span>
+                                    <Switch
+                                      checked={formState?.required?.[field.key] === true}
+                                      onCheckedChange={(required) => updateValidationFieldRequired(formConfig.id, field.key, required)}
+                                      disabled={!validationPreferencesDraft.enabled || formState?.enabled === false}
+                                    />
+                                  </div>
                                 </div>
                               ))}
                             </div>

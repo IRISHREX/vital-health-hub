@@ -158,9 +158,12 @@ function CatalogPicker({ onPick }) {
               className="flex w-full items-center justify-between gap-2 border-b px-3 py-2 text-left text-sm hover:bg-muted"
               onClick={() => onPick(item)}
             >
-              <span>
+              <span className="flex flex-wrap items-center gap-2">
                 {item.description}
-                <span className="ml-2 text-xs capitalize text-muted-foreground">{item.module}</span>
+                <Badge variant={item.sourceType === "lab_test" ? "secondary" : item.sourceType === "medicine" ? "outline" : "default"} className="text-[10px] capitalize">
+                  {item.sourceType === "lab_test" ? "Lab Test" : item.sourceType === "medicine" ? "Medicine" : "Service"}
+                </Badge>
+                {item.category && <span className="text-xs capitalize text-muted-foreground">{item.category}</span>}
               </span>
               <span className="font-medium">{formatCurrency(item.unitPrice)}</span>
             </button>
