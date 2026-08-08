@@ -44,6 +44,7 @@ import {
   UsersRound,
   UserCog,
   ShieldCheck,
+  ShieldAlert,
   Mail,
   Send,
   Inbox,
@@ -331,7 +332,7 @@ export default function Settings() {
   const [permissionModuleSearch, setPermissionModuleSearch] = useState("");
   const [permissionModuleFilter, setPermissionModuleFilter] = useState("all");
   const [permissionVisibleModules, setPermissionVisibleModules] = useState(rbacModules);
-  const [permissionSubtab, setPermissionSubtab] = useState("matrix");
+  const [permissionSubtab, setPermissionSubtab] = useState("my_permissions");
   const [requestForm, setRequestForm] = useState({ module: "billing", feature: "view", reason: "" });
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [pendingAccessRequests, setPendingAccessRequests] = useState([]);
@@ -2204,24 +2205,99 @@ export default function Settings() {
                 </div>
 
                 <Tabs value={permissionSubtab} onValueChange={setPermissionSubtab} className="space-y-4">
-                  <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-2">
-                    <TabsTrigger value="matrix" className={settingsTabTriggerClass}>
+                  <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <TabsTrigger value="my_permissions" className={settingsTabTriggerClass}>
+                      <User className="h-4 w-4" />
+                      1. My Permissions & Requests
+                    </TabsTrigger>
+                    <TabsTrigger value="management_control" className={settingsTabTriggerClass}>
                       <ShieldCheck className="h-4 w-4" />
-                      Access Matrix
+                      2. Permission Management Control
                     </TabsTrigger>
-                    <TabsTrigger value="requests" className={settingsTabTriggerClass}>
+                    <TabsTrigger value="requests_notifications" className={settingsTabTriggerClass}>
                       <BellRing className="h-4 w-4" />
-                      Requests & Notifications
+                      3. Requests & Notifications
                     </TabsTrigger>
-                    {isAdmin && (
-                      <TabsTrigger value="personal" className={settingsTabTriggerClass}>
-                        <Shield className="h-4 w-4" />
-                        Permission Management
-                      </TabsTrigger>
-                    )}
+                    <TabsTrigger value="approval_flow" className={settingsTabTriggerClass}>
+                      <ShieldAlert className="h-4 w-4" />
+                      4. Approval Flow Workflows
+                    </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="matrix" className="space-y-4">
+                  {/* SECTION 1: MY PERMISSIONS & REQUEST ACCESS */}
+                  <TabsContent value="my_permissions" className="space-y-4">
+                    <div className="rounded-lg border p-4 space-y-4 bg-card">
+                      <div className="flex items-center justify-between border-b pb-3">
+                        <div>
+                          <h3 className="text-base font-semibold">My Active Permissions</h3>
+                          <p className="text-xs text-muted-foreground">View your active permissions and submit permission requests for additional modules or features.</p>
+                        </div>
+                        <Badge variant="outline" className="capitalize text-xs">
+                          Role: {user?.role ? user.role.replace(/_/g, " ") : "User"}
+                        </Badge>
+                      </div>
+
+                      {/* Request Access Form */}
+                      <div className="rounded-lg border p-4 bg-muted/20 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Send className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-semibold">Request Module or Feature Access</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div>
+                            <Label className="text-xs">Module</Label>
+                            <Select value={requestForm.module} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, module: value }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {gmAllowedRbacModules.map((module) => (
+                                  <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Feature / Access Level</Label>
+                            <Select value={requestForm.feature} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, feature: value }))}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {permissionRequestFeatures.map((feature) => (
+                                  <SelectItem key={feature} value={feature}>{featureLabels[feature] || feature}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Reason / Justification</Label>
+                            <Input placeholder="Why do you need this access?" value={requestForm.reason} onChange={(e) => setRequestForm((prev) => ({ ...prev, reason: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <Button size="sm" onClick={handleSubmitPermissionRequest} disabled={submittingRequest}>
+                            {submittingRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            Submit Permission Request
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Personal Resources Panel */}
+                      {isAdmin && (
+                        <div className="space-y-3 pt-2">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold">Personal Resource Delegation</p>
+                            <SettingInfo
+                              title="Permission Management"
+                              purpose="Grant or revoke fine-grained access other staff members have to resources you own (e.g. your prescriptions, schedule, patient tasks/vitals)."
+                              precaution="These are personal overrides layered on top of your role."
+                            />
+                          </div>
+                          <PersonalPermissionsPanel roleType={user?.role === "doctor" ? "doctor" : "nurse"} userId={user?._id} role={user?.role} />
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  {/* SECTION 2: PERMISSION MANAGEMENT CONTROL */}
+                  <TabsContent value="management_control" className="space-y-4">
                     <div className="space-y-3 rounded-lg border p-4">
                       <Label className="flex items-center gap-2">
                         <UserCog className="h-4 w-4" />
@@ -2259,7 +2335,7 @@ export default function Settings() {
                       <div className="space-y-2 rounded-lg border p-4">
                         <Label className="flex items-center gap-2">
                           <Mail className="h-4 w-4" />
-                          Select User Email
+                          Select User Email to Override
                         </Label>
                         <Select
                           value={permissionEmail || "__none__"}
@@ -2312,13 +2388,6 @@ export default function Settings() {
                               </li>
                             ))}
                         </ul>
-                        <p className="text-muted-foreground">
-                          Source:{" "}
-                          <span className="font-medium text-foreground">
-                            Grandmaster &rsaquo; Organizations &rsaquo; {user?.organization?.name || "Your Organization"} &rsaquo; Enabled Modules
-                          </span>
-                          . Contact your platform administrator to request access to additional modules.
-                        </p>
                       </div>
                     )}
 
@@ -2400,7 +2469,7 @@ export default function Settings() {
                               </label>
                             </div>
                             <div className="mt-3 space-y-2">
-                              <p className="text-xs font-semibold uppercase text-muted-foreground">Advanced Restrictions</p>
+                              <p className="text-xs font-semibold uppercase text-muted-foreground">Advanced Feature Restrictions</p>
                               <div className="grid gap-2 sm:grid-cols-2">
                                 {(moduleFeatureCatalog[mod.module] || []).map((feature) => (
                                   <label key={`${mod.module}-${feature}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs">
@@ -2421,7 +2490,7 @@ export default function Settings() {
 
                     <div className="rounded-lg border">
                       <div className="border-b p-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Assignment Policies (Who Can Assign and Who Can Be Assigned)
+                        Role-to-Role Assignment Policies (Who Can Assign & Who Can Be Assigned)
                       </div>
                       <div className="space-y-3 p-3">
                         {Object.keys(assignmentTypeLabels).map((assignmentType) => (
@@ -2463,91 +2532,55 @@ export default function Settings() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="requests" className="space-y-4">
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <div className="rounded-lg border p-4 space-y-3">
+                  {/* SECTION 3: REQUESTS & NOTIFICATIONS */}
+                  <TabsContent value="requests_notifications" className="space-y-4">
+                    <div className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b pb-2">
                         <div className="flex items-center gap-2">
-                          <Send className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-sm font-semibold">Create Permission Request</p>
-                        </div>
-                        <div className="grid gap-3">
-                          <div>
-                            <Label>Module</Label>
-                            <Select value={requestForm.module} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, module: value }))}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {gmAllowedRbacModules.map((module) => (
-                                  <SelectItem key={module} value={module}>{moduleLabels[module] || module}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Feature</Label>
-                            <Select value={requestForm.feature} onValueChange={(value) => setRequestForm((prev) => ({ ...prev, feature: value }))}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {permissionRequestFeatures.map((feature) => (
-                                  <SelectItem key={feature} value={feature}>{featureLabels[feature] || feature}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Reason</Label>
-                            <Input placeholder="Why do you need this access?" value={requestForm.reason} onChange={(e) => setRequestForm((prev) => ({ ...prev, reason: e.target.value }))} />
-                          </div>
-                          <Button onClick={handleSubmitPermissionRequest} disabled={submittingRequest}>
-                            {submittingRequest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                            Submit Request
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="rounded-lg border p-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Inbox className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-sm font-semibold">Pending Requests</p>
+                          <Inbox className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-semibold">Pending Access Requests</p>
                           <Badge variant="secondary">{pendingAccessRequests.length}</Badge>
                         </div>
                         {user?.role !== "super_admin" && (
-                          <p className="text-sm text-muted-foreground">Only Super Admin can approve/reject requests.</p>
+                          <span className="text-xs text-muted-foreground">Super Admin approval required</span>
                         )}
-                        <div className="space-y-2">
-                          {pendingAccessRequests.length === 0 && (
-                            <p className="text-sm text-muted-foreground">No pending requests.</p>
-                          )}
-                          {pendingAccessRequests.map((req) => (
-                            <div key={req._id} className="rounded-md border p-3">
+                      </div>
+                      <div className="space-y-2">
+                        {pendingAccessRequests.length === 0 && (
+                          <p className="text-sm text-muted-foreground py-2">No pending access requests.</p>
+                        )}
+                        {pendingAccessRequests.map((req) => (
+                          <div key={req._id} className="rounded-md border p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
                               <p className="text-sm font-medium">{req.requesterEmail}</p>
-                              <p className="text-xs text-muted-foreground">Module: {req.module} | Feature: {req.feature}</p>
-                              {req.reason && <p className="mt-1 text-xs text-muted-foreground">{req.reason}</p>}
-                              {user?.role === "super_admin" && (
-                                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                                  <Button className="w-full sm:w-auto" size="sm" variant="outline" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "approved")}>
-                                    <Check className="mr-1 h-3 w-3" />
-                                    Approve
-                                  </Button>
-                                  <Button className="w-full sm:w-auto" size="sm" variant="destructive" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "rejected")}>
-                                    <X className="mr-1 h-3 w-3" />
-                                    Reject
-                                  </Button>
-                                </div>
-                              )}
+                              <p className="text-xs text-muted-foreground">Module: <span className="font-semibold text-foreground">{req.module}</span> | Feature: <span className="font-semibold text-foreground">{req.feature}</span></p>
+                              {req.reason && <p className="mt-1 text-xs text-muted-foreground italic">"{req.reason}"</p>}
                             </div>
-                          ))}
-                        </div>
+                            {user?.role === "super_admin" && (
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button size="sm" variant="outline" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "approved")}>
+                                  <Check className="mr-1 h-3 w-3 text-emerald-600" />
+                                  Approve
+                                </Button>
+                                <Button size="sm" variant="destructive" disabled={requestActionLoadingId === req._id} onClick={() => handleRequestDecision(req._id, "rejected")}>
+                                  <X className="mr-1 h-3 w-3" />
+                                  Reject
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     <div className="rounded-lg border p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <BellRing className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm font-semibold">Permission Notifications</p>
+                      <div className="flex items-center gap-2 border-b pb-2">
+                        <BellRing className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-semibold">Permission Notifications & Audit Log</p>
                       </div>
                       <div className="space-y-2">
                         {permissionNotifications.length === 0 && (
-                          <p className="text-sm text-muted-foreground">No permission notifications yet.</p>
+                          <p className="text-sm text-muted-foreground py-2">No permission notifications yet.</p>
                         )}
                         {permissionNotifications.map((n) => (
                           <div key={n._id} className="rounded-md border p-3">
@@ -2560,20 +2593,12 @@ export default function Settings() {
                     </div>
                   </TabsContent>
 
-                  {isAdmin && (
-                    <TabsContent value="personal" className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold">Personal Permission Management</p>
-                        <SettingInfo
-                          title="Permission Management"
-                          purpose="Grant or revoke fine-grained access other staff members have to resources you own (e.g. your prescriptions, schedule, patient tasks/vitals)."
-                          precaution="These are personal overrides layered on top of your role. They cannot exceed what your role and the Grandmaster module settings already allow."
-                        />
-                      </div>
-                      <PersonalPermissionsPanel roleType={user?.role === "doctor" ? "doctor" : "nurse"} userId={user?._id} role={user?.role} />
-                    </TabsContent>
-                  )}
+                  {/* SECTION 4: APPROVAL FLOW WORKFLOWS */}
+                  <TabsContent value="approval_flow" className="space-y-4">
+                    <ApprovalsManager isAdmin={isAdmin || canEditVisualPermissions} />
+                  </TabsContent>
                 </Tabs>
+
               </CardContent>
             </Card>
           </TabsContent>

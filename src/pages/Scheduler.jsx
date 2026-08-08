@@ -531,6 +531,23 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
     }
   }, [slots, picked]);
 
+  // Auto-select first available slot when slots load, or fallback to default time
+  useEffect(() => {
+    if (!open || !doctorId || !date) return;
+    if (slots && slots.length > 0) {
+      const availableSlots = slots.filter(s => s.available);
+      if (availableSlots.length > 0) {
+        if (!picked || !slots.find(s => s.startLabel === picked && s.available)) {
+          setPicked(availableSlots[0].startLabel);
+        }
+      } else if (!picked) {
+        setPicked('09:00');
+      }
+    } else if (slotsQuery.isSuccess && (!slots || slots.length === 0) && !picked) {
+      setPicked('09:00');
+    }
+  }, [open, doctorId, date, slots, slotsQuery.isSuccess]);
+
   const bookMut = useMutation({
     mutationFn: () => bookAppointment({
       doctorId, patientId, date, startTime: picked, duration, reason,
@@ -638,7 +655,21 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
               ) : reason404 ? (
                 <div className="text-xs text-muted-foreground py-2">{reason404}</div>
               ) : slots.length === 0 ? (
-                <div className="text-xs text-muted-foreground py-2">No slots configured for this day.</div>
+                <div className="space-y-2 py-2">
+                  <div className="text-xs text-muted-foreground">No predefined slots for this day. Select custom time:</div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      value={picked || '09:00'}
+                      onChange={(e) => {
+                        setPicked(e.target.value);
+                        setBookError(null);
+                      }}
+                      className="w-36 text-xs h-8"
+                    />
+                    <span className="text-xs text-muted-foreground">({duration} min)</span>
+                  </div>
+                </div>
               ) : (
                 <TooltipProvider delayDuration={150}>
                   <div className="grid max-h-44 grid-cols-4 gap-1.5 overflow-auto rounded border border-border p-2">
@@ -655,10 +686,11 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
                         : 'border-border hover:bg-muted';
                       const btn = (
                         <button key={s.startLabel} disabled={!s.available}
+                          type="button"
                           aria-disabled={!s.available}
                           aria-label={s.available ? `Book ${s.startLabel}` : `${s.startLabel} - ${s.reasonLabel || 'unavailable'}`}
                           onClick={() => { setPicked(s.startLabel); setBookError(null); }}
-                          className={`rounded border px-2 py-1 text-xs transition-colors w-full ${isPicked ? 'border-primary bg-primary text-primary-foreground' : reasonClass}`}>
+                          className={`rounded border px-2 py-1 text-xs transition-colors w-full ${isPicked ? 'border-primary bg-primary text-primary-foreground font-semibold' : reasonClass}`}>
                           {s.startLabel}
                         </button>
                       );
