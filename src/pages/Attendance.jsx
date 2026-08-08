@@ -17,7 +17,6 @@ import { Camera, CameraOff, MapPin, Plus, QrCode, RefreshCw, Trash2 } from "luci
 import { useAuth } from "@/lib/AuthContext";
 import { getHospitalSettings } from "@/lib/settings";
 import { useSound } from "@/hooks/useSound";
-import { apiClient } from "@/lib/api-client";
 import {
   ATTENDANCE_STATUSES,
   createAttendanceLocation,
@@ -208,10 +207,14 @@ function LocationForm({ open, onOpenChange, onSaved }) {
 export default function Attendance() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { play } = useSound();
   const isAdmin = user?.role === "super_admin" || user?.role === "hospital_admin";
 
   const [cameraOn, setCameraOn] = useState(false);
   const [manualToken, setManualToken] = useState("");
+  const [kioskOn, setKioskOn] = useState(false);
+  const [kioskResult, setKioskResult] = useState(null);
+  const [manualCardToken, setManualCardToken] = useState("");
   const [locationFormOpen, setLocationFormOpen] = useState(false);
   const [filters, setFilters] = useState({ from: todayKey(), to: todayKey(), status: "all" });
   const [override, setOverride] = useState({ userId: "", day: todayKey(), checkInAt: "", checkOutAt: "", status: "present", notes: "" });
@@ -245,13 +248,37 @@ export default function Attendance() {
   const scan = useMutation({
     mutationFn: (token) => scanAttendance({ token }),
     onSuccess: async (res) => {
-      if (res?.action === "duplicate") toast.info(res.message || "Already recorded a moment ago");
-      else if (res?.action === "checked_out") toast.success(`Checked out at ${res.location} — ${formatWorkedMinutes(res.record?.totalMinutes)}`);
-      else toast.success(`Checked in at ${res?.location || "location"}`);
+      if (res?.action === "duplicate") { play("notification"); toast.info(res.message || "Already recorded a moment ago"); }
+      else if (res?.action === "checked_out") { play("success"); toast.success(`Checked out at ${res.location} — ${formatWorkedMinutes(res.record?.totalMinutes)}`); }
+      else { play("success"); toast.success(`Checked in at ${res?.location || "location"}`); }
       setManualToken("");
       await qc.invalidateQueries({ queryKey: ["attendance"] });
     },
-    onError: (err) => toast.error(err.message || "Scan failed"),
+    onError: (err) => { play("error"); toast.error(err.message || "Scan failed"); },
+  });
+
+  // Kiosk: operator-facing scanner for employee ID card QR codes (card-scan endpoint).
+  const kioskScan = useMutation({
+    mutationFn: (employeeToken) => scanEmployeeCard({ employeeToken }),
+    onSuccess: async (res) => {
+      const name = res?.employee || "Employee";
+      if (res?.action === "duplicate") {
+        play("notification");
+        setKioskResult({ ok: true, message: `${name}: already recorded a moment ago` });
+      } else if (res?.action === "checked_out") {
+        play("success");
+        setKioskResult({ ok: true, message: `${name} checked out — ${formatWorkedMinutes(res.record?.totalMinutes)} worked` });
+      } else {
+        play("success");
+        setKioskResult({ ok: true, message: `${name} checked in` });
+      }
+      setManualCardToken("");
+      await qc.invalidateQueries({ queryKey: ["attendance"] });
+    },
+    onError: (err) => {
+      play("error");
+      setKioskResult({ ok: false, message: err.message || "ID card not recognised" });
+    },
   });
 
   const rotate = useMutation({
@@ -292,6 +319,7 @@ export default function Attendance() {
         <TabsList>
           <TabsTrigger value="scan">Scan</TabsTrigger>
           <TabsTrigger value="mine">My attendance</TabsTrigger>
+          {isAdmin && <TabsTrigger value="kiosk">Kiosk</TabsTrigger>}
           {isAdmin && <TabsTrigger value="register">Register</TabsTrigger>}
           {isAdmin && <TabsTrigger value="locations">QR points</TabsTrigger>}
         </TabsList>
@@ -328,6 +356,46 @@ export default function Attendance() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="kiosk" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5" />Employee ID card kiosk</CardTitle>
+                <CardDescription>
+                  Point this device's camera at a staff ID card. First scan of the day checks the employee in, the next checks them out.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button variant={kioskOn ? "outline" : "default"} onClick={() => { setKioskOn((v) => !v); setKioskResult(null); }}>
+                  {kioskOn ? <><CameraOff className="mr-2 h-4 w-4" />Stop kiosk camera</> : <><Camera className="mr-2 h-4 w-4" />Start kiosk camera</>}
+                </Button>
+                <QrScanner
+                  active={kioskOn}
+                  onStop={() => setKioskOn(false)}
+                  onDecoded={(payload) => kioskScan.mutate(String(payload).trim())}
+                />
+                {kioskResult && (
+                  <p className={`text-sm font-medium ${kioskResult.ok ? "text-emerald-600" : "text-destructive"}`}>
+                    {kioskResult.message}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  <Label>Or paste the ID card QR payload manually</Label>
+                  <div className="flex gap-2">
+                    <Input value={manualCardToken} onChange={(e) => setManualCardToken(e.target.value)} placeholder="EMP|EMP-001|token…" />
+                    <Button
+                      disabled={kioskScan.isPending || !manualCardToken.trim()}
+                      onClick={() => kioskScan.mutate(manualCardToken.trim())}
+                    >
+                      Mark attendance
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="mine">
           <Card>
