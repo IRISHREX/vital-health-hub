@@ -181,7 +181,9 @@ const searchCatalog = async (req, res) => {
         ? ServiceCatalog.find(rx ? { name: rx } : {}).select('name category price charges rate').limit(limit)
         : [],
       wanted('lab')
-        ? LabTestCatalog.find(rx ? { name: rx } : {}).select('name price category section').limit(limit)
+        ? LabTestCatalog.find({ isActive: true, ...(rx ? { testName: rx } : {}) })
+            .select('testName testCode price category')
+            .limit(limit)
         : [],
       wanted('pharmacy')
         ? Medicine.find(rx ? { name: rx } : {}).select('name sellingPrice mrp unitPrice category').limit(limit)
@@ -209,8 +211,8 @@ const searchCatalog = async (req, res) => {
         sourceRef: t._id,
         sourceType: 'lab_test',
         module: 'lab',
-        description: t.name,
-        category: t.section || t.category || 'lab',
+        description: t.testName,
+        category: t.category || 'lab',
         unitPrice: priceOf(t, ['price']),
       })),
       ...medicines.map((m) => ({

@@ -177,3 +177,33 @@ export const sounds = {
 export const playSound = (soundName) => {
   if (sounds[soundName]) sounds[soundName]();
 };
+
+// Global click-to-sound wiring for buttons and elements marked as buttons.
+// Reads settings live on every click so toggling in Settings takes effect immediately,
+// and always respects both the master "enabled" flag and the "click" category flag.
+let buttonSoundListenerAttached = false;
+
+const isInteractiveButtonTarget = (target) => {
+  if (!target || typeof target.closest !== "function") return false;
+  return target.closest('button, [role="button"]');
+};
+
+export const initButtonSoundListener = () => {
+  if (buttonSoundListenerAttached || typeof document === "undefined") return;
+  buttonSoundListenerAttached = true;
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      const el = isInteractiveButtonTarget(event.target);
+      if (!el) return;
+      if (el.disabled || el.getAttribute("aria-disabled") === "true") return;
+
+      const settings = getSoundSettings();
+      if (!settings.enabled || !settings.categories.click) return;
+
+      playSound("click");
+    },
+    true
+  );
+};

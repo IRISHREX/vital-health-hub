@@ -24,8 +24,14 @@ export const EXPENSE_MODULES = [
 export const EXPENSE_CATEGORIES = [
   'salary', 'consumables', 'medicines', 'equipment', 'maintenance', 'rent',
   'utilities', 'marketing', 'insurance', 'taxes', 'outsourced_services',
-  'housekeeping', 'transport', 'refund', 'commission', 'other',
+  'housekeeping', 'transport', 'refund', 'commission',
+  'medicine_purchase', 'employee_salary', 'electricity_bill', 'water_bill',
+  'internet_telephone', 'equipment_purchase', 'lab_reagents', 'oxygen_supply',
+  'ambulance_fuel', 'laundry', 'security', 'custom', 'other',
 ];
+
+/** Category shown as free text (user supplies `customCategory`). */
+export const isCustomCategory = (category) => category === 'custom';
 
 export const PAYMENT_MODES = ['cash', 'upi', 'card', 'bank_transfer', 'cheque', 'pending'];
 

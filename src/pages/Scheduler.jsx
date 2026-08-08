@@ -385,9 +385,10 @@ function EventDialog({ open, onClose, editing, onSubmit, submitting }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader><DialogTitle>{isEdit ? 'Edit event' : 'New event'}</DialogTitle></DialogHeader>
-        <form onSubmit={submit} className="space-y-3">
+        <form onSubmit={submit} className="flex flex-1 min-h-0 flex-col">
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Type</Label>
@@ -463,7 +464,8 @@ function EventDialog({ open, onClose, editing, onSubmit, submitting }) {
               ))}
             </div>
           </div>
-          <DialogFooter>
+          </div>
+          <DialogFooter className="shrink-0 pt-3">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={submitting}>{submitting ? 'Saving...' : isEdit ? 'Save changes' : 'Create event'}</Button>
           </DialogFooter>

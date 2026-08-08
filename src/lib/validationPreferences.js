@@ -219,6 +219,13 @@ export const createDefaultValidationPreferences = () => ({
         fieldAcc[field.key] = true;
         return fieldAcc;
       }, {}),
+      // Per-field "must be filled in to submit" toggle. Off by default so existing
+      // forms keep their current optional/required behaviour until an admin
+      // explicitly opts a field in.
+      required: form.fields.reduce((fieldAcc, field) => {
+        fieldAcc[field.key] = false;
+        return fieldAcc;
+      }, {}),
     };
     return acc;
   }, {}),
@@ -233,17 +240,24 @@ export const normalizeValidationPreferences = (value) => {
 
   Object.entries(sourceForms).forEach(([formId, formConfig]) => {
     const nextForm = formConfig && typeof formConfig === "object" ? formConfig : {};
-    const defaultForm = forms[formId] || { enabled: true, fields: {} };
+    const defaultForm = forms[formId] || { enabled: true, fields: {}, required: {} };
     const fields = { ...defaultForm.fields };
+    const required = { ...(defaultForm.required || {}) };
     const sourceFields = nextForm.fields && typeof nextForm.fields === "object" ? nextForm.fields : {};
+    const sourceRequired = nextForm.required && typeof nextForm.required === "object" ? nextForm.required : {};
 
     Object.entries(sourceFields).forEach(([fieldKey, fieldEnabled]) => {
       fields[fieldKey] = fieldEnabled !== false;
     });
 
+    Object.entries(sourceRequired).forEach(([fieldKey, isRequired]) => {
+      required[fieldKey] = isRequired === true;
+    });
+
     forms[formId] = {
       enabled: nextForm.enabled !== false,
       fields,
+      required,
     };
   });
 
@@ -268,6 +282,18 @@ export const isValidationUIVisible = (preferences, formId, fieldName) => {
   if (!fieldName) return true;
 
   return formConfig?.fields?.[fieldName] !== false;
+};
+
+/** Is this field configured as mandatory via the Validation UI settings? */
+export const isFieldRequiredByPreferences = (preferences, formId, fieldName) => {
+  const normalized = normalizeValidationPreferences(preferences);
+  if (normalized.enabled === false) return false;
+  if (!formId || !fieldName) return false;
+
+  const formConfig = normalized.forms?.[formId];
+  if (!formConfig || formConfig.enabled === false) return false;
+
+  return formConfig.required?.[fieldName] === true;
 };
 
 export const getValidationInputClass = (showValidation, message) =>

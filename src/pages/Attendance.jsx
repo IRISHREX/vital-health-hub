@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { Camera, CameraOff, MapPin, Plus, QrCode, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { getHospitalSettings } from "@/lib/settings";
+import { useSound } from "@/hooks/useSound";
+import { apiClient } from "@/lib/api-client";
 import {
   ATTENDANCE_STATUSES,
   createAttendanceLocation,
@@ -26,6 +28,7 @@ import {
   listAttendanceLocations,
   rotateAttendanceLocationToken,
   scanAttendance,
+  scanEmployeeCard,
   upsertManualAttendance,
 } from "@/lib/attendance";
 

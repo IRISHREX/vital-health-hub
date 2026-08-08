@@ -86,6 +86,101 @@ function expandOccurrences(event, windowStart, windowEnd) {
   return occurrences;
 }
 
+// Generic recurrence expansion over a window, working on plain start/end/recurrence values
+// (used for conflict-detection before an event document exists).
+function expandWindow(baseStart, baseEnd, recurrence, rangeStart, rangeEnd) {
+  const durationMs = baseEnd - baseStart;
+  if (!recurrence || recurrence.freq === 'none' || !recurrence.freq) {
+    if (baseEnd < rangeStart || baseStart > rangeEnd) return [];
+    return [{ start: baseStart, end: baseEnd }];
+  }
+  const occurrences = [];
+  const limit = recurrence.until ? new Date(recurrence.until) : new Date(rangeEnd);
+  const hardCap = recurrence.count || 200;
+  let cursor = new Date(baseStart);
+  let i = 0;
+  while (cursor <= limit && cursor <= rangeEnd && i < hardCap) {
+    const occStart = new Date(cursor);
+    const occEnd = new Date(occStart.getTime() + durationMs);
+    let include = false;
+    if (recurrence.freq === 'daily') include = true;
+    else if (recurrence.freq === 'weekly') {
+      const days = (recurrence.byWeekday && recurrence.byWeekday.length) ? recurrence.byWeekday : [baseStart.getDay()];
+      include = days.includes(occStart.getDay());
+    }
+    if (include && occEnd >= rangeStart) occurrences.push({ start: occStart, end: occEnd });
+    if (recurrence.freq === 'daily') cursor.setDate(cursor.getDate() + (recurrence.interval || 1));
+    else if (recurrence.freq === 'weekly') cursor.setDate(cursor.getDate() + 1);
+    else break;
+    i++;
+  }
+  return occurrences;
+}
+
+// Server-side attendee/creator conflict check: rejects overlapping events (including
+// each generated recurrence occurrence) that share at least one attendee, or where the
+// creator/attendee is already marked busy elsewhere.
+async function findAttendeeConflict(Event, { start, end, recurrence, partyIds, excludeId }) {
+  const ids = [...new Set((partyIds || []).map(String))];
+  if (!ids.length) return null;
+
+  const baseStart = new Date(start);
+  const baseEnd = new Date(end);
+  const isRecurring = recurrence && recurrence.freq && recurrence.freq !== 'none';
+  const rangeStart = baseStart;
+  const rangeEnd = isRecurring
+    ? (recurrence.until ? new Date(recurrence.until) : new Date(baseStart.getTime() + 90 * 86400000))
+    : baseEnd;
+
+  const newOccurrences = expandWindow(baseStart, baseEnd, recurrence, rangeStart, rangeEnd);
+  if (!newOccurrences.length) return null;
+
+  const partyFilter = { $or: [{ createdBy: { $in: ids } }, { 'attendees.user': { $in: ids } }] };
+  const query = {
+    status: { $ne: 'cancelled' },
+    ...partyFilter,
+    $and: [
+      { $or: [
+        { start: { $lte: rangeEnd }, end: { $gte: rangeStart } },
+        { 'recurrence.freq': { $in: ['daily', 'weekly'] }, start: { $lte: rangeEnd } },
+      ] },
+    ],
+  };
+  if (excludeId) query._id = { $ne: excludeId };
+
+  const candidates = await Event.find(query)
+    .populate('createdBy', 'name')
+    .populate('attendees.user', 'name');
+
+  for (const cand of candidates) {
+    const candParties = new Set([String(cand.createdBy?._id || cand.createdBy)]);
+    (cand.attendees || []).forEach(a => candParties.add(String(a.user?._id || a.user)));
+    const sharedIds = ids.filter((id) => candParties.has(id));
+    if (!sharedIds.length) continue;
+
+    const candOccurrences = expandWindow(new Date(cand.start), new Date(cand.end), cand.recurrence, rangeStart, rangeEnd);
+    for (const occ of newOccurrences) {
+      for (const cOcc of candOccurrences) {
+        if (occ.start < cOcc.end && occ.end > cOcc.start) {
+          const names = [];
+          if (sharedIds.includes(String(cand.createdBy?._id || cand.createdBy)) && cand.createdBy?.name) {
+            names.push(cand.createdBy.name);
+          }
+          (cand.attendees || []).forEach((a) => {
+            const uid = String(a.user?._id || a.user);
+            if (sharedIds.includes(uid) && a.user?.name) names.push(a.user.name);
+          });
+          const uniqueNames = [...new Set(names)].join(', ') || 'A shared attendee';
+          return {
+            message: `${uniqueNames} already ${cand.kind === 'block' ? 'blocked' : 'has'} "${cand.title}" from ${new Date(cOcc.start).toLocaleString()} to ${new Date(cOcc.end).toLocaleTimeString()}. Please choose a different time.`,
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 // List events visible to user across a window
 exports.listEvents = async (req, res, next) => {
   try {
@@ -159,6 +254,17 @@ exports.createEvent = async (req, res, next) => {
         .map(a => ({ user: a.user || a, status: 'invited' }));
     }
 
+    // Conflict check: reject overlapping events (and each recurrence occurrence)
+    // that share an attendee or the creator's own busy schedule.
+    const createParties = [req.user._id, ...(payload.attendees || []).map(a => a.user)];
+    const createConflict = await findAttendeeConflict(Event, {
+      start: payload.start,
+      end: payload.end,
+      recurrence: payload.recurrence,
+      partyIds: createParties,
+    });
+    if (createConflict) throw new AppError(createConflict.message, 409);
+
     const event = await Event.create(payload);
 
     // Notify attendees (best-effort, ignore failures)
@@ -198,6 +304,19 @@ exports.updateEvent = async (req, res, next) => {
         status: a.status || 'invited',
       }));
     }
+
+    // Conflict check against every other event (and recurrence occurrence)
+    // sharing an attendee/creator with this event.
+    const updateParties = [event.createdBy, ...(event.attendees || []).map(a => a.user)];
+    const updateConflict = await findAttendeeConflict(Event, {
+      start: event.start,
+      end: event.end,
+      recurrence: event.recurrence,
+      partyIds: updateParties,
+      excludeId: event._id,
+    });
+    if (updateConflict) throw new AppError(updateConflict.message, 409);
+
     await event.save();
 
     if (oldStart && new Date(oldStart).getTime() !== new Date(event.start).getTime() && event.attendees?.length) {
