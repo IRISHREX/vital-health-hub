@@ -19,10 +19,18 @@ const buildSubLabel = (p) => {
 };
 
 const fetchPatients = async (query) => {
-  const params = new URLSearchParams({ search: query, limit: "10" });
-  const res = await getPatients(params.toString());
-  const data = res?.data || res;
-  return data?.patients || [];
+  try {
+    const params = new URLSearchParams({ search: query, limit: "10" });
+    const res = await getPatients(params.toString());
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.patients)) return res.patients;
+    if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res?.data?.patients)) return res.data.patients;
+    return [];
+  } catch (err) {
+    console.error("Failed to fetch patients:", err);
+    return [];
+  }
 };
 
 /**

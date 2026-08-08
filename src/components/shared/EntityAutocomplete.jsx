@@ -49,9 +49,13 @@ export default function EntityAutocomplete({
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
 
+  const isFocusedRef = useRef(false);
+
   // Keep text in sync when parent updates the selected label (e.g. edit form prefill)
   useEffect(() => {
-    setText(selectedLabel || "");
+    if (!isFocusedRef.current) {
+      setText(selectedLabel || "");
+    }
   }, [selectedLabel]);
 
   // Click-outside to close
@@ -59,6 +63,7 @@ export default function EntityAutocomplete({
     const handleClick = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setOpen(false);
+        isFocusedRef.current = false;
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -100,6 +105,7 @@ export default function EntityAutocomplete({
   };
 
   const handlePick = (item) => {
+    isFocusedRef.current = false;
     onSelect?.(item);
     setText(getLabel(item));
     setOpen(false);
@@ -107,6 +113,7 @@ export default function EntityAutocomplete({
   };
 
   const handleClear = () => {
+    isFocusedRef.current = false;
     setText("");
     setResults([]);
     onSelect?.(null);
@@ -149,8 +156,17 @@ export default function EntityAutocomplete({
           placeholder={placeholder}
           onChange={handleChange}
           onFocus={() => {
+            isFocusedRef.current = true;
             setOpen(true);
             if (text.length >= minChars && results.length === 0) runSearch(text);
+          }}
+          onBlur={() => {
+            // Short timeout to allow click on items before clearing focus
+            setTimeout(() => {
+              if (document.activeElement !== inputRef.current) {
+                isFocusedRef.current = false;
+              }
+            }, 200);
           }}
           onKeyDown={handleKeyDown}
           className={cn("pl-9 pr-9", inputClassName)}
@@ -191,9 +207,13 @@ export default function EntityAutocomplete({
                   <button
                     type="button"
                     onMouseEnter={() => setActiveIndex(idx)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handlePick(item);
+                    }}
                     onClick={() => handlePick(item)}
                     className={cn(
-                      "flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition-colors",
+                      "flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition-colors cursor-pointer",
                       idx === activeIndex
                         ? "bg-accent text-accent-foreground"
                         : "hover:bg-accent hover:text-accent-foreground"

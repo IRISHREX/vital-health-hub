@@ -16,6 +16,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getHospitalSettings } from "@/lib/settings";
 import { resolveBranding, printBrandedHtml } from "@/lib/branding";
 import { buildDocumentCodes } from "@/lib/document-codes";
+import PatientAutocomplete from "@/components/shared/PatientAutocomplete";
 import * as api from "@/lib/estimates";
 
 const fmtDate = (value) => (value ? new Date(value).toLocaleDateString("en-IN") : "—");
@@ -250,7 +251,35 @@ function EstimateForm({ open, onOpenChange, editing, onSaved }) {
         <DialogHeader><DialogTitle>{editing ? "Edit Estimate" : "New Estimate"}</DialogTitle></DialogHeader>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-          <div className="sm:col-span-2"><Label>Patient Name *</Label><Input value={form.patientName} onChange={(e) => setForm({ ...form, patientName: e.target.value })} /></div>
+          <div className="sm:col-span-2">
+            <Label>Patient Name *</Label>
+            <PatientAutocomplete
+              value={form.patientId || ""}
+              selectedLabel={form.patientName || ""}
+              placeholder="Search patient by name, phone, or UHID..."
+              allowFreeText={true}
+              onTextChange={(txt) => setForm((prev) => ({ ...prev, patientName: txt }))}
+              onSelect={(p) => {
+                if (p) {
+                  const name = `${p.firstName || ""} ${p.lastName || ""}`.trim();
+                  let age = "";
+                  if (p.dateOfBirth) {
+                    age = String(new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear());
+                  }
+                  setForm((prev) => ({
+                    ...prev,
+                    patientId: p._id,
+                    patientName: name || prev.patientName,
+                    patientPhone: p.contactNumber || p.phone || prev.patientPhone,
+                    patientAge: age !== "" ? age : prev.patientAge,
+                    patientGender: p.gender?.toLowerCase() || prev.patientGender,
+                  }));
+                } else {
+                  setForm((prev) => ({ ...prev, patientId: "" }));
+                }
+              }}
+            />
+          </div>
           <div><Label>Phone</Label><Input value={form.patientPhone} onChange={(e) => setForm({ ...form, patientPhone: e.target.value })} /></div>
           <div><Label>Age</Label><Input value={form.patientAge} onChange={(e) => setForm({ ...form, patientAge: e.target.value })} /></div>
           <div>
