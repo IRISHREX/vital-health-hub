@@ -698,9 +698,21 @@ function BookAppointmentDialog({ open, onClose, onBooked }) {
             </div>
           </details>
         </div>
+        {(() => {
+          const missing = [];
+          if (!doctorId) missing.push('doctor');
+          if (!patientId) missing.push('patient');
+          if (!date) missing.push('date');
+          if (!picked) missing.push('time slot');
+          return missing.length > 0 ? (
+            <p className="text-[11px] text-muted-foreground text-right">
+              Select {missing.join(', ')} to enable booking.
+            </p>
+          ) : null;
+        })()}
         <DialogFooter>
           <Button variant="outline" onClick={() => { onClose(); reset(); }}>Cancel</Button>
-          <Button disabled={!doctorId || !patientId || !picked || bookMut.isPending}
+          <Button disabled={!doctorId || !patientId || !date || !picked || bookMut.isPending}
             onClick={() => bookMut.mutate()}>
             {bookMut.isPending ? 'Booking...' : 'Confirm booking'}
           </Button>
