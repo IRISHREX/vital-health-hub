@@ -11,6 +11,7 @@ router.post('/scan', authenticate, c.scanAttendance);
 router.get('/me', authenticate, c.getMyAttendance);
 // Kiosk: an operator scans an employee ID card QR at a posted location.
 router.post('/card-scan', authenticate, c.scanEmployeeCard);
+router.post('/punch', authenticate, c.submitPunch);
 
 router.route('/locations')
   .get(authenticate, c.listLocations)

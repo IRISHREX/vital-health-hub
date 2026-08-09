@@ -4,7 +4,7 @@ const punchSchema = new mongoose.Schema({
   at: { type: Date },
   location: { type: mongoose.Schema.Types.ObjectId, ref: 'AttendanceLocation' },
   locationName: { type: String, trim: true },
-  method: { type: String, enum: ['qr_scan', 'id_card', 'manual'], default: 'qr_scan' },
+  method: { type: String, enum: ['qr_scan', 'id_card', 'manual', 'biometric', 'rfid', 'geofence'], default: 'qr_scan' },
   latitude: { type: Number },
   longitude: { type: Number },
   markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

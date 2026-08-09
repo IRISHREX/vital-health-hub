@@ -6,6 +6,7 @@ const { sendEmail } = require('../config/email');
 const { emitNotification } = require('../config/socket');
 const { AppError } = require('../middleware/errorHandler');
 const { getModel } = require('../utils/tenantModel');
+const { isDoctorOnDuty } = require('../utils/rosterAvailability');
 
 const getModels = (req) => ({
   Appointment: getModel(req, 'Appointment', BaseAppointment),
@@ -298,6 +299,7 @@ exports.createAppointment = async (req, res, next) => {
       patientId, doctorId, appointmentDate, appointmentTime,
       reason, notes, type, status, timeSlot,
       priority, fee, paymentMode, paymentStatus, referredBy,
+      forceOffDuty,
     } = req.body;
 
     let effectiveDoctorId = doctorId;
@@ -324,6 +326,20 @@ exports.createAppointment = async (req, res, next) => {
     const doctor = await Doctor.findById(effectiveDoctorId);
     if (!doctor) {
       throw new AppError('Doctor not found', 404);
+    }
+
+    // HIS sync: block booking when the doctor has a published roster for this
+    // date and is not on duty at the requested time. Skipped entirely when the
+    // doctor has no roster entries at all for that day (existing hospitals unaffected).
+    if (!forceOffDuty || !(req.user?.role && ['hospital_admin', 'super_admin'].includes(req.user.role))) {
+      const timeStr = appointmentTime || (timeSlot?.start) || '10:00';
+      const [hh, mm] = String(timeStr).split(':');
+      const requestedAt = new Date(appointmentDate);
+      requestedAt.setHours(parseInt(hh, 10) || 0, parseInt(mm, 10) || 0, 0, 0);
+      const duty = await isDoctorOnDuty(req, { doctorUserId: doctor.user, employeeId: null, at: requestedAt });
+      if (duty.hasRoster && !duty.onDuty) {
+        throw new AppError('The doctor is not on duty at the requested time according to the published roster. Use forceOffDuty to override.', 400);
+      }
     }
 
     // Parse time slot — time is now optional, default to 10:00
