@@ -22,6 +22,8 @@ export const updateAttendanceLocation = (id, data) => apiClient.put(`/attendance
 export const rotateAttendanceLocationToken = (id) => apiClient.post(`/attendance/locations/${id}/rotate`, {});
 export const deactivateAttendanceLocation = (id) => apiClient.delete(`/attendance/locations/${id}`);
 
+export const submitPunch = (data) => apiClient.post('/attendance/punch', data);
+
 export const ATTENDANCE_STATUSES = ['present', 'checked_in', 'absent', 'half_day', 'leave'];
 
 /** Pure: format stored minutes as "7h 30m". */

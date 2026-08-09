@@ -1,4 +1,5 @@
 import { apiClient } from './api-client';
+import { submitPunch as submitPunchApi } from './attendance';
 
 const qs = (p) => {
   const s = new URLSearchParams();
@@ -31,7 +32,7 @@ export const decideSwap = (id, approve, note) => apiClient.post(`/hrms-roster/sw
 export const applySwap = (id) => apiClient.post(`/hrms-roster/swaps/${id}/apply`, {});
 
 // Attendance capture (extends existing attendance module)
-export const submitPunch = (data) => apiClient.post('/attendance/punch', data);
+export const submitPunch = submitPunchApi;
 
 export const SHIFT_KINDS = ['morning', 'evening', 'night', 'split', 'on_call', 'standby'];
 export const UNITS = ['er', 'icu', 'ot', 'general_ward', 'opd', 'lab', 'radiology', 'pharmacy', 'admin'];
