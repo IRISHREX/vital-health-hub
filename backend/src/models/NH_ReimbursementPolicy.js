@@ -22,8 +22,6 @@ const policySchema = new mongoose.Schema({
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
-policySchema.index({ claimType: 1 }, { unique: true });
-
 module.exports = mongoose.model('ReimbursementPolicy', policySchema);
 module.exports.CLAIM_TYPES = CLAIM_TYPES;
 module.exports.STAFF_CATEGORIES = STAFF_CATEGORIES;

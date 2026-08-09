@@ -390,7 +390,107 @@ const upsertManualAttendance = async (req, res) => {
   }
 };
 
+
+/** Distance in meters between two lat/long points (haversine). */
+const distanceMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000;
+  const toRad = (v) => (v * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+};
+
+/**
+ * Ingestion endpoint for non-QR capture sources: manual, biometric, rfid, geofence.
+ * When the punch carries lat/long and the resolved location has coordinates,
+ * enforce the location's geofence radius.
+ */
+const submitPunch = async (req, res) => {
+  try {
+    const { Attendance, AttendanceLocation, Employee } = M(req);
+    const { employeeId, method, latitude, longitude, locationId, mode } = req.body || {};
+    if (!['manual', 'biometric', 'rfid', 'geofence'].includes(method)) {
+      return res.status(400).json({ message: 'Unsupported capture method' });
+    }
+
+    let subjectId = req.user._id;
+    let employee = null;
+    let displayName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
+    let role = req.user.role;
+
+    if (employeeId) {
+      employee = await Employee.findById(employeeId);
+      if (!employee) return res.status(404).json({ message: 'Employee not found' });
+      subjectId = employee.user || employee._id;
+      displayName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
+      role = employee.designation || employee.department;
+    }
+
+    let location = null;
+    if (locationId) {
+      location = await AttendanceLocation.findById(locationId);
+      if (!location) return res.status(404).json({ message: 'Attendance point not found' });
+      if (!location.isActive) return res.status(400).json({ message: `${location.name} is no longer active` });
+      if (location.latitude != null && location.longitude != null && latitude != null && longitude != null) {
+        const dist = distanceMeters(location.latitude, location.longitude, latitude, longitude);
+        if (dist > (location.radiusMeters || 150)) {
+          return res.status(400).json({ message: `You are ${Math.round(dist)}m away from ${location.name}, outside the ${location.radiusMeters || 150}m geofence` });
+        }
+      }
+    }
+
+    const now = new Date();
+    const day = dayKey(now);
+    const punch = {
+      at: now,
+      location: location?._id,
+      locationName: location?.name,
+      method,
+      latitude,
+      longitude,
+      markedBy: req.user._id,
+    };
+
+    let record = await Attendance.findOne({ user: subjectId, day });
+    if (!record) {
+      record = await Attendance.create({
+        user: subjectId,
+        employee: employee?._id,
+        employeeCode: employee?.employeeCode,
+        userName: displayName,
+        role,
+        day,
+        checkIn: punch,
+        status: 'checked_in',
+      });
+      return res.status(201).json({ action: 'checked_in', record });
+    }
+
+    if (!record.checkIn?.at) {
+      record.checkIn = punch;
+      record.status = 'checked_in';
+      await record.save();
+      return res.json({ action: 'checked_in', record });
+    }
+
+    if (mode === 'in') {
+      return res.status(400).json({ message: 'Already checked in today' });
+    }
+
+    record.checkOut = punch;
+    const minutes = Math.max(0, Math.round((now - new Date(record.checkIn.at)) / 60000));
+    record.totalMinutes = minutes;
+    record.status = minutes < HALF_DAY_MINUTES ? 'half_day' : 'present';
+    await record.save();
+    return res.json({ action: 'checked_out', record });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 module.exports = {
+  submitPunch,
   listLocations,
   createLocation,
   updateLocation,
