@@ -22,6 +22,64 @@ const leaveBalanceSchema = new mongoose.Schema({
   unpaidTaken: { type: Number, default: 0, min: 0 },
 }, { _id: false });
 
+
+const licenseSchema = new mongoose.Schema({
+  type: { type: String, enum: ['medical_council', 'dea', 'nursing_council', 'pharmacy', 'radiology', 'other'], default: 'other' },
+  number: { type: String, trim: true },
+  issuingAuthority: { type: String, trim: true },
+  issuedOn: { type: Date },
+  expiresOn: { type: Date },
+  documentUrl: { type: String, trim: true },
+  verified: { type: Boolean, default: false },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedAt: { type: Date },
+}, { timestamps: true });
+
+const certificationSchema = new mongoose.Schema({
+  name: { type: String, trim: true },
+  provider: { type: String, trim: true },
+  certifiedOn: { type: Date },
+  expiresOn: { type: Date },
+  documentUrl: { type: String, trim: true },
+}, { timestamps: true });
+
+const immunizationSchema = new mongoose.Schema({
+  vaccine: { type: String, enum: ['hep_b', 'influenza', 'covid19', 'tetanus', 'mmr', 'other'], default: 'other' },
+  doseLabel: { type: String, trim: true },
+  administeredOn: { type: Date },
+  nextDueOn: { type: Date },
+  batchNumber: { type: String, trim: true },
+  notes: { type: String, trim: true },
+}, { timestamps: true });
+
+const healthCheckSchema = new mongoose.Schema({
+  checkType: { type: String, enum: ['annual', 'pre_employment', 'post_exposure', 'fitness'], default: 'annual' },
+  performedOn: { type: Date },
+  nextDueOn: { type: Date },
+  findings: { type: String, trim: true },
+  fitForDuty: { type: Boolean, default: true },
+  documentUrl: { type: String, trim: true },
+}, { timestamps: true });
+
+const hazardExposureSchema = new mongoose.Schema({
+  exposureType: { type: String, enum: ['needle_stick', 'radiation', 'chemical', 'biohazard', 'other'], default: 'other' },
+  occurredOn: { type: Date },
+  description: { type: String, trim: true },
+  reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  followUpDone: { type: Boolean, default: false },
+  followUpNotes: { type: String, trim: true },
+}, { timestamps: true });
+
+const privilegeSchema = new mongoose.Schema({
+  procedure: { type: String, trim: true },
+  specialty: { type: String, trim: true },
+  level: { type: String, enum: ['assist', 'independent', 'supervisor'], default: 'assist' },
+  grantedOn: { type: Date },
+  expiresOn: { type: Date },
+  grantedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  status: { type: String, enum: ['active', 'suspended', 'revoked'], default: 'active' },
+}, { timestamps: true });
+
 const employeeSchema = new mongoose.Schema({
   employeeCode: { type: String, required: true, trim: true },
   // Optional login account. Employees without a login can still be paid and
@@ -68,6 +126,20 @@ const employeeSchema = new mongoose.Schema({
   // Secret embedded in the printed ID card QR. Rotatable if a card is lost.
   cardToken: { type: String, required: true, unique: true },
   cardIssuedAt: { type: Date },
+
+
+  // ---- Core Employee Management (HRMS) ----
+  staffCategory: {
+    type: String,
+    enum: ['doctor', 'nurse', 'paramedic', 'administrative', 'lab_tech', 'radiology_tech', 'pharmacy_staff', 'housekeeping', 'locum_contract', 'other'],
+    default: 'other',
+  },
+  licenses: { type: [licenseSchema], default: [] },
+  certifications: { type: [certificationSchema], default: [] },
+  immunizations: { type: [immunizationSchema], default: [] },
+  healthChecks: { type: [healthCheckSchema], default: [] },
+  hazardExposures: { type: [hazardExposureSchema], default: [] },
+  privileges: { type: [privilegeSchema], default: [] },
 
   isActive: { type: Boolean, default: true },
   notes: { type: String, trim: true },
